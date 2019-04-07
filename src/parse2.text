@@ -1,0 +1,206 @@
+#include"parse.h"
+extern Symbol symlist[SYMBOL_COUNT];
+int isLetter(char c){
+    if((c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_' || (c>='0' && c<='9')){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+int isNumber(char c){
+    if(c>='0' && c<='9'){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+Msg getSymbol(Parser*parser,Token*token){
+    Msg msg;
+    char c=parser->code[parser->ptr];
+    /*搜索两个字符的运算符*/
+    for(int i=0;i<SYMBOL_COUNT;i++){
+        if(c==symlist[i].str[0] && symlist[i].count==2){
+            if(parser->code[parser->ptr+1]==symlist[i].str[1]){
+                parser->ptr+=2;
+                token->type=TOKEN_SYMBOL;
+                token->symbol=symlist[i];
+                msg.type=MSG_SUCCESS;
+                return msg;
+            }
+        }
+    }
+    /*搜索一个字符的运算符*/
+    for(int i=0;i<SYMBOL_COUNT;i++){
+        if(c==symlist[i].str[0] && symlist[i].count==1){
+            parser->ptr++;
+            token->type=TOKEN_SYMBOL;
+            token->symbol=symlist[i];
+            msg.type=MSG_SUCCESS;
+            return msg;
+        }
+    }
+    msg.type=MSG_NONE;
+    return msg;
+}
+Msg getNumber(Parser*parser,Token*token){
+    Msg msg;
+    char c=parser->code[parser->ptr];
+    int num=0;
+    int dat=0;
+    if(!isNumber(c)){
+        msg.type=MSG_NONE;
+        return msg;
+    }
+    while(isNumber(c)){
+        num=num*10+(c-'0');
+        parser->ptr++;
+        c=parser->code[parser->ptr];
+    }
+    if(c=='.'){
+        parser->ptr++;
+        c=parser->code[parser->ptr];
+        if(!isNumber(c)){
+            sprintf(msg.text,"\n    %d.\nthe format of the float is wrong!",num);
+            msg.type=MSG_ERROR;
+            return msg;
+        }
+        while(isNumber(c)){
+            num=num*10+(c-'0');
+            parser->ptr++;
+            dat++;
+            c=parser->code[parser->ptr];
+        }
+    }
+    token->type=TOKEN_NUMBER;
+    token->num=num;
+    token->dat=dat;
+    msg.type=MSG_SUCCESS;
+    return msg;
+}
+Msg getWord(Parser*parser,Token*token){
+    Msg msg;
+    char word[WORD_MAX];
+    int i;
+    char c=parser->code[parser->ptr];
+    if(!isLetter(c)){
+        msg.type=MSG_NONE;
+        return msg;
+    }
+    for(i=0;isLetter(c);i++){
+        if(i>=WORD_MAX-1){
+            msg.type=MSG_ERROR;
+            sprintf(msg.text,"\n    %s...\nthe length of the word is too long!",word);
+            return msg;
+        }
+        word[i]=c;
+        parser->ptr++;
+        c=parser->code[parser->ptr];
+    }
+    word[i+1]='\0';
+    token->type=TOKEN_WORD;
+    strcpy(token->word,word);
+    msg.type=MSG_SUCCESS;
+    return msg;
+}
+Msg nextToken(Parser*parser,Token*token){
+    Msg msg;
+    while(parser->code[parser->ptr]==' ' || parser->code[parser->ptr]=='\n'){
+        if(parser->code[parser->ptr]=='\n'){
+            parser->line++;
+        }
+        parser->ptr++;
+    }
+    msg=getNumber(parser,token);
+    if(msg.type!=MSG_NONE){
+        return msg;
+    }
+    msg=getWord(parser,token);
+    if(msg.type!=MSG_NONE){
+        return msg;
+    }
+    msg=getSymbol(parser,token);
+    if(msg.type!=MSG_NONE){
+        return msg;
+    }
+    if(parser->code[parser->ptr]=='\0'){
+        token->type=TOKEN_END;
+        msg.type=MSG_SUCCESS;
+        return msg;
+    }
+    msg.type=MSG_ERROR;
+    sprintf(msg.text,"unknown charactor \"%c\"!",parser->code[parser->ptr]);
+    return msg;
+}
+Msg getExpression(Parser*parser){
+    Msg msg;
+    SymbolList slist;
+    Token token;
+    Command cmd;
+    TokenType bt=TOKEN_UNKNOWN;
+    int rptr=parser->ptr;
+    cmd.handle=HANDLE_PUSH;
+    cmd.ta=DATA_INTEGER;
+    cmd.a=0;
+    LIST_ADD(parser->clist,Command,cmd);
+    LIST_INIT(slist,Symbol);
+    while(1){
+        msg=nextToken(parser,&token);
+        MSG_CHECK(parser,msg,rptr);
+        if(token.type==bt){//change
+            msg.type=MSG_ERROR;
+            strcpy(msg.text,"the expression must be wrong!");
+            return msg;
+        }
+        bt=token.type;
+        if(token.type==TOKEN_NUMBER){
+            cmd.handle=HANDLE_PUSH;
+            cmd.ta=DATA_INTEGER;
+            cmd.a=token.num;
+            LIST_ADD(parser->clist,Command,cmd);
+        }else if(token.type==TOKEN_SYMBOL && token.symbol.power!=NPOWER){
+            if(slist.count==0){
+                LIST_ADD(slist,Symbol,token.symbol);
+            }else if(token.symbol.power>slist.vals[slist.count-1].power){
+                LIST_ADD(slist,Symbol,token.symbol);
+            }else{
+                cmd.handle=HANDLE_POP;
+                cmd.ta=DATA_REG;
+                cmd.a=REG_AX;
+                LIST_ADD(parser->clist,Command,cmd);
+                cmd.a=REG_BX;
+                LIST_ADD(parser->clist,Command,cmd);
+                cmd.tb=DATA_REG;
+                cmd.handle=slist.vals[slist.count-1].handle;
+                cmd.a=REG_AX;
+                cmd.b=REG_BX;
+                LIST_ADD(parser->clist,Command,cmd);
+                cmd.handle=HANDLE_PUSH;
+                LIST_ADD(parser->clist,Command,cmd);
+                slist.count--;
+            }
+        }else if(token.type==TOKEN_SYMBOL && token.symbol.type==SYMBOL_PARE1){
+            msg=getExpression(parser);
+            MSG_CHECK(parser,msg,rptr);
+            msg=nextToken(parser,&token);
+            MSG_CHECK(parser,msg,rptr);
+            if(!(token.type==TOKEN_SYMBOL && token.symbol.type==SYMBOL_PARE2)){
+                msg.type=MSG_ERROR;
+                strcpy(msg.text,"expected a \")\".");
+                return msg;
+            }
+        }else{
+            //change end
+            break;
+        }
+    }
+    msg.type=MSG_SUCCESS;
+    return msg;
+}
+Msg parse(Parser*parser){
+    Msg msg;
+    int rptr=parser->ptr;
+    msg=getExpression(parser);
+    MSG_CHECK(parser,msg,rptr);
+    printCmds(parser->clist);
+    return msg;
+}
