@@ -1,0 +1,17 @@
+{
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "gcc build active file",
+      "command": "make",
+      "args": [
+        "-f",
+        "/home/pudron/Program/Pudron/Makefile"
+      ],
+      "options": {
+        "cwd": "/home/pudron/Program/Pudron"
+      }
+    }
+  ],
+  "version": "2.0.0"
+}

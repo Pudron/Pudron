@@ -1,1 +1,1 @@
-num asd=1;
+char asd=1;
