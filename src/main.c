@@ -32,7 +32,10 @@ int main(int argc,char**argv){
         return 1;
     }
     char txt[500];
-    cmdToString(txt,parser.cmds2);
+    Commands cmds;
+    cmds.vals=(unsigned char*)malloc(parser.clist.memory);
+    clistToCmds(&cmds,parser.clist);
+    cmdToString(txt,cmds);
     printf("Cmds:\n%s\n",txt);
     return 0;
 }

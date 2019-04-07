@@ -296,10 +296,12 @@ int clistToCmds(Commands*cmds,CmdList clist){
     for(int i=0;i<clist.count;i++){
         cmd=clist.vals[i];
         cmds->vals[ptr++]=cmd.handle;
-        if(cmd.parac==2){
+        if(cmd.parac==1){
+            c=cmd.ta;
+        }else if(cmd.parac==2){
             c=(cmd.ta<<4)|cmd.tb;
         }else{
-            c=cmd.ta;
+            continue;
         }
         cmds->vals[ptr++]=c;
         if(cmd.ta==DATA_INTEGER || cmd.ta==DATA_POINTER){
@@ -321,7 +323,8 @@ int clistToCmds(Commands*cmds,CmdList clist){
             }
         }
     }
+    return 0;
 }
 int clistToString(char*text,CmdList clist){
-
+    return 0;
 }

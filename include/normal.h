@@ -154,7 +154,7 @@ typedef struct{
     int ptr;
     int line;
     Commands cmds;/*已确定指令，储存变量*/
-    CmdList clist;
+    CmdList clist;/*待确定中间代码*/
     ClassList classList;
     ValueList vlist;
 }Parser;

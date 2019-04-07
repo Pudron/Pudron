@@ -25,7 +25,7 @@ typedef struct{
     Operat*vals;
 }OperatList;
 Msg nextToken(Parser*parser,Token*token);
-Msg getExpression(Parser*parser,Commands*cmds,int*rtype);
+Msg getExpression(Parser*parser,CmdList*cmds,int*rtype);
 Msg getValueGlobalDef(Parser*parser);/*仅全局变量*/
 Msg parse(Parser*parser);
 #endif

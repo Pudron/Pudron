@@ -155,7 +155,7 @@ Msg nextToken(Parser*parser,Token*token){
     }
     return msg;
 }
-Msg getExpression(Parser*parser,Commands*cmds,int*rtype){
+Msg getExpression(Parser*parser,CmdList*clist,int*rtype){
     Msg msg,msg2;
     Token token;
     OperatList olist;
@@ -165,6 +165,7 @@ Msg getExpression(Parser*parser,Commands*cmds,int*rtype){
     char isPrefix=1;
     char isEnd=0;
     Cmd cmd;
+    cmd.isWeak=0;
     msg.type=MSG_SUCCESS;
     LIST_INIT(olist,Operat);
     while(1){
@@ -181,7 +182,7 @@ Msg getExpression(Parser*parser,Commands*cmds,int*rtype){
             }
         }
         if(token.type==TOKEN_PARE1){
-            msg2=getExpression(parser,cmds,&operat.ltype);
+            msg2=getExpression(parser,clist,&operat.ltype);
             MSG_CHECK(msg,msg2);
             if(olist.count>=1){
                 olist.vals[olist.count-1].rtype=operat.ltype;
@@ -197,11 +198,13 @@ Msg getExpression(Parser*parser,Commands*cmds,int*rtype){
             cmd.handle=HANDLE_PUSHI;
             cmd.ta=DATA_INTEGER;
             cmd.a=token.num;
-            addCmd1(cmds,cmd);
+            cmd.parac=1;
+            LIST_ADD((*clist),Cmd,cmd);
             cmd.handle=HANDLE_PUSH;
             cmd.ta=DATA_CHAR;
             cmd.a=token.dat;
-            addCmd1(cmds,cmd);
+            LIST_ADD((*clist),Cmd,cmd);
+            clist->memory+=6;
             operat.ltype=TYPE_NUMBER;
             if(olist.count>=1){
                 olist.vals[olist.count-1].rtype=operat.ltype;
@@ -226,17 +229,21 @@ Msg getExpression(Parser*parser,Commands*cmds,int*rtype){
             cmd.handle=HANDLE_POP;
             cmd.ta=DATA_REG;
             cmd.a=REG_CX;
-            addCmd1(cmds,cmd);
+            cmd.parac=1;
+            LIST_ADD((*clist),Cmd,cmd);
             cmd.handle=HANDLE_POPI;
             cmd.a=REG_AX;
-            addCmd1(cmds,cmd);
+            LIST_ADD((*clist),Cmd,cmd);
             cmd.handle=operat.handle;
-            addCmd1(cmds,cmd);
+            cmd.parac=0;
+            LIST_ADD((*clist),Cmd,cmd);
+            cmd.parac=1;
             cmd.handle=HANDLE_PUSHI;
-            addCmd1(cmds,cmd);
+            LIST_ADD((*clist),Cmd,cmd);
             cmd.handle=HANDLE_PUSH;
             cmd.a=REG_CX;
-            addCmd1(cmds,cmd);
+            LIST_ADD((*clist),Cmd,cmd);
+            clist->memory+=13;
         }
         rptr=parser->ptr;
         msg2=nextToken(parser,&token);
@@ -267,23 +274,28 @@ Msg getExpression(Parser*parser,Commands*cmds,int*rtype){
                 cmd.handle=HANDLE_POP;
                 cmd.ta=DATA_REG;
                 cmd.a=REG_DX;
-                addCmd1(cmds,cmd);
+                cmd.parac=1;
+                LIST_ADD((*clist),Cmd,cmd);
                 cmd.handle=HANDLE_POPI;
                 cmd.a=REG_BX;
-                addCmd1(cmds,cmd);
+                LIST_ADD((*clist),Cmd,cmd);
                 cmd.handle=HANDLE_POP;
                 cmd.a=REG_CX;
-                addCmd1(cmds,cmd);
+                LIST_ADD((*clist),Cmd,cmd);
                 cmd.handle=HANDLE_POPI;
                 cmd.a=REG_AX;
-                addCmd1(cmds,cmd);
-                addCmd(cmds,opt.handle);
+                LIST_ADD((*clist),Cmd,cmd);
+                cmd.parac=0;
+                cmd.handle=opt.handle;
+                LIST_ADD((*clist),Cmd,cmd);
+                cmd.parac=1;
                 cmd.handle=HANDLE_PUSHI;
                 cmd.a=REG_AX;
-                addCmd1(cmds,cmd);
+                LIST_ADD((*clist),Cmd,cmd);
                 cmd.handle=HANDLE_PUSH;
                 cmd.a=REG_CX;
-                addCmd1(cmds,cmd);
+                LIST_ADD((*clist),Cmd,cmd);
+                clist->memory+=19;
             }else{
                 msg.type=MSG_ERROR;
                 sprintf(msg2.text,"%s:%d:error:unknown operation for type \"%s\" and \"%s\".",parser->fileName,parser->line,parser->classList.vals[opt.ltype].name,parser->classList.vals[opt.rtype].name);
@@ -353,30 +365,34 @@ Msg getValueGlobalDef(Parser*parser){
         addCmdDats(&parser->cmds,parser->classList.vals[value.type].size,0);
         if(token.type==TOKEN_EQUAL){
             int rtype;
-            msg2=getExpression(parser,&parser->cmds2,&rtype);
+            msg2=getExpression(parser,&parser->clist,&rtype);
             MSG_CHECK(msg,msg2);
             if((value.type==TYPE_CHAR || value.type==TYPE_NUMBER) && (rtype==TYPE_CHAR || rtype==TYPE_NUMBER) && value.extype==EXTYPE_NORMAL){
                 cmd.handle=HANDLE_POP;
                 cmd.ta=DATA_REG;
                 cmd.a=REG_CX;
-                addCmd1(&parser->cmds2,cmd);
+                cmd.parac=1;
+                LIST_ADD((parser->clist),Cmd,cmd);
                 cmd.handle=HANDLE_POPI;
                 cmd.a=REG_AX;
-                addCmd1(&parser->cmds2,cmd);
+                LIST_ADD((parser->clist),Cmd,cmd);
                 cmd.ta=DATA_POINTER;
                 cmd.tb=DATA_REG;
                 cmd.a=value.ptr;
                 cmd.b=REG_AX;
+                cmd.parac=2;
                 if(value.type==TYPE_CHAR){
                     cmd.handle=HANDLE_MOV;
-                    addCmd2(&parser->cmds2,cmd);
+                    LIST_ADD((parser->clist),Cmd,cmd);
+                    parser->clist.count+=10;
                 }else if(value.type==TYPE_NUMBER){
                     cmd.handle=HANDLE_MOVI;
-                    addCmd2(&parser->cmds2,cmd);
+                    LIST_ADD((parser->clist),Cmd,cmd);
                     cmd.handle=HANDLE_MOV;
                     cmd.a=value.ptr+4;
                     cmd.b=REG_CX;
-                    addCmd2(&parser->cmds2,cmd);
+                    LIST_ADD((parser->clist),Cmd,cmd);
+                    parser->clist.count+=14;
                 }
             }else if(rtype!=value.type){
                 msg.type=MSG_ERROR;
