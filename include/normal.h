@@ -1,5 +1,3 @@
-/*指令格式：第一个字节为指令，第二个字节为参数格式，前两位为参数类型，后两位为参数长度*/
-
 #ifndef _PD_NORMAL_H_
 #define _PD_NORMAL_H_
 #include<stdio.h>
@@ -13,6 +11,10 @@
 #define REG_BX 2
 #define REG_CX 3/*用于小数运算*/
 #define REG_DX 4
+
+/*Types*/
+#define TYPE_INTEGER 0
+#define TYPE_FLOAT 1
 
 /*List Operations*/
 #define LIST_INIT(list,type) \
@@ -29,31 +31,41 @@
         list.vals=(type *)realloc(list.vals,sizeof(type)*list.count);\
         list.vals[list.count-1]=val;
 
-#define MSG_CHECK(msg,msg2) \
-        if(msg2.type==MSG_ERROR){\
-            msg.type=MSG_ERROR;\
-            strcat(msg.text,msg2.text);\
-        }else if(msg2.type==MSG_ERROR_MUST){\
-            msg.type=MSG_ERROR_MUST;\
-            strcat(msg.text,msg2.text);\
-            return msg;\
-        }
+#define LIST_SUB(list) \
+    list.count--;
 
+/*bool type*/
 typedef enum{
-    MSG_SUCCESS,
-    MSG_NONE,
-    MSG_ERROR,
-    MSG_ERROR_MUST/*此类错误必须终止编译*/
-}MsgType;
+    false=0,
+    true
+}bool;
+
+/*Base Data*/
+struct ValueBase;
+union Data{
+    int val;
+    struct ValueBase*ptr;
+};
+struct ValueBase{
+    int type;
+    int mem;
+    union Data dat;
+};
+typedef struct ValueBase Value;
+
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,
-    TOKEN_NUMBER,
+    TOKEN_INTEGER,
+    TOKEN_FLOAT,
     TOKEN_WORD,
-    TOKEN_CHAR,
-    TOKEN_NUM,/*关键字num*/
+    TOKEN_VAR,
+    TOKEN_FUNC,
     TOKEN_ARRAY,
-    TOKEN_STATIC,
+    TOKEN_IF,
+    TOKEN_ELIF,/*else if*/
+    TOKEN_ELSE,
+    TOKEN_EXCL,/*!*/
     TOKEN_ADD,
     TOKEN_SUB,
     TOKEN_MUL,
@@ -74,13 +86,12 @@ typedef enum{
     DATA_REG,
     DATA_POINTER,/*指针*/
     DATA_INTEGER,
-    DATA_CHAR
+    DATA_FLOAT,
+    DATA_REG_POINTER
 }DataType;
 typedef enum{
     HANDLE_NOP,
-    HANDLE_DATA,
     HANDLE_MOV,
-    HANDLE_MOVI,/*4位类型赋值*/
     HANDLE_ADD,
     HANDLE_SUB,
     HANDLE_SUBS,/*单目*/
@@ -90,18 +101,8 @@ typedef enum{
     HANDLE_JMP,/*跳转*/
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
-    HANDLE_PUSHI,/*4位栈操作*/
-    HANDLE_POPI,
-    HANDLE_ADDF,/*带小数自动运算，规则：AX和BX存整数，CX和DX存小数位，然后直接无参数运算*/
-    HANDLE_SUBF,
-    HANDLE_MULF,
-    HANDLE_DIVF
+    HANDLE_FAC/*阶乘*/
 }HandleType;
-typedef enum{
-    EXTYPE_NORMAL,
-    EXTYPE_ARRAY,
-    EXTYPE_DYNAMIC_ARRAY
-}ExType;
 typedef struct{
     TokenType type;
     int num;
@@ -112,26 +113,14 @@ typedef struct{
     HandleType handle;
     DataType ta,tb;
     int a,b;
-    char parac;/*参数数量*/
-    char isWeak;/*用于优化中间代码*/
 }Cmd;
 typedef struct{
     int count;
     Cmd*vals;
-    int memory;/*指令总大小*/
-}CmdList;/*中间代码*/
-typedef struct{
-	int count;
-	int memory;/*已分配内存*/
-	unsigned char*vals;
-}Commands;/*目标代码*/
-typedef struct{
-    MsgType type;
-    char text[100];
-}Msg;
+}CmdList;
 typedef struct{
     char name[WORD_MAX];
-    int size;
+    int size;/*整数的数量*/
 }ClassType;
 typedef struct{
     int count;
@@ -143,29 +132,22 @@ typedef struct{
     int ptr;
     char isStatic;
     ExType extype;
-}Value;
+}Variable;
 typedef struct{
     int count;
     Value*vals;
-}ValueList;
+}VariableList;
 typedef struct{
     char*fileName;
     char*code;
     int ptr;
     int line;
-    Commands cmds;/*已确定指令，储存变量*/
-    CmdList clist;/*待确定中间代码*/
     ClassList classList;
-    ValueList vlist;
+    VariableList varlist;
 }Parser;
-int initParser(Parser*parser);
-int initCommands(Commands*cmds);
-int addCmd(Commands*cmds,unsigned char c);
-int addCmdInt(Commands*cmds,int c);
-int addCmdDats(Commands*cmds,char count,char val);
-int addCmd1(Commands*cmds,Cmd cmd);
-int addCmd2(Commands*cmds,Cmd cmd);
-int clistToCmds(Commands*cmds,CmdList clist);
-int cmdToString(char*text,Commands cmds);
-int clistToString(char*text,CmdList clist);
+/*void clistToString(char*text,CmdList clist);*/
+void initParser(Parser*parser);
+void reportError(Parser*parser,char*msg);
+void reprotWarning(Parser*parser,char*msg);
+void connectCmdList(CmdList*clist,CmdList newClist);
 #endif
