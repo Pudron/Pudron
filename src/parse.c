@@ -12,7 +12,7 @@ Token nextToken(Parser*parser){
             c=parser->code[++parser->ptr];
             while(c!='\''){
                 if(c=='\0'){
-                    reportError(parser,"unterminated comment.\n");
+                    reportError(parser,"unterminated comment.");
                 }
                 if(c=='\n'){
                     parser->line++;
@@ -43,11 +43,11 @@ Token nextToken(Parser*parser){
                 c=parser->code[++parser->ptr];
             }
             if(dat==0){
-                sprintf(msgt,"\n    %d.\nexpected decimal.\n",num);
+                sprintf(msgt,"\n    %d.\nexpected decimal.",num);
                 reportError(parser,msgt);
             }
             if(dat>7){
-                reportError(parser,"the length of the decimal is too long.\n");
+                reportError(parser,"the length of the decimal is too long.");
             }
             token.type=TOKEN_FLOAT;
             token.num=(num&0x1FFFFFFF)|(dat<<29);
@@ -59,7 +59,7 @@ Token nextToken(Parser*parser){
             if(i>=WORD_MAX-1){
                 token.word[i]='\0';
                 token.type=TOKEN_UNKNOWN;
-                sprintf(msgt,"\n    %s...\ntoo long word.\n",token.word);
+                sprintf(msgt,"\n    %s...\ntoo long word.",token.word);
                 reportError(parser,msgt);
             }
             token.word[i]=c;
@@ -149,13 +149,13 @@ Token nextToken(Parser*parser){
         parser->ptr++;
         return token;
     }else{
-        sprintf(msgt,"unknown charactor \"%c\".\n",c);
+        sprintf(msgt,"unknown charactor \"%c\".",c);
         reportError(parser,msgt);
         parser->ptr++;
     }
     return token;
 }
-bool getExpression(Parser*parser,CmdList*clist){
+bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     OperatList olist;
     Operat operat;
@@ -174,10 +174,10 @@ bool getExpression(Parser*parser,CmdList*clist){
             operat.handle_prefix=HANDLE_NOP;
         }
         if(token.type==TOKEN_PARE1){
-            getExpression(parser,clist);
+            getExpression(parser,clist,envirn);
             token=nextToken(parser);
             if(token.type!=TOKEN_PARE2){
-                reportError(parser,"expected \")\".\n");
+                reportError(parser,"expected \")\".");
             }
         }else if(token.type==TOKEN_INTEGER || token.type==TOKEN_FLOAT){
             cmd.handle=HANDLE_PUSH;
@@ -271,141 +271,47 @@ bool getExpression(Parser*parser,CmdList*clist){
     LIST_DELETE(olist);
     return true;
 }
-Msg getValueGlobalDef(Parser*parser){
-    Msg msg,msg2;
+bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn){
     Token token;
-    Value value;
+    Variable var;
     Cmd cmd;
     int rptr=parser->ptr;
-    msg.type=MSG_SUCCESS;
-    msg2=nextToken(parser,&token);
-    MSG_CHECK(msg,msg2);
-    if(token.type==TOKEN_ARRAY){
-        value.extype=EXTYPE_DYNAMIC_ARRAY;
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-    }else{
-        value.extype=EXTYPE_NORMAL;
-    }
-    value.type=-1;
-    if(token.type==TOKEN_CHAR){
-        value.type=TYPE_CHAR;
-    }else if(token.type==TOKEN_NUM){
-        value.type=TYPE_NUMBER;
-    }else if(token.type==TOKEN_WORD){
-        for(int i=2;i<parser->classList.count;i++){
-            if(strcmp(parser->classList.vals[i].name,token.word)==0){
-                value.type=i;
-                break;
-            }
-        }
-        if(value.type==-1){
-            parser->ptr=rptr;
-            msg.type=MSG_NONE;
-            return msg;
-        }
-    }else{
+    token=nextToken(parser);
+    if(token.type!=TOKEN_VAR){
         parser->ptr=rptr;
-        msg.type=MSG_NONE;
-        return msg;
+        return false;
     }
     while(1){
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
+        token=nextToken(parser);
         if(token.type!=TOKEN_WORD){
-            sprintf(msg2.text,"%s:%d:error:expected a value name in defination.\n",parser->fileName,parser->line);
-            msg.type=MSG_ERROR;
-            strcat(msg.text,msg2.text);
+            reportError(parser,"expected a variable name.");
         }
-        strcpy(value.name,token.word);
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-        LIST_ADD(parser->vlist,Value,value);
-        value.ptr=parser->cmds.count;
-        addCmdDats(&parser->cmds,parser->classList.vals[value.type].size,0);
+        strcpy(var.name,token.word);
+        LIST_ADD((*vlist),Variable,var);
+        token=nextToken(parser);
         if(token.type==TOKEN_EQUAL){
-            int rtype;
-            msg2=getExpression(parser,&parser->clist,&rtype);
-            MSG_CHECK(msg,msg2);
-            if((value.type==TYPE_CHAR || value.type==TYPE_NUMBER) && (rtype==TYPE_CHAR || rtype==TYPE_NUMBER) && value.extype==EXTYPE_NORMAL){
-                if(rtype==TYPE_NUMBER){
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_CX;
-                    cmd.parac=1;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    cmd.handle=HANDLE_POPI;
-                    cmd.a=REG_AX;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.memory+=6;
-                }else{
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_AX;
-                    cmd.parac=1;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.memory+=3;
-                }
-                cmd.ta=DATA_POINTER;
-                cmd.tb=DATA_REG;
-                cmd.a=value.ptr;
-                cmd.b=REG_AX;
-                cmd.parac=2;
-                if(value.type==TYPE_CHAR || rtype==TYPE_CHAR){
-                    cmd.handle=HANDLE_MOV;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.count+=7;
-                }else if(value.type==TYPE_NUMBER){
-                    cmd.handle=HANDLE_MOVI;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    cmd.handle=HANDLE_MOV;
-                    cmd.a=value.ptr+4;
-                    cmd.b=REG_CX;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.count+=14;
-                }
-            }else if(rtype!=value.type){
-                msg.type=MSG_ERROR;
-                sprintf(msg2.text,"%s:%d:error:can not initialize the value from the type \"%s\" to \"%s\".\n",parser->fileName,parser->line,parser->classList.vals[rtype].name,parser->classList.vals[value.type].name);
-                strcat(msg.text,msg2.text);
-            }else{
-                /*对象赋值*/
+            if(!getExpression(parser,clist,envirn)){
+                reportError(parser,"expected a expression when initializing variable");
             }
-            msg2=nextToken(parser,&token);
-            MSG_CHECK(msg,msg2);
+            cmd.handle=HANDLE_POP;
+            cmd.ta=DATA_REG;
+            cmd.a=REG_AX;
+            LIST_ADD((*clist),Cmd,cmd);
+            cmd.handle=HANDLE_MOV;
+            cmd.ta=DATA_POINTER;
+            cmd.tb=DATA_REG;
+            cmd.a=vlist->count-1;
+            cmd.b=REG_AX;
+            LIST_ADD((*clist),Cmd,cmd);
+            token=nextToken(parser);
         }
         if(token.type==TOKEN_COMMA){
             continue;
         }else if(token.type==TOKEN_SEMI){
             break;
         }else{
-            msg.type=MSG_ERROR;
-            sprintf(msg2.text,"%s:%d:error:expect \";\" or \",\".\n",parser->fileName,parser->line);
-            strcat(msg.text,msg2.text);
-            break;
+            reportError(parser,"expected \",\" or \";\" after initializing variable");
         }
     }
-    return msg;
-}
-Msg parse(Parser*parser){
-    Msg msg,msg2;
-    Token token;
-    int rptr;
-    msg.type=MSG_SUCCESS;
-    while(1){
-        rptr=parser->ptr;
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-        if(token.type==TOKEN_END){
-            break;
-        }
-        parser->ptr=rptr;
-        msg2=getValueGlobalDef(parser);
-        MSG_PARSE_CHECK(msg,msg2);
-        msg.type=MSG_ERROR;
-        sprintf(msg2.text,"%s:%d:error:unknown expression.\n",parser->fileName,parser->line);
-        strcat(msg.text,msg2.text);
-        break;
-    }
-    return msg;
+    return true;
 }

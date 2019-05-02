@@ -12,6 +12,15 @@ int main(int argc,char**argv){
     if(!readTextFile(&parser.code,argv[1])){
         return -1;
     }
-    printf("%s\n",parser.code);
+    Environment envirn;
+    CmdList clist;
+    char text[1024];
+    LIST_INIT(clist,Cmd);
+    if(getExpression(&parser,&clist,envirn)){
+        clistToString(text,clist);
+        printf("CmdList:\n%s\n",text);
+    }else{
+        printf("No expression\n");
+    }
     return 0;
 }

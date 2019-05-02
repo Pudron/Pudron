@@ -1,6 +1,5 @@
 #include"normal.h"
 void initParser(Parser*parser){
-    ClassType ct;
     parser->code=NULL;
     parser->fileName=NULL;
     parser->ptr=0;
@@ -8,8 +7,9 @@ void initParser(Parser*parser){
     LIST_INIT(parser->varlist,Variable);
     LIST_INIT(parser->classList,ClassType);
 }
-/*int clistToString(char*text,CmdList clist){
+void clistToString(char*text,CmdList clist){
     Cmd cmd;
+    char paraCount=0;
     char temp[20];
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
@@ -17,54 +17,47 @@ void initParser(Parser*parser){
         switch(cmd.handle){
             case HANDLE_MOV:
                 strcat(text,"mov");
-                break;
-            case HANDLE_MOVI:
-                strcat(text,"movi");
+                paraCount=2;
                 break;
             case HANDLE_ADD:
                 strcat(text,"add");
+                paraCount=2;
                 break;
             case HANDLE_SUB:
                 strcat(text,"sub");
+                paraCount=2;
                 break;
             case HANDLE_MUL:
                 strcat(text,"mul");
+                paraCount=2;
                 break;
             case HANDLE_DIV:
                 strcat(text,"div");
+                paraCount=2;
                 break;
-            case HANDLE_ADDF:
-                strcat(text,"addf");
-                break;
-            case HANDLE_SUBF:
-                strcat(text,"subf");
-                break;
-            case HANDLE_MULF:
-                strcat(text,"mulf");
-                break;
-            case HANDLE_DIVF:
-                strcat(text,"divf");
+            case HANDLE_FAC:
+                strcat(text,"fac");
+                paraCount=1;
                 break;
             case HANDLE_PUSH:
                 strcat(text,"push");
-                break;
-            case HANDLE_PUSHI:
-                strcat(text,"pushi");
+                paraCount=1;
                 break;
             case HANDLE_POP:
                 strcat(text,"pop");
-                break;
-            case HANDLE_POPI:
-                strcat(text,"popi");
+                paraCount=1;
                 break;
             case HANDLE_JMP:
                 strcat(text,"jmp");
+                paraCount=1;
                 break;
             case HANDLE_EQUAL:
-                strcat(text,"equa;");
+                strcat(text,"equal");
+                paraCount=2;
                 break;
             case HANDLE_SUBS:
                 strcat(text,"subs");
+                paraCount=1;
                 break;
             case HANDLE_NOP:
                 strcat(text,"nop\n");
@@ -76,11 +69,11 @@ void initParser(Parser*parser){
                 continue;
                 break;
         }
-        if(cmd.parac==0){
+        if(paraCount==0){
             strcat(text,"\n");
             continue;
         }
-        if(cmd.ta==DATA_CHAR || cmd.ta==DATA_INTEGER){
+        if(cmd.ta==DATA_INTEGER){
             sprintf(temp," %d",cmd.a);
         }else if(cmd.ta==DATA_POINTER){
             sprintf(temp," [%d]",cmd.a);
@@ -100,11 +93,11 @@ void initParser(Parser*parser){
             sprintf(temp," unknownType(%d)",cmd.ta);
         }
         strcat(text,temp);
-        if(cmd.parac==1){
+        if(paraCount==1){
             strcat(text,"\n");
             continue;
         }
-        if(cmd.tb==DATA_CHAR || cmd.tb==DATA_INTEGER){
+        if(cmd.tb==DATA_INTEGER){
             sprintf(temp,",%d",cmd.b);
         }else if(cmd.tb==DATA_POINTER){
             sprintf(temp,",[%d]",cmd.b);
@@ -124,13 +117,9 @@ void initParser(Parser*parser){
             sprintf(temp,",unknownType(%d)",cmd.tb);
         }
         strcat(text,temp);
-        if(cmd.parac==2){
-            strcat(text,"\n");
-            continue;
-        }
+        strcat(text,"\n");
     }
-    return 0;
-}*/
+}
 void reportError(Parser*parser,char*msg){
     printf("%s:%d:  error:%s\n",parser->fileName,parser->line,msg);
     exit(1);

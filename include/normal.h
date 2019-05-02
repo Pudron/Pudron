@@ -127,16 +127,16 @@ typedef struct{
     ClassType*vals;
 }ClassList;
 typedef struct{
-    int type;
     char name[WORD_MAX];
-    int ptr;
-    char isStatic;
-    ExType extype;
+    Value value;
 }Variable;
 typedef struct{
     int count;
-    Value*vals;
+    Variable*vals;
 }VariableList;
+typedef struct{
+    VariableList*globalVarlist;
+}Environment;
 typedef struct{
     char*fileName;
     char*code;
@@ -145,7 +145,7 @@ typedef struct{
     ClassList classList;
     VariableList varlist;
 }Parser;
-/*void clistToString(char*text,CmdList clist);*/
+void clistToString(char*text,CmdList clist);
 void initParser(Parser*parser);
 void reportError(Parser*parser,char*msg);
 void reprotWarning(Parser*parser,char*msg);

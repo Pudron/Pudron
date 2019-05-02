@@ -13,7 +13,6 @@ typedef struct{
     Operat*vals;
 }OperatList;
 Token nextToken(Parser*parser);
-bool getExpression(Parser*parser,CmdList*clist);
-Msg getValueGlobalDef(Parser*parser);/*仅全局变量*/
-Msg parse(Parser*parser);
+bool getExpression(Parser*parser,CmdList*clist,Environment envirn);
+bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
 #endif
