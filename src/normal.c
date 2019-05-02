@@ -11,6 +11,8 @@ void clistToString(char*text,CmdList clist){
     Cmd cmd;
     char paraCount=0;
     char temp[20];
+    char dat;
+    int num,n;
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
         cmd=clist.vals[i];
@@ -75,6 +77,14 @@ void clistToString(char*text,CmdList clist){
         }
         if(cmd.ta==DATA_INTEGER){
             sprintf(temp," %d",cmd.a);
+        }else if(cmd.ta==DATA_FLOAT){
+            dat=cmd.a>>29;
+            num=cmd.a&0x1FFFFFFF;
+            n=1;
+            while(dat--){
+                n*=10;
+            }
+            sprintf(temp," %d.%d",num/n,num%n);
         }else if(cmd.ta==DATA_POINTER){
             sprintf(temp," [%d]",cmd.a);
         }else if(cmd.ta==DATA_REG){
@@ -99,6 +109,14 @@ void clistToString(char*text,CmdList clist){
         }
         if(cmd.tb==DATA_INTEGER){
             sprintf(temp,",%d",cmd.b);
+        }else if(cmd.tb==DATA_FLOAT){
+            dat=cmd.b>>29;
+            num=cmd.b&0x1FFFFFFF;
+            n=1;
+            while(dat--){
+                n*=10;
+            }
+            sprintf(temp,",%d.%d",num/n,num%n);
         }else if(cmd.tb==DATA_POINTER){
             sprintf(temp,",[%d]",cmd.b);
         }else if(cmd.tb==DATA_REG){

@@ -181,10 +181,10 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             }
         }else if(token.type==TOKEN_INTEGER || token.type==TOKEN_FLOAT){
             cmd.handle=HANDLE_PUSH;
-            cmd.ta=DATA_INTEGER;
+            cmd.ta=(token.type==TOKEN_FLOAT)?DATA_FLOAT:DATA_INTEGER;
             cmd.a=token.num;
             LIST_ADD((*clist),Cmd,cmd);
-            operat.type=token.type==TOKEN_FLOAT?DATA_FLOAT:DATA_INTEGER;
+            operat.type=(token.type==TOKEN_FLOAT)?DATA_FLOAT:DATA_INTEGER;
         }else{
             parser->ptr=rptr;
             return false;
@@ -196,7 +196,7 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             operat.handle_postfix=HANDLE_FAC;
             token=nextToken(parser);
         }else{
-            operat.handle_prefix=HANDLE_NOP;
+            operat.handle_postfix=HANDLE_NOP;
         }
         /*处理中间运算*/
         if(token.type==TOKEN_ADD){
@@ -217,7 +217,9 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             isEnd=1;
         }
         if(olist.count>=1){
+            bool isRight=false;
             if(olist.vals[olist.count-1].power>=operat.power || isEnd){
+                isRight=true;
                 cmd.handle=HANDLE_POP;
                 cmd.ta=DATA_REG;
                 cmd.tb=DATA_REG;
@@ -259,9 +261,11 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                 LIST_ADD((*clist),Cmd,cmd);
                 LIST_SUB(olist);
             }
-            cmd.handle=HANDLE_PUSH;
-            cmd.a=REG_AX;
-            LIST_ADD((*clist),Cmd,cmd);
+            if(isRight){
+                cmd.handle=HANDLE_PUSH;
+                cmd.a=REG_AX;
+                LIST_ADD((*clist),Cmd,cmd);
+            }
         }
         if(isEnd){
             break;

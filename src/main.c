@@ -22,5 +22,6 @@ int main(int argc,char**argv){
     }else{
         printf("No expression\n");
     }
+    LIST_DELETE(clist);
     return 0;
 }
