@@ -148,6 +148,6 @@ typedef struct{
 void clistToString(char*text,CmdList clist);
 void initParser(Parser*parser);
 void reportError(Parser*parser,char*msg);
-void reprotWarning(Parser*parser,char*msg);
+void reportWarning(Parser*parser,char*msg);
 void connectCmdList(CmdList*clist,CmdList newClist);
 #endif

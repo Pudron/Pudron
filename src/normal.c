@@ -10,7 +10,7 @@ void initParser(Parser*parser){
 void clistToString(char*text,CmdList clist){
     Cmd cmd;
     char paraCount=0;
-    char temp[20];
+    char temp[50];
     char dat;
     int num,n;
     text[0]='\0';
@@ -142,7 +142,7 @@ void reportError(Parser*parser,char*msg){
     printf("%s:%d:  error:%s\n",parser->fileName,parser->line,msg);
     exit(1);
 }
-void reprotWarning(Parser*parser,char*msg){
+void reportWarning(Parser*parser,char*msg){
     printf("%s:%d:  warning:%s\n",parser->fileName,parser->line,msg);
 }
 void connectCmdList(CmdList*clist,CmdList newClist){

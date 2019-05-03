@@ -174,7 +174,9 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             operat.handle_prefix=HANDLE_NOP;
         }
         if(token.type==TOKEN_PARE1){
-            getExpression(parser,clist,envirn);
+            if(!getExpression(parser,clist,envirn)){
+                reportWarning(parser,"expected an expression in the \"( )\".");
+            }
             token=nextToken(parser);
             if(token.type!=TOKEN_PARE2){
                 reportError(parser,"expected \")\".");
@@ -193,6 +195,7 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
         token=nextToken(parser);
         /*处理后缀运算*/
         if(token.type==TOKEN_EXCL){
+            rptr=parser->ptr;
             operat.handle_postfix=HANDLE_FAC;
             token=nextToken(parser);
         }else{
@@ -268,6 +271,22 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             }
         }
         if(isEnd){
+            if(olist.count==0 && (operat.handle_postfix!=HANDLE_NOP || operat.handle_prefix!=HANDLE_NOP)){
+                cmd.handle=HANDLE_POP;
+                cmd.ta=DATA_REG;
+                cmd.a=REG_AX;
+                LIST_ADD((*clist),Cmd,cmd);
+                if(operat.handle_postfix!=HANDLE_NOP){
+                    cmd.handle=operat.handle_postfix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+                if(operat.handle_prefix!=HANDLE_NOP){
+                    cmd.handle=operat.handle_prefix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+                cmd.handle=HANDLE_PUSH;
+                LIST_ADD((*clist),Cmd,cmd);
+            }
             break;
         }
         LIST_ADD(olist,Operat,operat);
