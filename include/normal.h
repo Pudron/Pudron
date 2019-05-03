@@ -5,7 +5,6 @@
 #include<string.h>
 
 #define WORD_MAX 20
-
 /*Regs*/
 #define REG_AX 1
 #define REG_BX 2
@@ -17,22 +16,39 @@
 #define TYPE_FLOAT 1
 
 /*List Operations*/
+#define LIST_UNIT_SIZE 10
+#define LIST_DECLARE(type) \
+        typedef struct{\
+            int count;\
+            int size;\
+            type *vals;\
+        }type##List;
+
 #define LIST_INIT(list,type) \
         list.count=0;\
-        list.vals=(type*)malloc(sizeof(type));
+        list.size=LIST_UNIT_SIZE;\
+        list.vals=(type*)malloc(LIST_UNIT_SIZE*sizeof(type));
 
 #define LIST_DELETE(list) \
         free(list.vals);\
         list.vals=NULL;\
-        list.count=0;
+        list.count=0;\
+        list.size=0;
 
 #define LIST_ADD(list,type,val) \
         list.count++;\
-        list.vals=(type *)realloc(list.vals,sizeof(type)*list.count);\
+        if(list.count>list.size){\
+            list.size+=LIST_UNIT_SIZE;\
+            list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+        }\
         list.vals[list.count-1]=val;
 
-#define LIST_SUB(list) \
-    list.count--;
+#define LIST_SUB(list,type) \
+    list.count--;\
+    if(list.count<=(list.size-LIST_UNIT_SIZE)){\
+        list.size-=LIST_UNIT_SIZE;\
+        list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+    }
 
 /*bool type*/
 typedef enum{
@@ -48,7 +64,7 @@ union Data{
 };
 struct ValueBase{
     int type;
-    int mem;
+    int size;
     union Data dat;
 };
 typedef struct ValueBase Value;
@@ -71,6 +87,7 @@ typedef enum{
     TOKEN_MUL,
     TOKEN_DIV,
     TOKEN_EQUAL,
+    TOKEN_POINT,/*.*/
     TOKEN_COMMA,/*,*/
     TOKEN_SEMI,/*;*/
     TOKEN_PARE1,/*(*/
@@ -114,26 +131,17 @@ typedef struct{
     DataType ta,tb;
     int a,b;
 }Cmd;
-typedef struct{
-    int count;
-    Cmd*vals;
-}CmdList;
+LIST_DECLARE(Cmd)
 typedef struct{
     char name[WORD_MAX];
     int size;/*整数的数量*/
 }ClassType;
-typedef struct{
-    int count;
-    ClassType*vals;
-}ClassList;
+LIST_DECLARE(ClassType)
 typedef struct{
     char name[WORD_MAX];
     Value value;
 }Variable;
-typedef struct{
-    int count;
-    Variable*vals;
-}VariableList;
+LIST_DECLARE(Variable)
 typedef struct{
     VariableList*globalVarlist;
 }Environment;
@@ -142,10 +150,10 @@ typedef struct{
     char*code;
     int ptr;
     int line;
-    ClassList classList;
     VariableList varlist;
 }Parser;
 void clistToString(char*text,CmdList clist);
+void vlistToString(char*text,VariableList vlist);
 void initParser(Parser*parser);
 void reportError(Parser*parser,char*msg);
 void reportWarning(Parser*parser,char*msg);

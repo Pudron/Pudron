@@ -16,11 +16,13 @@ int main(int argc,char**argv){
     CmdList clist;
     char text[1024];
     LIST_INIT(clist,Cmd);
-    if(getExpression(&parser,&clist,envirn)){
+    if(getVariableDef(&parser,&parser.varlist,&clist,envirn)){
         clistToString(text,clist);
         printf("CmdList:\n%s\n",text);
+        vlistToString(text,parser.varlist);
+        printf("VarList:\n%s\n",text);
     }else{
-        printf("No expression\n");
+        printf("No variable defination\n");
     }
     LIST_DELETE(clist);
     return 0;

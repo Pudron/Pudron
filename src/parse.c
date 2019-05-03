@@ -65,7 +65,7 @@ Token nextToken(Parser*parser){
             token.word[i]=c;
             c=parser->code[++parser->ptr];
         }
-        token.word[i+1]='\0';
+        token.word[i]='\0';
         if(strcmp(token.word,"var")==0){
             token.type=TOKEN_VAR;
         }else if(strcmp(token.word,"func")==0){
@@ -114,8 +114,12 @@ Token nextToken(Parser*parser){
         token.type=TOKEN_BRACE2;
         parser->ptr++;
         return token;
-    }else if(c=='.'){
+    }else if(c==','){
         token.type=TOKEN_COMMA;
+        parser->ptr++;
+        return token;
+    }else if(c=='.'){
+        token.type=TOKEN_POINT;
         parser->ptr++;
         return token;
     }else if(c==';'){
@@ -262,7 +266,7 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                 cmd.a=REG_BX;
                 cmd.b=REG_AX;
                 LIST_ADD((*clist),Cmd,cmd);
-                LIST_SUB(olist);
+                LIST_SUB(olist,Operat);
             }
             if(isRight){
                 cmd.handle=HANDLE_PUSH;
@@ -314,7 +318,7 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
         token=nextToken(parser);
         if(token.type==TOKEN_EQUAL){
             if(!getExpression(parser,clist,envirn)){
-                reportError(parser,"expected a expression when initializing variable");
+                reportError(parser,"expected an expression when initializing variable");
             }
             cmd.handle=HANDLE_POP;
             cmd.ta=DATA_REG;
@@ -336,5 +340,9 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
             reportError(parser,"expected \",\" or \";\" after initializing variable");
         }
     }
+    return true;
+}
+bool getVarRef(CmdList*clist,Cmd*asCmd,Environment envirn){
+    
     return true;
 }

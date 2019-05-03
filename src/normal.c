@@ -5,7 +5,6 @@ void initParser(Parser*parser){
     parser->ptr=0;
     parser->line=1;
     LIST_INIT(parser->varlist,Variable);
-    LIST_INIT(parser->classList,ClassType);
 }
 void clistToString(char*text,CmdList clist){
     Cmd cmd;
@@ -137,6 +136,18 @@ void clistToString(char*text,CmdList clist){
         strcat(text,temp);
         strcat(text,"\n");
     }
+    strcat(text,"\0");
+}
+void vlistToString(char*text,VariableList vlist){
+    Variable var;
+    char temp[50];
+    text[0]='\0';
+    for(int i=0;i<vlist.count;i++){
+        var=vlist.vals[i];
+        sprintf(temp,"%d:name:%s,type:%d,mem:%d\n",i,var.name,var.value.type,var.value.size);
+        strcat(text,temp);
+    }
+    strcat(text,"\0");
 }
 void reportError(Parser*parser,char*msg){
     printf("%s:%d:  error:%s\n",parser->fileName,parser->line,msg);

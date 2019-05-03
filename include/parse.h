@@ -8,11 +8,9 @@ typedef struct{
     HandleType handle_infix;
     HandleType handle_postfix;
 }Operat;
-typedef struct{
-    int count;
-    Operat*vals;
-}OperatList;
+LIST_DECLARE(Operat)
 Token nextToken(Parser*parser);
 bool getExpression(Parser*parser,CmdList*clist,Environment envirn);
 bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
+bool getVarRef(CmdList*clist,Cmd*asCmd/*赋值指令*/,Environment envirn);
 #endif
