@@ -23,7 +23,7 @@
                 }
             ],
             "preLaunchTask": "gcc build active file",
-            "miDebuggerPath": "/usr/bin/gdb"
+            "miDebuggerPath": "C:/Program Files/mingw64/bin/gdb.exe"
         }
     ]
 }
