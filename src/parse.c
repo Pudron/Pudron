@@ -164,11 +164,12 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
     OperatList olist;
     Operat operat;
     Cmd cmd;
-    int rptr;
+    int rptr,rline;
     bool isEnd=false;
     LIST_INIT(olist,Operat);
     while(1){
         rptr=parser->ptr;
+        rline=parser->line;
         token=nextToken(parser);
         /*处理前缀运算*/
         if(token.type==TOKEN_SUB){
@@ -190,16 +191,24 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             cmd.ta=(token.type==TOKEN_FLOAT)?DATA_FLOAT:DATA_INTEGER;
             cmd.a=token.num;
             LIST_ADD((*clist),Cmd,cmd);
-            operat.type=(token.type==TOKEN_FLOAT)?DATA_FLOAT:DATA_INTEGER;
+        }else if(token.type==TOKEN_WORD){
+            getVarRef(parser,token.word,clist,&cmd,envirn);
+            cmd.handle=HANDLE_PUSH;
+            cmd.ta=DATA_REG;
+            cmd.a=REG_AX;
+            LIST_ADD((*clist),Cmd,cmd);
         }else{
             parser->ptr=rptr;
+            parser->line=rline;
             return false;
         }
         rptr=parser->ptr;
+        rline=parser->line;
         token=nextToken(parser);
         /*处理后缀运算*/
         if(token.type==TOKEN_EXCL){
             rptr=parser->ptr;
+            rline=parser->line;
             operat.handle_postfix=HANDLE_FAC;
             token=nextToken(parser);
         }else{
@@ -221,6 +230,7 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
         }else{
             /*表达式结束*/
             parser->ptr=rptr;
+            parser->line=rline;
             isEnd=1;
         }
         if(olist.count>=1){
@@ -303,9 +313,11 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
     Variable var;
     Cmd cmd;
     int rptr=parser->ptr;
+    int rline=parser->line;
     token=nextToken(parser);
     if(token.type!=TOKEN_VAR){
         parser->ptr=rptr;
+        parser->line=rline;
         return false;
     }
     while(1){
@@ -314,6 +326,9 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
             reportError(parser,"expected a variable name.");
         }
         strcpy(var.name,token.word);
+        var.value.size=0;
+        var.value.type=TYPE_INTEGER;
+        var.value.dat.val=0;
         LIST_ADD((*vlist),Variable,var);
         token=nextToken(parser);
         if(token.type==TOKEN_EQUAL){
@@ -342,7 +357,25 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
     }
     return true;
 }
-bool getVarRef(CmdList*clist,Cmd*asCmd,Environment envirn){
-    
-    return true;
+/*不止这么简单的getVarRef()*/
+bool getVarRef(Parser*parser,char*varName,CmdList*clist,Cmd*asCmd,Environment envirn){
+    char msg[50];
+    Cmd cmd;
+    for(int i=0;i<parser->varlist.count;i++){
+        if(strcmp(varName,parser->varlist.vals[i].name)==0){
+            asCmd->handle=HANDLE_MOV;
+            asCmd->ta=DATA_POINTER;
+            asCmd->a=i;
+            cmd.handle=HANDLE_MOV;
+            cmd.ta=DATA_REG;
+            cmd.tb=DATA_POINTER;
+            cmd.a=REG_AX;
+            cmd.b=i;
+            LIST_ADD((*clist),Cmd,cmd);
+            return true;
+        }
+    }
+    sprintf(msg,"unfound variable \"%s\".",varName);
+    reportError(parser,msg);
+    return false;
 }

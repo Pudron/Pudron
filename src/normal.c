@@ -144,7 +144,7 @@ void vlistToString(char*text,VariableList vlist){
     text[0]='\0';
     for(int i=0;i<vlist.count;i++){
         var=vlist.vals[i];
-        sprintf(temp,"%d:name:%s,type:%d,mem:%d\n",i,var.name,var.value.type,var.value.size);
+        sprintf(temp,"%d:name:%s,type:%d,size:%d\n",i,var.name,var.value.type,var.value.size);
         strcat(text,temp);
     }
     strcat(text,"\0");

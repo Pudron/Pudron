@@ -1,6 +1,6 @@
 #include"normal.h"
 #include"pio.h"
-#include"parse.h"
+#include"exec.h"
 int main(int argc,char**argv){
     Parser parser;
     if(argc==1){
@@ -12,18 +12,6 @@ int main(int argc,char**argv){
     if(!readTextFile(&parser.code,argv[1])){
         return -1;
     }
-    Environment envirn;
-    CmdList clist;
-    char text[1024];
-    LIST_INIT(clist,Cmd);
-    if(getVariableDef(&parser,&parser.varlist,&clist,envirn)){
-        clistToString(text,clist);
-        printf("CmdList:\n%s\n",text);
-        vlistToString(text,parser.varlist);
-        printf("VarList:\n%s\n",text);
-    }else{
-        printf("No variable defination\n");
-    }
-    LIST_DELETE(clist);
+    compile(&parser);
     return 0;
 }

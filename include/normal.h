@@ -143,7 +143,7 @@ typedef struct{
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{
-    VariableList*globalVarlist;
+    VariableList*funcVarlist;
 }Environment;
 typedef struct{
     char*fileName;
