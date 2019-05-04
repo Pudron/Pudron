@@ -140,7 +140,7 @@ void clistToString(char*text,CmdList clist){
 }
 void vlistToString(char*text,VariableList vlist){
     Variable var;
-    char temp[50];
+    char temp[72];
     text[0]='\0';
     for(int i=0;i<vlist.count;i++){
         var=vlist.vals[i];

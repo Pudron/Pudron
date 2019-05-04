@@ -164,6 +164,7 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
     OperatList olist;
     Operat operat;
     Cmd cmd;
+    char msg[50];
     int rptr,rline;
     bool isEnd=false;
     LIST_INIT(olist,Operat);
@@ -192,7 +193,10 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             cmd.a=token.num;
             LIST_ADD((*clist),Cmd,cmd);
         }else if(token.type==TOKEN_WORD){
-            getVarRef(parser,token.word,clist,&cmd,envirn);
+            if(!getVarRef(parser,token.word,clist,&cmd,envirn)){
+                sprintf(msg,"unfound variable \"%s\".",token.word);
+                reportError(parser,msg);
+            }
             cmd.handle=HANDLE_PUSH;
             cmd.ta=DATA_REG;
             cmd.a=REG_AX;
@@ -357,9 +361,98 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
     }
     return true;
 }
+bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
+    AsCmdsList alist;
+    Token token;
+    AsCmds ascmds;
+    Cmd cmd;
+    int rptr,rline;
+    rptr=parser->ptr;
+    rline=parser->line;
+    LIST_INIT(alist,AsCmds);
+    while(1){
+        token=nextToken(parser);
+        if(token.type!=TOKEN_WORD){
+            parser->ptr=rptr;
+            parser->line=rline;
+            return false;
+        }
+        LIST_INIT(ascmds.clist,Cmd);
+        if(!getVarRef(parser,token.word,&ascmds.clist,&ascmds.asCmd,envirn)){
+            parser->ptr=rptr;
+            parser->line=rline;
+            LIST_DELETE(ascmds.clist);
+            for(int i=0;i<alist.count;i++){
+                LIST_DELETE(alist.vals[i].clist);
+            }
+            LIST_DELETE(alist);
+            return false;
+        }
+        LIST_ADD(alist,AsCmds,ascmds);
+        token=nextToken(parser);
+        if(token.type==TOKEN_COMMA){
+            continue;
+        }else if(token.type==TOKEN_EQUAL){
+            break;
+        }else{
+            parser->ptr=rptr;
+            parser->line=rline;
+            for(int i=0;i<alist.count;i++){
+                LIST_DELETE(alist.vals[i].clist);
+            }
+            LIST_DELETE(alist);
+            return false;
+        }
+    }
+    int i=-1;
+    while(1){
+        ascmds=alist.vals[++i];
+        if(i>=alist.count){
+            reportError(parser,"too many assignment.");
+        }
+        if(!getExpression(parser,clist,envirn)){
+            reportError(parser,"expected an expression in assignment.");
+        }
+        connectCmdList(clist,ascmds.clist);
+        cmd.handle=HANDLE_POP;
+        cmd.ta=DATA_REG;
+        cmd.a=REG_BX;
+        LIST_ADD((*clist),Cmd,cmd);
+        ascmds.asCmd.tb=DATA_REG;
+        ascmds.asCmd.b=REG_BX;
+        LIST_ADD((*clist),Cmd,ascmds.asCmd);
+        token=nextToken(parser);
+        if(token.type==TOKEN_COMMA){
+            continue;
+        }else if(token.type==TOKEN_SEMI){
+            if(i<alist.count-1){
+                for(int i2=i+1;i2<alist.count;i2++){
+                    ascmds=alist.vals[i2];
+                    connectCmdList(clist,ascmds.clist);
+                    cmd.handle=HANDLE_POP;
+                    cmd.ta=DATA_REG;
+                    cmd.a=REG_BX;
+                    LIST_ADD((*clist),Cmd,cmd);
+                    ascmds.asCmd.tb=DATA_REG;
+                    ascmds.asCmd.b=REG_BX;
+                    LIST_ADD((*clist),Cmd,ascmds.asCmd);
+                    cmd.handle=HANDLE_PUSH;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+            }
+            for(int i2=0;i2<alist.count;i2++){
+                LIST_DELETE(alist.vals[i2].clist);
+            }
+            LIST_DELETE(alist);
+            break;
+        }else{
+            reportError(parser,"expected \",\" or \";\" after assignment.");
+        }
+    }
+    return true;
+}
 /*不止这么简单的getVarRef()*/
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,Cmd*asCmd,Environment envirn){
-    char msg[50];
     Cmd cmd;
     for(int i=0;i<parser->varlist.count;i++){
         if(strcmp(varName,parser->varlist.vals[i].name)==0){
@@ -375,7 +468,5 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Cmd*asCmd,Environment en
             return true;
         }
     }
-    sprintf(msg,"unfound variable \"%s\".",varName);
-    reportError(parser,msg);
     return false;
 }
