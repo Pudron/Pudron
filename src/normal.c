@@ -52,6 +52,10 @@ void clistToString(char*text,CmdList clist){
                 strcat(text,"jmp");
                 paraCount=1;
                 break;
+            case HANDLE_JMPC:
+                strcat(text,"jmpc");
+                paraCount=1;
+                break;
             case HANDLE_EQUAL:
                 strcat(text,"equal");
                 paraCount=2;
@@ -78,6 +82,14 @@ void clistToString(char*text,CmdList clist){
                 break;
             case HANDLE_POPT:
                 strcat(text,"popt");
+                paraCount=2;
+                break;
+            case HANDLE_CAND:
+                strcat(text,"cand");
+                paraCount=2;
+                break;
+            case HANDLE_COR:
+                strcat(text,"cor");
                 paraCount=2;
                 break;
             case HANDLE_NOP:
@@ -115,6 +127,8 @@ void clistToString(char*text,CmdList clist){
                 strcpy(temp," cx");
             }else if(cmd.a==REG_DX){
                 strcpy(temp," dx");
+            }else if(cmd.a==REG_CF){
+                strcpy(temp," cf");
             }else{
                 sprintf(temp," unknownReg(%d)",cmd.a);
             }
@@ -147,6 +161,8 @@ void clistToString(char*text,CmdList clist){
                 strcpy(temp,",cx");
             }else if(cmd.b==REG_DX){
                 strcpy(temp,",dx");
+            }else if(cmd.b==REG_CF){
+                strcpy(temp,",cf");
             }else{
                 sprintf(temp,",unknownReg(%d)",cmd.b);
             }

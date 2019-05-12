@@ -21,6 +21,9 @@ void compile(Parser*parser){
         }else if(getAssignment(parser,&clist,envirn)){
             clistToString(text,clist);
             printf("Clist:\n%s\n",text);
+        }else if(getConditionState(parser,&clist,&parser->varlist,envirn)){
+            clistToString(text,clist);
+            printf("Clist:\n%s\n",text);
         }else if(getExpression(parser,&clist,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){

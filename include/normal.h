@@ -10,11 +10,13 @@
 #define REG_BX 2
 #define REG_CX 3/*用于小数运算*/
 #define REG_DX 4
+#define REG_CF 5
 
 /*Types*/
 #define TYPE_INTEGER 0
 #define TYPE_FLOAT 1
 #define TYPE_POINTER 2
+#define TYPE_ARRAY 3
 
 /*List Operations*/
 #define LIST_UNIT_SIZE 10
@@ -83,6 +85,8 @@ typedef enum{
     TOKEN_ELIF,/*else if*/
     TOKEN_ELSE,
     TOKEN_EXCL,/*!*/
+    TOKEN_CAND,
+    TOKEN_COR,
     TOKEN_ADD,
     TOKEN_SUB,
     TOKEN_MUL,
@@ -120,10 +124,13 @@ typedef enum{
     HANDLE_DIV,
     HANDLE_FAC,/*阶乘*/
     HANDLE_JMP,/*跳转*/
+    HANDLE_JMPC,/*条件跳转，当CF为0时跳转*/
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
     HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
-    HANDLE_SFREE/*释放栈中指定数量的元素*/
+    HANDLE_SFREE,/*释放栈中指定数量的元素*/
+    HANDLE_CAND,/*条件与*/
+    HANDLE_COR/*条件或*/
 }HandleType;
 typedef struct{
     TokenType type;
