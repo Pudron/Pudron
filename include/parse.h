@@ -7,15 +7,11 @@ typedef struct{
     HandleType handle_infix;
     HandleType handle_postfix;
 }Operat;
-typedef struct{
-    CmdList clist;
-    Cmd asCmd;
-}AsCmds;
 LIST_DECLARE(Operat)
-LIST_DECLARE(AsCmds)
 Token nextToken(Parser*parser);
 bool getExpression(Parser*parser,CmdList*clist,Environment envirn);
 bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
 bool getAssignment(Parser*parser,CmdList*clist,Environment envirn);/*赋值*/
-bool getVarRef(Parser*parser,char*varName,CmdList*clist,Cmd*asCmd/*赋值指令*/,Environment envirn);
+/*getVarRef():获取一个变量，将其地址存到AX中，用set来赋值*/
+bool getVarRef(Parser*parser,char*varName,CmdList*clist,Environment envirn);
 #endif

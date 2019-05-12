@@ -14,6 +14,7 @@
 /*Types*/
 #define TYPE_INTEGER 0
 #define TYPE_FLOAT 1
+#define TYPE_POINTER 2
 
 /*List Operations*/
 #define LIST_UNIT_SIZE 10
@@ -104,21 +105,25 @@ typedef enum{
     DATA_POINTER,/*指针*/
     DATA_INTEGER,
     DATA_FLOAT,
-    DATA_REG_POINTER
 }DataType;
 typedef enum{
     HANDLE_NOP,
     HANDLE_MOV,
+    HANDLE_PTR,/*设置寄存器指向的变量*/
+    HANDLE_SET,/*改变寄存器指向的变量*/
+    HANDLE_GET,/*获取寄存器指向的变量 get [被存变量],[指针]*/
     HANDLE_ADD,
     HANDLE_SUB,
     HANDLE_SUBS,/*单目*/
     HANDLE_MUL,
     HANDLE_EQUAL,
     HANDLE_DIV,
+    HANDLE_FAC,/*阶乘*/
     HANDLE_JMP,/*跳转*/
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
-    HANDLE_FAC/*阶乘*/
+    HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
+    HANDLE_SFREE/*释放栈中指定数量的元素*/
 }HandleType;
 typedef struct{
     TokenType type;

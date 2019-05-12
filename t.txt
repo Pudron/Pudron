@@ -1,2 +1,5 @@
-var a=1;
-a=2;
+var a=1,b;
+a,b=3;
+var c=1*(b+c);
+c=a+1;
+1+2+3;var x=a+b*c;

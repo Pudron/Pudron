@@ -60,6 +60,26 @@ void clistToString(char*text,CmdList clist){
                 strcat(text,"subs");
                 paraCount=1;
                 break;
+            case HANDLE_SET:
+                strcat(text,"set");
+                paraCount=2;
+                break;
+            case HANDLE_GET:
+                strcat(text,"get");
+                paraCount=2;
+                break;
+            case HANDLE_PTR:
+                strcat(text,"ptr");
+                paraCount=2;
+                break;
+            case HANDLE_SFREE:
+                strcat(text,"sfree");
+                paraCount=1;
+                break;
+            case HANDLE_POPT:
+                strcat(text,"popt");
+                paraCount=2;
+                break;
             case HANDLE_NOP:
                 strcat(text,"nop\n");
                 continue;
