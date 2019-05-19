@@ -129,6 +129,8 @@ void clistToString(char*text,CmdList clist){
                 strcpy(temp," dx");
             }else if(cmd.a==REG_CF){
                 strcpy(temp," cf");
+            }else if(cmd.a==REG_NULL){
+                strcpy(temp," null");
             }else{
                 sprintf(temp," unknownReg(%d)",cmd.a);
             }
@@ -163,6 +165,8 @@ void clistToString(char*text,CmdList clist){
                 strcpy(temp,",dx");
             }else if(cmd.b==REG_CF){
                 strcpy(temp,",cf");
+            }else if(cmd.b==REG_NULL){
+                strcpy(temp,",null");
             }else{
                 sprintf(temp,",unknownReg(%d)",cmd.b);
             }

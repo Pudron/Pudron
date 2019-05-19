@@ -6,6 +6,8 @@
 
 #define WORD_MAX 20
 /*Regs*/
+#define REG_COUNT 6
+#define REG_NULL 0
 #define REG_AX 1
 #define REG_BX 2
 #define REG_CX 3/*用于小数运算*/
@@ -113,7 +115,7 @@ typedef enum{
     HANDLE_MOV,
     HANDLE_PTR,/*设置寄存器指向的变量*/
     HANDLE_SET,/*改变寄存器指向的变量*/
-    HANDLE_GET,/*获取寄存器指向的变量 get [被存变量],[指针]*/
+    HANDLE_GET,/*获取寄存器指向的变量 get [被存变量],[指针变量]*/
     HANDLE_ADD,
     HANDLE_SUB,
     HANDLE_SUBS,/*单目*/
@@ -161,6 +163,7 @@ typedef struct{
     int ptr;
     int line;
     VariableList varlist;
+    Value regs[REG_COUNT];
 }Parser;
 void clistToString(char*text,CmdList clist);
 void vlistToString(char*text,VariableList vlist);

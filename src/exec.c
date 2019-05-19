@@ -47,3 +47,118 @@ void compile(Parser*parser){
     vlistToString(text,parser->varlist);
     printf("VarList:\n%s\n",text);
 }
+void eMov(Parser*parser,Cmd cmd){
+    Value value;
+    char msg[80];
+    value.size=0;
+    if(cmd.tb==DATA_FLOAT){
+        value.type=TYPE_FLOAT;
+        value.val=cmd.b;
+    }else if(cmd.tb==DATA_INTEGER){
+        value.type=TYPE_INTEGER;
+        value.val=cmd.b;
+    }else if(cmd.tb==DATA_POINTER){
+        value=parser->varlist.vals[cmd.b].value;
+    }else if(cmd.tb==DATA_REG){
+        value=parser->regs[cmd.b];
+    }else{
+        sprintf(msg,"excute:unknown tb %d.",cmd.tb);
+        reportError(parser,msg);
+    }
+    if(cmd.ta==DATA_REG){
+        parser->regs[cmd.a]=value;
+    }else if(cmd.tb==DATA_POINTER){
+        parser->varlist.vals[cmd.a].value=value;
+    }else{
+        sprintf(msg,"excute:unsupported ta %d.",cmd.ta);
+        reportError(parser,msg);
+    }
+}
+void ePtr(Parser*parser,Cmd cmd){
+    char msg[50];
+    if(cmd.ta==DATA_POINTER){
+        parser->varlist.vals[cmd.a].value.type=TYPE_POINTER;
+        parser->varlist.vals[cmd.a].value.val=cmd.b;
+    }else if(cmd.ta==DATA_REG){
+        parser->regs[cmd.a].type=TYPE_POINTER;
+        parser->regs[cmd.a].val=cmd.b;
+    }else{
+        sprintf(msg,"excute:unsupported ta %d.",cmd.tb);
+        reportError(parser,msg);
+    }
+}
+void eSet(Parser*parser,Cmd cmd){
+    Value value;
+    char msg[80];
+    value.size=0;
+    if(cmd.tb==DATA_FLOAT){
+        value.type=TYPE_FLOAT;
+        value.val=cmd.b;
+    }else if(cmd.tb==DATA_INTEGER){
+        value.type=TYPE_INTEGER;
+        value.val=cmd.b;
+    }else if(cmd.tb==DATA_POINTER){
+        value=parser->varlist.vals[cmd.b].value;
+    }else if(cmd.tb==DATA_REG){
+        value=parser->regs[cmd.b];
+    }else{
+        sprintf(msg,"excute:unknown tb %d.",cmd.tb);
+        reportError(parser,msg);
+    }
+    if(cmd.ta==DATA_POINTER){
+        Value v=parser->varlist.vals[cmd.a].value;
+        if(v.type==TYPE_POINTER){
+            parser->varlist.vals[v.val].value=value;
+        }else if(v.type!=TYPE_FLOAT && v.type!=TYPE_INTEGER){
+            *(v.ptr)=value;
+        }
+    }else if(cmd.ta==DATA_REG){
+        Value v=parser->regs[cmd.a];
+        if(v.type==TYPE_POINTER){
+            parser->varlist.vals[v.val].value=value;
+        }else if(v.type!=TYPE_FLOAT && v.type!=TYPE_INTEGER){
+            *(v.ptr)=value;
+        }
+    }else{
+        sprintf(msg,"excute:unsupported ta %d.",cmd.ta);
+        reportError(parser,msg);
+    }
+}
+void eGet(Parser*parser,Cmd cmd){
+    Value value;
+    if(parser->regs[cmd.b].type==TYPE_POINTER){
+        value=parser->varlist.vals[parser->regs[cmd.b].val].value;
+    }else{
+        value=*(parser->regs[cmd.b].ptr);
+    }
+    if(cmd.ta==DATA_POINTER){
+        parser->varlist.vals[cmd.a].value=value;
+    }else{
+        parser->regs[cmd.a]=value;
+    }
+}
+void execute(Parser*parser,CmdList clist){
+    Cmd cmd;
+    for(int i=0;i<clist.count;i++){
+        cmd=clist.vals[i];
+        switch(cmd.handle){
+            case HANDLE_NOP:
+                break;
+            case HANDLE_MOV:
+                eMov(parser,cmd);
+                break;
+            case HANDLE_PTR:
+                ePtr(parser,cmd);
+                break;
+            case HANDLE_SET:
+                eSet(parser,cmd);
+                break;
+            case HANDLE_GET:
+                eGet(parser,cmd);
+                break;
+            default:
+                printf("Execute error:unknown command %d.\n",cmd.handle);
+                break;
+        }
+    }
+}
