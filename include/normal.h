@@ -60,18 +60,15 @@ typedef enum{
 }bool;
 
 /*Base Data*/
-struct ValueBase;
-union Data{
-    int val;
-    struct ValueBase*ptr;
-};
 struct ValueBase{
     int type;
     int size;
-    union Data dat;
+    union{
+        int val;
+        struct ValueBase*ptr;
+    };
 };
 typedef struct ValueBase Value;
-
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,

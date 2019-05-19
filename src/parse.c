@@ -356,7 +356,7 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
         strcpy(var.name,token.word);
         var.value.size=0;
         var.value.type=TYPE_INTEGER;
-        var.value.dat.val=0;
+        var.value.val=0;
         LIST_ADD((*vlist),Variable,var);
         token=nextToken(parser);
         if(token.type==TOKEN_EQUAL){
