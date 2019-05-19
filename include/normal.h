@@ -78,6 +78,7 @@ typedef enum{
     TOKEN_VAR,
     TOKEN_FUNC,
     TOKEN_ARRAY,
+    TOKEN_WHILE,
     TOKEN_IF,
     TOKEN_ELIF,/*else if*/
     TOKEN_ELSE,

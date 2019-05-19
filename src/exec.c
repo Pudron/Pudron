@@ -18,13 +18,16 @@ void compile(Parser*parser){
         LIST_INIT(clist,Cmd)
         if(getVariableDef(parser,&parser->varlist,&clist,envirn)){
             clistToString(text,clist);
-            printf("Clist:\n%s\n",text);
+            printf("VarDef Clist:\n%s\n",text);
         }else if(getAssignment(parser,&clist,envirn)){
             clistToString(text,clist);
-            printf("Clist:\n%s\n",text);
+            printf("Assignment Clist:\n%s\n",text);
         }else if(getConditionState(parser,&clist,&parser->varlist,envirn)){
             clistToString(text,clist);
-            printf("Clist:\n%s\n",text);
+            printf("ConditionState Clist:\n%s\n",text);
+        }else if(getWhileLoop(parser,&clist,&parser->varlist,envirn)){
+            clistToString(text,clist);
+            printf("While Clist:\n%s\n",text);
         }else if(getExpression(parser,&clist,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){
@@ -35,7 +38,7 @@ void compile(Parser*parser){
             cmd.a=1;
             LIST_ADD(clist,Cmd,cmd);
             clistToString(text,clist);
-            printf("Clist:\n%s\n",text);
+            printf("Exp Clist:\n%s\n",text);
         }else{
             reportError(parser,"unknown expression.");
         }

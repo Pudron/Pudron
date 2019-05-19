@@ -17,4 +17,5 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn);/*赋值*/
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,Environment envirn);
 void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
+bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 #endif

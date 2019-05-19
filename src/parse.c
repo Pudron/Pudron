@@ -72,6 +72,8 @@ Token nextToken(Parser*parser){
             token.type=TOKEN_FUNC;
         }else if(strcmp(token.word,"array")==0){
             token.type=TOKEN_ARRAY;
+        }else if(strcmp(token.word,"while")==0){
+            token.type=TOKEN_WHILE;
         }else if(strcmp(token.word,"if")==0){
             token.type=TOKEN_IF;
         }else if(strcmp(token.word,"elif")==0){
@@ -513,6 +515,8 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
 
         }else if(getConditionState(parser,clist,vlist,envirn)){
             
+        }else if(getWhileLoop(parser,clist,vlist,envirn)){
+            
         }else if(getExpression(parser,clist,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){
@@ -613,5 +617,52 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     for(int i=0;i<ilist.count;i++){
         clist->vals[ilist.vals[i]].a=clist->count-ilist.vals[i];
     }
+    LIST_DELETE(ilist)
+    return true;
+}
+bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
+    Token token;
+    Cmd cmd;
+    int rptr,rline;
+    int jptr,wptr;
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_WHILE){
+        parser->ptr=rptr;
+        parser->line=rline;
+        return false;
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE1){
+        reportError(parser,"expected \"(\" after \"while\".");
+    }
+    wptr=clist->count;
+    if(!getExpression(parser,clist,envirn)){
+        reportError(parser,"expected an expression in the loop statement.");
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE2){
+        reportError(parser,"expected \")\" after \"while\".");
+    }
+    cmd.handle=HANDLE_POP;
+    cmd.ta=DATA_REG;
+    cmd.a=REG_AX;
+    LIST_ADD((*clist),Cmd,cmd);
+    cmd.handle=HANDLE_MOV;
+    cmd.tb=DATA_REG;
+    cmd.a=REG_CF;
+    cmd.b=REG_AX;
+    LIST_ADD((*clist),Cmd,cmd);
+    cmd.handle=HANDLE_JMPC;
+    cmd.ta=DATA_INTEGER;
+    LIST_ADD((*clist),Cmd,cmd);
+    jptr=clist->count-1;
+    getBlock(parser,clist,vlist,envirn);
+    cmd.handle=HANDLE_JMP;
+    cmd.ta=DATA_INTEGER;
+    cmd.a=-(clist->count-wptr);
+    LIST_ADD((*clist),Cmd,cmd);
+    clist->vals[jptr].a=clist->count-jptr;
     return true;
 }
