@@ -491,6 +491,7 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Environment envirn){
 void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
     Token token;
     int rptr,rline;
+    Cmd cmd;
     token=nextToken(parser);
     if(token.type!=TOKEN_BRACE1){
         reportError(parser,"expected \"{\".");
@@ -517,12 +518,15 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
             if(token.type!=TOKEN_SEMI){
                 reportError(parser,"expected \";\" after an expression");
             }
+            cmd.handle=HANDLE_SFREE;
+            cmd.ta=DATA_INTEGER;
+            cmd.a=1;
+            LIST_ADD((*clist),Cmd,cmd);
         }else{
             reportError(parser,"unknown expression.");
         }
     }
 }
-/*跳转的偏移量还需调整*/
 bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
     Token token;
     int rptr,rline;
@@ -538,8 +542,16 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         parser->line=rline;
         return false;
     }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE1){
+        reportError(parser,"expected \"(\" after \"if\".");
+    }
     if(!getExpression(parser,clist,envirn)){
         reportError(parser,"expected an expression in the conditional statement.");
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE2){
+        reportError(parser,"expected \")\" after \"if(expression...\".");
     }
     cmd.handle=HANDLE_POP;
     cmd.ta=DATA_REG;
@@ -571,8 +583,8 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         cmd.handle=HANDLE_POP;
         cmd.ta=DATA_REG;
         cmd.a=REG_AX;
-        cmd.handle=HANDLE_MOV;
         LIST_ADD((*clist),Cmd,cmd);
+        cmd.handle=HANDLE_MOV;
         cmd.tb=DATA_REG;
         cmd.a=REG_CF;
         cmd.b=REG_AX;
@@ -583,17 +595,16 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         LIST_ADD((*clist),Cmd,cmd);
         jptr=clist->count-1;
         getBlock(parser,clist,vlist,envirn);
-        cmd.handle=HANDLE_JMP;
-        cmd.ta=DATA_INTEGER;
-        cmd.a=1;
-        LIST_ADD((*clist),Cmd,cmd);
-        LIST_ADD(ilist,int,clist->count-1);
         rptr=parser->ptr;
         rline=parser->line;
         token=nextToken(parser);
     }
-    clist->vals[jptr].a=clist->count-jptr-1;
+    clist->vals[jptr].a=clist->count-jptr;
     if(token.type==TOKEN_ELSE){
+        cmd.handle=HANDLE_JMP;
+        cmd.ta=DATA_INTEGER;
+        LIST_ADD((*clist),Cmd,cmd);
+        LIST_ADD(ilist,int,clist->count-1);
         getBlock(parser,clist,vlist,envirn);
     }else{
         parser->ptr=rptr;

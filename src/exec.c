@@ -4,6 +4,7 @@ void compile(Parser*parser){
     Token token;
     CmdList clist;
     Environment envirn;
+    Cmd cmd;
     char text[1024];
     while(1){
         rptr=parser->ptr;
@@ -29,6 +30,10 @@ void compile(Parser*parser){
             if(token.type!=TOKEN_SEMI){
                 reportError(parser,"expected \";\" after an expression");
             }
+            cmd.handle=HANDLE_SFREE;
+            cmd.ta=DATA_INTEGER;
+            cmd.a=1;
+            LIST_ADD(clist,Cmd,cmd);
             clistToString(text,clist);
             printf("Clist:\n%s\n",text);
         }else{
