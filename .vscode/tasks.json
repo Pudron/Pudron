@@ -6,10 +6,10 @@
       "command": "make",
       "args": [
         "-f",
-        "/home/pudron/Program/Pudron/Makefile"
+        "${workspaceFolder}/Makefile"
       ],
       "options": {
-        "cwd": "/home/pudron/Program/Pudron"
+        "cwd": "${workspaceFolder}"
       }
     }
   ],

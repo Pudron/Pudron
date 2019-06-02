@@ -1,9 +1,8 @@
 #include"parse.h"
-Msg nextToken(Parser*parser,Token*token){
-    Msg msg;
+Token nextToken(Parser*parser){
     char msgt[50];
+    Token token;
     char c=parser->code[parser->ptr];
-    msg.type=MSG_SUCCESS;
     while(c==' ' || c=='\n' || c=='\''){
         if(c=='\n'){
             parser->line++;
@@ -13,11 +12,7 @@ Msg nextToken(Parser*parser,Token*token){
             c=parser->code[++parser->ptr];
             while(c!='\''){
                 if(c=='\0'){
-                    token->type=TOKEN_UNKNOWN;
-                    msg.type=MSG_ERROR_MUST;
-                    sprintf(msgt,"%s:%d:error:unterminated comment.\n",parser->fileName,parser->line);
-                    strcat(msg.text,msgt);
-                    return msg;
+                    reportError(parser,"unterminated comment.");
                 }
                 if(c=='\n'){
                     parser->line++;
@@ -29,8 +24,8 @@ Msg nextToken(Parser*parser,Token*token){
         c=parser->code[++parser->ptr];
     }
     if(c=='\0'){
-        token->type=TOKEN_END;
-        return msg;
+        token.type=TOKEN_END;
+        return token;
     }
     if(c>='0' && c<='9'){
         int num=0,dat=0;
@@ -38,6 +33,8 @@ Msg nextToken(Parser*parser,Token*token){
             num=num*10+c-'0';
             c=parser->code[++parser->ptr];
         }
+        token.type=TOKEN_INTEGER;
+        token.num=num;
         if(c=='.'){
             c=parser->code[++parser->ptr];
             while(c>='0' && c<='9'){
@@ -46,476 +43,626 @@ Msg nextToken(Parser*parser,Token*token){
                 c=parser->code[++parser->ptr];
             }
             if(dat==0){
-                token->type=TOKEN_UNKNOWN;
-                msg.type=MSG_ERROR;
-                sprintf(msgt,"%s:%d:error:\n    %d.\nexpected decimal.\n",parser->fileName,parser->line,num);
-                strcat(msg.text,msgt);
+                sprintf(msgt,"\n    %d.\nexpected decimal.",num);
+                reportError(parser,msgt);
             }
+            if(dat>7){
+                reportError(parser,"the length of the decimal is too long.");
+            }
+            token.type=TOKEN_FLOAT;
+            token.num=(num&0x1FFFFFFF)|(dat<<29);
         }
-        token->type=TOKEN_NUMBER;
-        token->num=num;
-        token->dat=dat;
-        return msg;
+        return token;
     }else if((c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_' || (c>='0' && c<='9')){
         int i=0;
         for(i=0;(c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_' || (c>='0' && c<='9');i++){
             if(i>=WORD_MAX-1){
-                token->word[i]='\0';
-                msg.type=MSG_ERROR_MUST;
-                token->type=TOKEN_UNKNOWN;
-                sprintf(msgt,"%s:%d:error:\n    %s...\ntoo long word.\n",parser->fileName,parser->line,token->word);
-                strcat(msg.text,msgt);
-                parser->ptr++;
-                return msg;
+                token.word[i]='\0';
+                token.type=TOKEN_UNKNOWN;
+                sprintf(msgt,"\n    %s...\ntoo long word.",token.word);
+                reportError(parser,msgt);
             }
-            token->word[i]=c;
+            token.word[i]=c;
             c=parser->code[++parser->ptr];
         }
-        token->word[i+1]='\0';
-        if(strcmp(token->word,"char")==0){
-            token->type=TOKEN_CHAR;
-        }else if(strcmp(token->word,"num")==0){
-            token->type=TOKEN_NUM;
-        }else if(strcmp(token->word,"array")==0){
-            token->type=TOKEN_ARRAY;
-        }else if(strcmp(token->word,"static")==0){
-            token->type=TOKEN_STATIC;
+        token.word[i]='\0';
+        if(strcmp(token.word,"var")==0){
+            token.type=TOKEN_VAR;
+        }else if(strcmp(token.word,"func")==0){
+            token.type=TOKEN_FUNC;
+        }else if(strcmp(token.word,"array")==0){
+            token.type=TOKEN_ARRAY;
+        }else if(strcmp(token.word,"while")==0){
+            token.type=TOKEN_WHILE;
+        }else if(strcmp(token.word,"if")==0){
+            token.type=TOKEN_IF;
+        }else if(strcmp(token.word,"elif")==0){
+            token.type=TOKEN_ELIF;
+        }else if(strcmp(token.word,"else")==0){
+            token.type=TOKEN_ELSE;
+        }else if(strcmp(token.word,"and")==0){
+            token.type=TOKEN_CAND;
+        }else if(strcmp(token.word,"or")==0){
+            token.type=TOKEN_COR;
         }else{
-            token->type=TOKEN_WORD;
+            token.type=TOKEN_WORD;
         }
-        return msg;
+        return token;
     }else if(c=='+'){
-        token->type=TOKEN_ADD;
+        token.type=TOKEN_ADD;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='-'){
-        token->type=TOKEN_SUB;
+        token.type=TOKEN_SUB;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='*'){
-        token->type=TOKEN_MUL;
+        token.type=TOKEN_MUL;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='/'){
-        token->type=TOKEN_DIV;
+        token.type=TOKEN_DIV;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='('){
-        token->type=TOKEN_PARE1;
+        token.type=TOKEN_PARE1;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c==')'){
-        token->type=TOKEN_PARE2;
+        token.type=TOKEN_PARE2;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='{'){
-        token->type=TOKEN_BRACE1;
+        token.type=TOKEN_BRACE1;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='}'){
-        token->type=TOKEN_BRACE2;
+        token.type=TOKEN_BRACE2;
         parser->ptr++;
-        return msg;
+        return token;
+    }else if(c==','){
+        token.type=TOKEN_COMMA;
+        parser->ptr++;
+        return token;
     }else if(c=='.'){
-        token->type=TOKEN_COMMA;
+        token.type=TOKEN_POINT;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c==';'){
-        token->type=TOKEN_SEMI;
+        token.type=TOKEN_SEMI;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='='){
-        token->type=TOKEN_EQUAL;
+        token.type=TOKEN_EQUAL;
         parser->ptr++;
-        return msg;
+        return token;
+    }else if(c=='!'){
+        token.type=TOKEN_EXCL;
+        parser->ptr++;
+        return token;
     }else if(c=='>'){
         if(parser->code[parser->ptr+1]=='='){
-            token->type=TOKEN_GTHAN_EQUAL;
+            token.type=TOKEN_GTHAN_EQUAL;
             parser->ptr+=2;
-            return msg;
+            return token;
         }
-        token->type=TOKEN_GTHAN;
+        token.type=TOKEN_GTHAN;
         parser->ptr++;
-        return msg;
+        return token;
     }else if(c=='<'){
         if(parser->code[parser->ptr+1]=='='){
-            token->type=TOKEN_LTHAN_EQUAL;
+            token.type=TOKEN_LTHAN_EQUAL;
             parser->ptr+=2;
-            return msg;
+            return token;
         }
-        token->type=TOKEN_LTHAN;
+        token.type=TOKEN_LTHAN;
         parser->ptr++;
-        return msg;
+        return token;
     }else{
-        msg.type=MSG_ERROR;
-        token->type=TOKEN_UNKNOWN;
-        sprintf(msgt,"%s:%d:error:unknown charactor \"%c\".\n",parser->fileName,parser->line,c);
-        strcat(msg.text,msgt);
+        sprintf(msgt,"unknown charactor \"%c\".",c);
+        reportError(parser,msgt);
         parser->ptr++;
     }
-    return msg;
+    return token;
 }
-Msg getExpression(Parser*parser,CmdList*clist,int*rtype){
-    Msg msg,msg2;
+bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     OperatList olist;
     Operat operat;
-    int rptr;
-    char isFirst=1;
-    char isPrefix=1;
-    char isEnd=0;
     Cmd cmd;
-    cmd.isWeak=0;
-    msg.type=MSG_SUCCESS;
+    char msg[50];
+    int rptr,rline;
+    bool isEnd=false;
     LIST_INIT(olist,Operat);
     while(1){
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-        if(isPrefix){
-            /*处理单目运算*/
-            if(token.type==TOKEN_SUB){
-                operat.handle=HANDLE_SUBS;
-                msg2=nextToken(parser,&token);
-                MSG_CHECK(msg,msg2);
-            }else{
-                isPrefix=0;
-            }
+        rptr=parser->ptr;
+        rline=parser->line;
+        token=nextToken(parser);
+        /*处理前缀运算*/
+        if(token.type==TOKEN_SUB){
+            operat.handle_prefix=HANDLE_SUBS;
+            token=nextToken(parser);
+        }else{
+            operat.handle_prefix=HANDLE_NOP;
         }
         if(token.type==TOKEN_PARE1){
-            msg2=getExpression(parser,clist,&operat.ltype);
-            MSG_CHECK(msg,msg2);
-            if(olist.count>=1){
-                olist.vals[olist.count-1].rtype=operat.ltype;
+            if(!getExpression(parser,clist,envirn)){
+                reportWarning(parser,"expected an expression in the \"( )\".");
             }
-            msg2=nextToken(parser,&token);
-            MSG_CHECK(msg,msg2);
+            token=nextToken(parser);
             if(token.type!=TOKEN_PARE2){
-                sprintf(msg2.text,"%s:%d:error:expected \")\".\n",parser->fileName,parser->line);
-                msg.type=MSG_ERROR;
-                strcat(msg.text,msg2.text);
+                reportError(parser,"expected \")\".");
             }
-        }else if(token.type==TOKEN_NUMBER){
-            if(token.num<=0xFF && token.dat==0){
-                cmd.parac=1;
-                cmd.handle=HANDLE_PUSH;
-                cmd.ta=DATA_CHAR;
-                cmd.a=token.num;
-                LIST_ADD((*clist),Cmd,cmd);
-                clist->memory+=3;
-                operat.ltype=TYPE_CHAR;
-            }else{
-                cmd.handle=HANDLE_PUSHI;
-                cmd.ta=DATA_INTEGER;
-                cmd.a=token.num;
-                cmd.parac=1;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=HANDLE_PUSH;
-                cmd.ta=DATA_CHAR;
-                cmd.a=token.dat;
-                LIST_ADD((*clist),Cmd,cmd);
-                clist->memory+=9;
-                operat.ltype=TYPE_NUMBER;
+        }else if(token.type==TOKEN_INTEGER || token.type==TOKEN_FLOAT){
+            cmd.handle=HANDLE_PUSH;
+            cmd.ta=(token.type==TOKEN_FLOAT)?DATA_FLOAT:DATA_INTEGER;
+            cmd.a=token.num;
+            LIST_ADD((*clist),Cmd,cmd);
+        }else if(token.type==TOKEN_WORD){
+            if(!getVarRef(parser,token.word,clist,envirn)){
+                sprintf(msg,"unfound variable \"%s\".",token.word);
+                reportError(parser,msg);
             }
-            if(olist.count>=1){
-                olist.vals[olist.count-1].rtype=operat.ltype;
-            }
-            operat.isFunc=0;
+            cmd.handle=HANDLE_GET;
+            cmd.ta=DATA_REG;
+            cmd.tb=DATA_REG;
+            cmd.a=REG_BX;
+            cmd.b=REG_AX;
+            LIST_ADD((*clist),Cmd,cmd);
+            cmd.handle=HANDLE_PUSH;
+            LIST_ADD((*clist),Cmd,cmd);
         }else{
-            sprintf(msg2.text,"%s:%d:error:expected a value or constant in the expression.\n",parser->fileName,parser->line);
-            msg.type=MSG_ERROR;
-            strcat(msg.text,msg2.text);
-        }
-        if(isFirst){
-            *rtype=operat.ltype;
-            isFirst=0;
-        }
-        if(isPrefix){
-            isPrefix=0;
-            if(operat.ltype==TYPE_CHAR){
-                cmd.parac=1;
-                cmd.ta=DATA_REG;
-                cmd.a=REG_AX;
-                cmd.handle=HANDLE_POP;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=operat.handle;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=HANDLE_PUSH;
-                LIST_ADD((*clist),Cmd,cmd);
-                clist->memory+=9;
-            }else if(operat.ltype==TYPE_NUMBER){
-                cmd.handle=HANDLE_POP;
-                cmd.ta=DATA_REG;
-                cmd.a=REG_CX;
-                cmd.parac=1;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=HANDLE_POPI;
-                cmd.a=REG_AX;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=operat.handle;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=HANDLE_PUSHI;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=HANDLE_PUSH;
-                cmd.a=REG_CX;
-                LIST_ADD((*clist),Cmd,cmd);
-                clist->memory+=15;
-            }else{
-                msg.type=MSG_ERROR;
-                sprintf(msg2.text,"%s:%d:error:the prefix operator only supports type num or char.\n",parser->fileName,parser->line);
-                strcat(msg.text,msg2.text);
-            }
+            parser->ptr=rptr;
+            parser->line=rline;
+            return false;
         }
         rptr=parser->ptr;
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
+        rline=parser->line;
+        token=nextToken(parser);
+        /*处理后缀运算*/
+        if(token.type==TOKEN_EXCL){
+            rptr=parser->ptr;
+            rline=parser->line;
+            operat.handle_postfix=HANDLE_FAC;
+            token=nextToken(parser);
+        }else{
+            operat.handle_postfix=HANDLE_NOP;
+        }
+        /*处理中间运算*/
         if(token.type==TOKEN_ADD){
-            operat.handle=HANDLE_ADDF;
+            operat.handle_infix=HANDLE_ADD;
             operat.power=50;
         }else if(token.type==TOKEN_SUB){
-            operat.handle=HANDLE_SUBF;
+            operat.handle_infix=HANDLE_SUB;
             operat.power=50;
         }else if(token.type==TOKEN_MUL){
-            operat.handle=HANDLE_MULF;
+            operat.handle_infix=HANDLE_MUL;
             operat.power=80;
         }else if(token.type==TOKEN_DIV){
-            operat.handle=HANDLE_DIVF;
+            operat.handle_infix=HANDLE_DIV;
             operat.power=80;
+        }else if(token.type==TOKEN_EQUAL){
+            operat.handle_infix=HANDLE_EQUAL;
+            operat.power=30;
+        }else if(token.type==TOKEN_CAND){
+            operat.handle_infix=HANDLE_CAND;
+            operat.power=10;
+        }else if(token.type==TOKEN_COR){
+            operat.handle_infix=HANDLE_COR;
+            operat.power=10;
         }else{
             /*表达式结束*/
             parser->ptr=rptr;
+            parser->line=rline;
             isEnd=1;
         }
-        while(olist.count>=1){
-            Operat opt=olist.vals[olist.count-1];
-            if(operat.power>opt.power && !isEnd){
-                break;
-            }
-            if((opt.ltype==TYPE_CHAR || opt.ltype==TYPE_NUMBER) && (opt.rtype==TYPE_CHAR || opt.rtype==TYPE_NUMBER)){
-                if(opt.rtype==TYPE_CHAR){
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_BX;
-                    cmd.parac=1;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    cmd.handle=HANDLE_MOV;
-                    cmd.tb=DATA_CHAR;
-                    cmd.parac=2;
-                    cmd.a=REG_DX;
-                    cmd.b=0;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    clist->memory+=7;
-                }else if(opt.rtype==TYPE_NUMBER){
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_DX;
-                    cmd.parac=1;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    cmd.handle=HANDLE_POPI;
-                    cmd.a=REG_BX;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    clist->memory+=6;
-                }
-                if(opt.ltype==TYPE_CHAR){
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_AX;
-                    cmd.parac=1;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    cmd.handle=HANDLE_MOV;
-                    cmd.ta=DATA_REG;
-                    cmd.tb=DATA_CHAR;
-                    cmd.parac=2;
-                    cmd.a=REG_CX;
-                    cmd.b=0;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    clist->memory+=7;
-                }else if(opt.ltype==TYPE_NUMBER){
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_CX;
-                    cmd.parac=1;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    cmd.handle=HANDLE_POPI;
-                    cmd.a=REG_AX;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    clist->memory+=6;
-                }
-                cmd.handle=opt.handle;
-                cmd.parac=0;
+        if(olist.count>=1){
+            bool isRight=false;
+            if(olist.vals[olist.count-1].power>=operat.power || isEnd){
+                isRight=true;
+                cmd.handle=HANDLE_POP;
+                cmd.ta=DATA_REG;
+                cmd.tb=DATA_REG;
+                cmd.a=REG_BX;
                 LIST_ADD((*clist),Cmd,cmd);
-                clist->memory+=1;
-                if(opt.ltype==TYPE_CHAR && opt.rtype==TYPE_CHAR){
-                    cmd.handle=HANDLE_PUSH;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_AX;
-                    cmd.parac=1;
+                if(operat.handle_postfix!=HANDLE_NOP){
+                    cmd.handle=operat.handle_postfix;
                     LIST_ADD((*clist),Cmd,cmd);
-                    clist->memory+=3;
-                }else{
-                    cmd.handle=HANDLE_PUSHI;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_AX;
-                    cmd.parac=1;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    cmd.handle=HANDLE_PUSH;
-                    cmd.a=REG_CX;
-                    LIST_ADD((*clist),Cmd,cmd);
-                    clist->memory+=6;
-                    if(olist.count>=2){
-                        olist.vals[olist.count-2].rtype=TYPE_NUMBER;
-                    }
-                    operat.ltype=TYPE_NUMBER;
+                    operat.handle_postfix=HANDLE_NOP;
                 }
-            }else{
-                msg.type=MSG_ERROR;
-                sprintf(msg2.text,"%s:%d:error:unknown operation for type \"%s\" and \"%s\".",parser->fileName,parser->line,parser->classList.vals[opt.ltype].name,parser->classList.vals[opt.rtype].name);
-                strcat(msg.text,msg2.text);
+                if(operat.handle_prefix!=HANDLE_NOP){
+                    cmd.handle=operat.handle_prefix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                    operat.handle_prefix=HANDLE_NOP;
+                }
             }
-            olist.count--;
+            while(olist.count>=1){
+                Operat opt=olist.vals[olist.count-1];
+                if(operat.power>opt.power && !isEnd){
+                    break;
+                }
+                cmd.handle=HANDLE_POP;
+                cmd.a=REG_AX;
+                LIST_ADD((*clist),Cmd,cmd);
+                if(opt.handle_postfix!=HANDLE_NOP){
+                    cmd.handle=opt.handle_postfix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+                if(opt.handle_prefix!=HANDLE_NOP){
+                    cmd.handle=opt.handle_prefix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+                cmd.handle=opt.handle_infix;
+                cmd.b=REG_BX;
+                LIST_ADD((*clist),Cmd,cmd);
+                cmd.handle=HANDLE_MOV;
+                cmd.a=REG_BX;
+                cmd.b=REG_AX;
+                LIST_ADD((*clist),Cmd,cmd);
+                LIST_SUB(olist,Operat);
+            }
+            if(isRight){
+                cmd.handle=HANDLE_PUSH;
+                cmd.a=REG_AX;
+                LIST_ADD((*clist),Cmd,cmd);
+            }
         }
         if(isEnd){
+            if(olist.count==0 && (operat.handle_postfix!=HANDLE_NOP || operat.handle_prefix!=HANDLE_NOP)){
+                cmd.handle=HANDLE_POP;
+                cmd.ta=DATA_REG;
+                cmd.a=REG_AX;
+                LIST_ADD((*clist),Cmd,cmd);
+                if(operat.handle_postfix!=HANDLE_NOP){
+                    cmd.handle=operat.handle_postfix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+                if(operat.handle_prefix!=HANDLE_NOP){
+                    cmd.handle=operat.handle_prefix;
+                    LIST_ADD((*clist),Cmd,cmd);
+                }
+                cmd.handle=HANDLE_PUSH;
+                LIST_ADD((*clist),Cmd,cmd);
+            }
             break;
         }
         LIST_ADD(olist,Operat,operat);
     }
     LIST_DELETE(olist);
-    return msg;
+    return true;
 }
-Msg getValueGlobalDef(Parser*parser){
-    Msg msg,msg2;
+bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn){
     Token token;
-    Value value;
+    Variable var;
     Cmd cmd;
+    char msg[60];
     int rptr=parser->ptr;
-    msg.type=MSG_SUCCESS;
-    msg2=nextToken(parser,&token);
-    MSG_CHECK(msg,msg2);
-    if(token.type==TOKEN_ARRAY){
-        value.extype=EXTYPE_DYNAMIC_ARRAY;
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-    }else{
-        value.extype=EXTYPE_NORMAL;
-    }
-    value.type=-1;
-    if(token.type==TOKEN_CHAR){
-        value.type=TYPE_CHAR;
-    }else if(token.type==TOKEN_NUM){
-        value.type=TYPE_NUMBER;
-    }else if(token.type==TOKEN_WORD){
-        for(int i=2;i<parser->classList.count;i++){
-            if(strcmp(parser->classList.vals[i].name,token.word)==0){
-                value.type=i;
-                break;
-            }
-        }
-        if(value.type==-1){
-            parser->ptr=rptr;
-            msg.type=MSG_NONE;
-            return msg;
-        }
-    }else{
+    int rline=parser->line;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_VAR){
         parser->ptr=rptr;
-        msg.type=MSG_NONE;
-        return msg;
+        parser->line=rline;
+        return false;
     }
     while(1){
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
+        token=nextToken(parser);
         if(token.type!=TOKEN_WORD){
-            sprintf(msg2.text,"%s:%d:error:expected a value name in defination.\n",parser->fileName,parser->line);
-            msg.type=MSG_ERROR;
-            strcat(msg.text,msg2.text);
+            reportError(parser,"expected a variable name.");
         }
-        strcpy(value.name,token.word);
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-        LIST_ADD(parser->vlist,Value,value);
-        value.ptr=parser->cmds.count;
-        addCmdDats(&parser->cmds,parser->classList.vals[value.type].size,0);
-        if(token.type==TOKEN_EQUAL){
-            int rtype;
-            msg2=getExpression(parser,&parser->clist,&rtype);
-            MSG_CHECK(msg,msg2);
-            if((value.type==TYPE_CHAR || value.type==TYPE_NUMBER) && (rtype==TYPE_CHAR || rtype==TYPE_NUMBER) && value.extype==EXTYPE_NORMAL){
-                if(rtype==TYPE_NUMBER){
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_CX;
-                    cmd.parac=1;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    cmd.handle=HANDLE_POPI;
-                    cmd.a=REG_AX;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.memory+=6;
-                }else{
-                    cmd.handle=HANDLE_POP;
-                    cmd.ta=DATA_REG;
-                    cmd.a=REG_AX;
-                    cmd.parac=1;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.memory+=3;
-                }
-                cmd.ta=DATA_POINTER;
-                cmd.tb=DATA_REG;
-                cmd.a=value.ptr;
-                cmd.b=REG_AX;
-                cmd.parac=2;
-                if(value.type==TYPE_CHAR || rtype==TYPE_CHAR){
-                    cmd.handle=HANDLE_MOV;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.count+=7;
-                }else if(value.type==TYPE_NUMBER){
-                    cmd.handle=HANDLE_MOVI;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    cmd.handle=HANDLE_MOV;
-                    cmd.a=value.ptr+4;
-                    cmd.b=REG_CX;
-                    LIST_ADD((parser->clist),Cmd,cmd);
-                    parser->clist.count+=14;
-                }
-            }else if(rtype!=value.type){
-                msg.type=MSG_ERROR;
-                sprintf(msg2.text,"%s:%d:error:can not initialize the value from the type \"%s\" to \"%s\".\n",parser->fileName,parser->line,parser->classList.vals[rtype].name,parser->classList.vals[value.type].name);
-                strcat(msg.text,msg2.text);
-            }else{
-                /*对象赋值*/
+        for(int i=0;i<parser->varlist.count;i++){
+            if(strcmp(token.word,parser->varlist.vals[i].name)==0){
+                sprintf(msg,"the variable \"%s\" has already exist.",token.word);
+                reportError(parser,msg);
             }
-            msg2=nextToken(parser,&token);
-            MSG_CHECK(msg,msg2);
+        }
+        strcpy(var.name,token.word);
+        var.value.size=0;
+        var.value.type=TYPE_INTEGER;
+        var.value.val=0;
+        LIST_ADD((*vlist),Variable,var);
+        token=nextToken(parser);
+        if(token.type==TOKEN_EQUAL){
+            if(!getExpression(parser,clist,envirn)){
+                reportError(parser,"expected an expression when initializing variable");
+            }
+            cmd.handle=HANDLE_POP;
+            cmd.ta=DATA_REG;
+            cmd.a=REG_AX;
+            LIST_ADD((*clist),Cmd,cmd);
+            cmd.handle=HANDLE_MOV;
+            cmd.ta=DATA_POINTER;
+            cmd.tb=DATA_REG;
+            cmd.a=vlist->count-1;
+            cmd.b=REG_AX;
+            LIST_ADD((*clist),Cmd,cmd);
+            token=nextToken(parser);
         }
         if(token.type==TOKEN_COMMA){
             continue;
         }else if(token.type==TOKEN_SEMI){
             break;
         }else{
-            msg.type=MSG_ERROR;
-            sprintf(msg2.text,"%s:%d:error:expect \";\" or \",\".\n",parser->fileName,parser->line);
-            strcat(msg.text,msg2.text);
+            reportError(parser,"expected \",\" or \";\" after initializing variable");
+        }
+    }
+    return true;
+}
+bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
+    Token token;
+    Cmd cmd;
+    int rptr,rline;
+    int stackPtr=-1;
+    rptr=parser->ptr;
+    rline=parser->line;
+    while(1){
+        token=nextToken(parser);
+        if(token.type!=TOKEN_WORD){
+            parser->ptr=rptr;
+            parser->line=rline;
+            return false;
+        }
+        if(!getVarRef(parser,token.word,clist,envirn)){
+            parser->ptr=rptr;
+            parser->line=rline;
+            return false;
+        }
+        cmd.handle=HANDLE_PUSH;
+        cmd.ta=DATA_REG;
+        cmd.a=REG_AX;
+        LIST_ADD((*clist),Cmd,cmd);
+        token=nextToken(parser);
+        stackPtr++;
+        if(token.type==TOKEN_COMMA){
+            continue;
+        }else if(token.type==TOKEN_EQUAL){
+            break;
+        }else{
+            parser->ptr=rptr;
+            parser->line=rline;
+            return false;
+        }
+    }
+    int sCount=stackPtr+1;
+    while(1){
+        if(stackPtr<0){
+            reportError(parser,"too many assignment.");
+        }
+        if(!getExpression(parser,clist,envirn)){
+            reportError(parser,"expected an expression in assignment.");
+        }
+        cmd.handle=HANDLE_POP;
+        cmd.ta=DATA_REG;
+        cmd.a=REG_BX;
+        LIST_ADD((*clist),Cmd,cmd);
+        cmd.handle=HANDLE_POPT;
+        cmd.tb=DATA_INTEGER;
+        cmd.a=REG_AX;
+        cmd.b=stackPtr;
+        LIST_ADD((*clist),Cmd,cmd);
+        cmd.handle=HANDLE_SET;
+        cmd.tb=DATA_REG;
+        cmd.b=REG_BX;
+        LIST_ADD((*clist),Cmd,cmd);
+        stackPtr--;
+        token=nextToken(parser);
+        if(token.type==TOKEN_COMMA){
+            continue;
+        }else if(token.type==TOKEN_SEMI){
+            while(stackPtr>=0){
+                cmd.handle=HANDLE_POPT;
+                cmd.tb=DATA_INTEGER;
+                cmd.b=stackPtr;
+                LIST_ADD((*clist),Cmd,cmd);
+                cmd.handle=HANDLE_SET;
+                cmd.tb=DATA_REG;
+                cmd.b=REG_BX;
+                LIST_ADD((*clist),Cmd,cmd);
+                stackPtr--;
+            }
+            break;
+        }else{
+            reportError(parser,"expected \",\" or \";\" after the assignment.");
+        }
+    }
+    cmd.handle=HANDLE_SFREE;
+    cmd.ta=DATA_INTEGER;
+    cmd.a=sCount;
+    LIST_ADD((*clist),Cmd,cmd);
+    return true;
+}
+bool getVarRef(Parser*parser,char*varName,CmdList*clist,Environment envirn){
+    Cmd cmd;
+    bool isFound=false;
+    for(int i=0;i<parser->varlist.count;i++){
+        if(strcmp(varName,parser->varlist.vals[i].name)==0){
+            cmd.handle=HANDLE_PTR;
+            cmd.ta=DATA_REG;
+            cmd.tb=DATA_POINTER;
+            cmd.a=REG_AX;
+            cmd.b=i;
+            LIST_ADD((*clist),Cmd,cmd);
+            isFound=true;
             break;
         }
     }
-    return msg;
+    if(!isFound){
+        return false;
+    }
+    return true;
 }
-Msg parse(Parser*parser){
-    Msg msg,msg2;
+void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
     Token token;
-    int rptr;
-    msg.type=MSG_SUCCESS;
+    int rptr,rline;
+    Cmd cmd;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_BRACE1){
+        reportError(parser,"expected \"{\".");
+    }
     while(1){
         rptr=parser->ptr;
-        msg2=nextToken(parser,&token);
-        MSG_CHECK(msg,msg2);
-        if(token.type==TOKEN_END){
+        rline=parser->line;
+        token=nextToken(parser);
+        if(token.type==TOKEN_BRACE2){
             break;
+        }else if(token.type==TOKEN_END){
+            reportError(parser,"expected \"}\".");
         }
         parser->ptr=rptr;
-        msg2=getValueGlobalDef(parser);
-        MSG_PARSE_CHECK(msg,msg2);
-        msg.type=MSG_ERROR;
-        sprintf(msg2.text,"%s:%d:error:unknown expression.\n",parser->fileName,parser->line);
-        strcat(msg.text,msg2.text);
-        break;
+        parser->line=rline;
+        if(getVariableDef(parser,vlist,clist,envirn)){
+
+        }else if(getAssignment(parser,clist,envirn)){
+
+        }else if(getConditionState(parser,clist,vlist,envirn)){
+            
+        }else if(getWhileLoop(parser,clist,vlist,envirn)){
+            
+        }else if(getExpression(parser,clist,envirn)){
+            token=nextToken(parser);
+            if(token.type!=TOKEN_SEMI){
+                reportError(parser,"expected \";\" after an expression");
+            }
+            cmd.handle=HANDLE_SFREE;
+            cmd.ta=DATA_INTEGER;
+            cmd.a=1;
+            LIST_ADD((*clist),Cmd,cmd);
+        }else{
+            reportError(parser,"unknown expression.");
+        }
     }
-    return msg;
+}
+bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
+    Token token;
+    int rptr,rline;
+    intList ilist;
+    Cmd cmd;
+    int jptr;
+    rptr=parser->ptr;
+    rline=parser->line;
+    LIST_INIT(ilist,int);
+    token=nextToken(parser);
+    if(token.type!=TOKEN_IF){
+        parser->ptr=rptr;
+        parser->line=rline;
+        return false;
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE1){
+        reportError(parser,"expected \"(\" after \"if\".");
+    }
+    if(!getExpression(parser,clist,envirn)){
+        reportError(parser,"expected an expression in the conditional statement.");
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE2){
+        reportError(parser,"expected \")\" after \"if(expression...\".");
+    }
+    cmd.handle=HANDLE_POP;
+    cmd.ta=DATA_REG;
+    cmd.a=REG_AX;
+    LIST_ADD((*clist),Cmd,cmd);
+    cmd.handle=HANDLE_MOV;
+    cmd.tb=DATA_REG;
+    cmd.a=REG_CF;
+    cmd.b=REG_AX;
+    LIST_ADD((*clist),Cmd,cmd);
+    cmd.handle=HANDLE_JMPC;
+    cmd.ta=DATA_INTEGER;
+    cmd.a=1;
+    LIST_ADD((*clist),Cmd,cmd);
+    jptr=clist->count-1;
+    getBlock(parser,clist,vlist,envirn);
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    while(token.type==TOKEN_ELIF){
+        cmd.handle=HANDLE_JMP;
+        cmd.ta=DATA_INTEGER;
+        LIST_ADD((*clist),Cmd,cmd);
+        LIST_ADD(ilist,int,clist->count-1);
+        clist->vals[jptr].a=clist->count-jptr;
+        if(!getExpression(parser,clist,envirn)){
+            reportError(parser,"expected an expression in the conditional statement.");
+        }
+        cmd.handle=HANDLE_POP;
+        cmd.ta=DATA_REG;
+        cmd.a=REG_AX;
+        LIST_ADD((*clist),Cmd,cmd);
+        cmd.handle=HANDLE_MOV;
+        cmd.tb=DATA_REG;
+        cmd.a=REG_CF;
+        cmd.b=REG_AX;
+        LIST_ADD((*clist),Cmd,cmd);
+        cmd.handle=HANDLE_JMPC;
+        cmd.ta=DATA_INTEGER;
+        cmd.a=1;
+        LIST_ADD((*clist),Cmd,cmd);
+        jptr=clist->count-1;
+        getBlock(parser,clist,vlist,envirn);
+        rptr=parser->ptr;
+        rline=parser->line;
+        token=nextToken(parser);
+    }
+    clist->vals[jptr].a=clist->count-jptr;
+    if(token.type==TOKEN_ELSE){
+        cmd.handle=HANDLE_JMP;
+        cmd.ta=DATA_INTEGER;
+        LIST_ADD((*clist),Cmd,cmd);
+        LIST_ADD(ilist,int,clist->count-1);
+        getBlock(parser,clist,vlist,envirn);
+    }else{
+        parser->ptr=rptr;
+        parser->line=rline;
+    }
+    for(int i=0;i<ilist.count;i++){
+        clist->vals[ilist.vals[i]].a=clist->count-ilist.vals[i];
+    }
+    LIST_DELETE(ilist)
+    return true;
+}
+bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
+    Token token;
+    Cmd cmd;
+    int rptr,rline;
+    int jptr,wptr;
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_WHILE){
+        parser->ptr=rptr;
+        parser->line=rline;
+        return false;
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE1){
+        reportError(parser,"expected \"(\" after \"while\".");
+    }
+    wptr=clist->count;
+    if(!getExpression(parser,clist,envirn)){
+        reportError(parser,"expected an expression in the loop statement.");
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE2){
+        reportError(parser,"expected \")\" after \"while\".");
+    }
+    cmd.handle=HANDLE_POP;
+    cmd.ta=DATA_REG;
+    cmd.a=REG_AX;
+    LIST_ADD((*clist),Cmd,cmd);
+    cmd.handle=HANDLE_MOV;
+    cmd.tb=DATA_REG;
+    cmd.a=REG_CF;
+    cmd.b=REG_AX;
+    LIST_ADD((*clist),Cmd,cmd);
+    cmd.handle=HANDLE_JMPC;
+    cmd.ta=DATA_INTEGER;
+    LIST_ADD((*clist),Cmd,cmd);
+    jptr=clist->count-1;
+    getBlock(parser,clist,vlist,envirn);
+    cmd.handle=HANDLE_JMP;
+    cmd.ta=DATA_INTEGER;
+    cmd.a=-(clist->count-wptr);
+    LIST_ADD((*clist),Cmd,cmd);
+    clist->vals[jptr].a=clist->count-jptr;
+    return true;
 }

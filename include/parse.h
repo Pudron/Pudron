@@ -1,31 +1,21 @@
 #ifndef _PD_PARSE_H_
 #define _PD_PARSE_H_
 #include"normal.h"
-
-#define TYPE_NUMBER 1
-#define TYPE_CHAR 0
-
-#define PARA_FORMAT2(ta,ma,tb,mb) (ta<<6)|(ma<<4)|(tb<<2)|mb
-
-#define MSG_PARSE_CHECK(msg,msg2) \
-        MSG_CHECK(msg,msg2);\
-        if(msg.type!=MSG_NONE){\
-            continue;\
-        }
-
 typedef struct{
     int power;
-    HandleType handle;
-    int rtype;/*运算符左类型*/
-    int ltype;/*运算符右类型*/
-    char isFunc;
+    HandleType handle_prefix;
+    HandleType handle_infix;
+    HandleType handle_postfix;
 }Operat;
-typedef struct{
-    int count;
-    Operat*vals;
-}OperatList;
-Msg nextToken(Parser*parser,Token*token);
-Msg getExpression(Parser*parser,CmdList*cmds,int*rtype);
-Msg getValueGlobalDef(Parser*parser);/*仅全局变量*/
-Msg parse(Parser*parser);
+LIST_DECLARE(Operat)
+LIST_DECLARE(int)
+Token nextToken(Parser*parser);
+bool getExpression(Parser*parser,CmdList*clist,Environment envirn);
+bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
+bool getAssignment(Parser*parser,CmdList*clist,Environment envirn);/*赋值*/
+/*getVarRef():获取一个变量，将其地址存到AX中，用set来赋值*/
+bool getVarRef(Parser*parser,char*varName,CmdList*clist,Environment envirn);
+void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
+bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
+bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 #endif
