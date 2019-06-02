@@ -102,7 +102,7 @@ void eSet(Parser*parser,Cmd cmd){
     }else if(cmd.tb==DATA_REG){
         value=parser->regs[cmd.b];
     }else{
-        sprintf(msg,"excute:unknown tb %d.",cmd.tb);
+        sprintf(msg,"execute:unknown tb %d.",cmd.tb);
         reportError(parser,msg);
     }
     if(cmd.ta==DATA_POINTER){
@@ -120,7 +120,7 @@ void eSet(Parser*parser,Cmd cmd){
             *(v.ptr)=value;
         }
     }else{
-        sprintf(msg,"excute:unsupported ta %d.",cmd.ta);
+        sprintf(msg,"execute:unsupported ta %d.",cmd.ta);
         reportError(parser,msg);
     }
 }
