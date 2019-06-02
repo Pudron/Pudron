@@ -1,5 +1,5 @@
 #include"exec.h"
-void compile(Parser*parser){
+/*void compile(Parser*parser){
     int rptr,rline;
     Token token;
     CmdList clist;
@@ -161,4 +161,4 @@ void execute(Parser*parser,CmdList clist){
                 break;
         }
     }
-}
+}*/

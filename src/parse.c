@@ -89,6 +89,11 @@ Token nextToken(Parser*parser){
         }
         return token;
     }else if(c=='+'){
+        if(parser->code[parser->ptr+1]=='+'){
+            token.type=TOKEN_DOUBLE_ADD;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_ADD;
         parser->ptr++;
         return token;
@@ -180,7 +185,7 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
         token=nextToken(parser);
         /*处理前缀运算*/
         if(token.type==TOKEN_SUB){
-            operat.handle_prefix=HANDLE_SUBS;
+            operat.handle_prefix=HANDLE_SUB;
             token=nextToken(parser);
         }else{
             operat.handle_prefix=HANDLE_NOP;
@@ -193,24 +198,23 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
             if(token.type!=TOKEN_PARE2){
                 reportError(parser,"expected \")\".");
             }
+            operat.type=OPT_MIX;
         }else if(token.type==TOKEN_INTEGER || token.type==TOKEN_FLOAT){
             cmd.handle=HANDLE_PUSH;
-            cmd.ta=(token.type==TOKEN_FLOAT)?DATA_FLOAT:DATA_INTEGER;
+            cmd.ta=DATA_INTEGER;
             cmd.a=token.num;
             LIST_ADD((*clist),Cmd,cmd);
+            operat.type=(token.type==TOKEN_INTEGER)?OPT_INTEGER:OPT_FLOAT;
         }else if(token.type==TOKEN_WORD){
             if(!getVarRef(parser,token.word,clist,envirn)){
                 sprintf(msg,"unfound variable \"%s\".",token.word);
                 reportError(parser,msg);
             }
-            cmd.handle=HANDLE_GET;
+            cmd.handle=HANDLE_PUSH;
             cmd.ta=DATA_REG;
-            cmd.tb=DATA_REG;
-            cmd.a=REG_BX;
             cmd.b=REG_AX;
             LIST_ADD((*clist),Cmd,cmd);
-            cmd.handle=HANDLE_PUSH;
-            LIST_ADD((*clist),Cmd,cmd);
+            operat.type=OPT_POINTER;
         }else{
             parser->ptr=rptr;
             parser->line=rline;
@@ -220,10 +224,10 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
         rline=parser->line;
         token=nextToken(parser);
         /*处理后缀运算*/
-        if(token.type==TOKEN_EXCL){
+        if(token.type==TOKEN_DOUBLE_ADD){
             rptr=parser->ptr;
             rline=parser->line;
-            operat.handle_postfix=HANDLE_FAC;
+            operat.handle_postfix=HANDLE_ADD;
             token=nextToken(parser);
         }else{
             operat.handle_postfix=HANDLE_NOP;
@@ -262,9 +266,24 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                 isRight=true;
                 cmd.handle=HANDLE_POP;
                 cmd.ta=DATA_REG;
-                cmd.tb=DATA_REG;
                 cmd.a=REG_BX;
                 LIST_ADD((*clist),Cmd,cmd);
+                if(operat.handle_postfix==HANDLE_ADD){
+                    if(operat.type==OPT_FLOAT){
+                        cmd.handle=HANDLE_FADD;
+                        cmd.tb=DATA_INTEGER;
+                        cmd.b=1;
+                        LIST_ADD((*clist),Cmd,cmd);
+                    }else if(operat.type==OPT_INTEGER){
+                        cmd.handle=HANDLE_ADD;
+                        cmd.tb=DATA_INTEGER;
+                        cmd.b=1;
+                        LIST_ADD((*clist),Cmd,cmd);
+                    }else if(operat.type==OPT_POINTER){
+                        
+                    }
+                    
+                }
                 if(operat.handle_postfix!=HANDLE_NOP){
                     cmd.handle=operat.handle_postfix;
                     LIST_ADD((*clist),Cmd,cmd);
@@ -282,6 +301,8 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                     break;
                 }
                 cmd.handle=HANDLE_POP;
+                cmd.ta=DATA_REG;
+                cmd.tb=DATA_REG;
                 cmd.a=REG_AX;
                 LIST_ADD((*clist),Cmd,cmd);
                 if(opt.handle_postfix!=HANDLE_NOP){
@@ -475,11 +496,11 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Environment envirn){
     bool isFound=false;
     for(int i=0;i<parser->varlist.count;i++){
         if(strcmp(varName,parser->varlist.vals[i].name)==0){
-            cmd.handle=HANDLE_PTR;
+            cmd.handle=HANDLE_MOV;
             cmd.ta=DATA_REG;
-            cmd.tb=DATA_POINTER;
+            cmd.tb=DATA_INTEGER;
             cmd.a=REG_AX;
-            cmd.b=i;
+            cmd.b=parser->varlist.vals[i].ptr;
             LIST_ADD((*clist),Cmd,cmd);
             isFound=true;
             break;

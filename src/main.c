@@ -1,6 +1,5 @@
 #include"normal.h"
 #include"pio.h"
-#include"exec.h"
 int main(int argc,char**argv){
     Parser parser;
     if(argc==1){
@@ -12,6 +11,6 @@ int main(int argc,char**argv){
     if(!readTextFile(&parser.code,argv[1])){
         return -1;
     }
-    compile(&parser);
+    //compile(&parser);
     return 0;
 }

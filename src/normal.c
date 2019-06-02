@@ -199,6 +199,7 @@ void reportWarning(Parser*parser,char*msg){
 void connectCmdList(CmdList*clist,CmdList newClist){
     int start=clist->count;
     clist->count+=newClist.count;
+    clist->size+=newClist.count;
     clist->vals=(Cmd*)realloc(clist->vals,sizeof(Cmd)*clist->count);
     for(int i=0;i<newClist.count;i++){
         clist->vals[start+i]=newClist.vals[i];

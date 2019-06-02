@@ -61,16 +61,6 @@ typedef enum{
     true
 }bool;
 
-/*Base Data*/
-struct ValueBase{
-    int type;
-    int size;
-    union{
-        int val;
-        struct ValueBase*ptr;
-    };
-};
-typedef struct ValueBase Value;
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,
@@ -88,6 +78,7 @@ typedef enum{
     TOKEN_CAND,
     TOKEN_COR,
     TOKEN_ADD,
+    TOKEN_DOUBLE_ADD,/*++*/
     TOKEN_SUB,
     TOKEN_MUL,
     TOKEN_DIV,
@@ -108,21 +99,21 @@ typedef enum{
     DATA_REG,
     DATA_POINTER,/*指针*/
     DATA_INTEGER,
-    DATA_FLOAT,
+    DATA_REG_POINTER,/*指向寄存器里的指针*/
 }DataType;
 typedef enum{
     HANDLE_NOP,
     HANDLE_MOV,
-    HANDLE_PTR,/*设置寄存器指向的变量*/
-    HANDLE_SET,/*改变寄存器指向的变量*/
-    HANDLE_GET,/*获取寄存器指向的变量 get [被存变量],[指针变量]*/
     HANDLE_ADD,
     HANDLE_SUB,
-    HANDLE_SUBS,/*单目*/
+    HANDLE_SUBS,/*负*/
     HANDLE_MUL,
-    HANDLE_EQUAL,
     HANDLE_DIV,
-    HANDLE_FAC,/*阶乘*/
+    HANDLE_FADD,/*浮点数操作*/
+    HANDLE_FSUB,
+    HANDLE_FMUL,
+    HANDLE_FDIV,
+    HANDLE_EQUAL,
     HANDLE_JMP,/*跳转*/
     HANDLE_JMPC,/*条件跳转，当CF为0时跳转*/
     HANDLE_PUSH,/*栈*/
@@ -151,7 +142,7 @@ typedef struct{
 LIST_DECLARE(ClassType)
 typedef struct{
     char name[WORD_MAX];
-    Value value;
+    int ptr;
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{
@@ -162,8 +153,8 @@ typedef struct{
     char*code;
     int ptr;
     int line;
+    int dataSize;
     VariableList varlist;
-    Value regs[REG_COUNT];
 }Parser;
 void clistToString(char*text,CmdList clist);
 void vlistToString(char*text,VariableList vlist);
