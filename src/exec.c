@@ -62,7 +62,7 @@ void eMov(Parser*parser,Cmd cmd){
     }else if(cmd.tb==DATA_REG){
         value=parser->regs[cmd.b];
     }else{
-        sprintf(msg,"excute:unknown tb %d.",cmd.tb);
+        sprintf(msg,"execute:unknown tb %d.",cmd.tb);
         reportError(parser,msg);
     }
     if(cmd.ta==DATA_REG){
@@ -70,7 +70,7 @@ void eMov(Parser*parser,Cmd cmd){
     }else if(cmd.tb==DATA_POINTER){
         parser->varlist.vals[cmd.a].value=value;
     }else{
-        sprintf(msg,"excute:unsupported ta %d.",cmd.ta);
+        sprintf(msg,"execute:unsupported ta %d.",cmd.ta);
         reportError(parser,msg);
     }
 }
@@ -83,7 +83,7 @@ void ePtr(Parser*parser,Cmd cmd){
         parser->regs[cmd.a].type=TYPE_POINTER;
         parser->regs[cmd.a].val=cmd.b;
     }else{
-        sprintf(msg,"excute:unsupported ta %d.",cmd.tb);
+        sprintf(msg,"execute:unsupported ta %d.",cmd.tb);
         reportError(parser,msg);
     }
 }
