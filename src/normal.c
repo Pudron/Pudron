@@ -36,10 +36,6 @@ void clistToString(char*text,CmdList clist){
                 strcat(text,"div");
                 paraCount=2;
                 break;
-            case HANDLE_FAC:
-                strcat(text,"fac");
-                paraCount=1;
-                break;
             case HANDLE_PUSH:
                 strcat(text,"push");
                 paraCount=1;
@@ -63,18 +59,6 @@ void clistToString(char*text,CmdList clist){
             case HANDLE_SUBS:
                 strcat(text,"subs");
                 paraCount=1;
-                break;
-            case HANDLE_SET:
-                strcat(text,"set");
-                paraCount=2;
-                break;
-            case HANDLE_GET:
-                strcat(text,"get");
-                paraCount=2;
-                break;
-            case HANDLE_PTR:
-                strcat(text,"ptr");
-                paraCount=2;
                 break;
             case HANDLE_SFREE:
                 strcat(text,"sfree");
@@ -108,14 +92,6 @@ void clistToString(char*text,CmdList clist){
         }
         if(cmd.ta==DATA_INTEGER){
             sprintf(temp," %d",cmd.a);
-        }else if(cmd.ta==DATA_FLOAT){
-            dat=cmd.a>>29;
-            num=cmd.a&0x1FFFFFFF;
-            n=1;
-            while(dat--){
-                n*=10;
-            }
-            sprintf(temp," %d.%d",num/n,num%n);
         }else if(cmd.ta==DATA_POINTER){
             sprintf(temp," [%d]",cmd.a);
         }else if(cmd.ta==DATA_REG){
@@ -144,14 +120,6 @@ void clistToString(char*text,CmdList clist){
         }
         if(cmd.tb==DATA_INTEGER){
             sprintf(temp,",%d",cmd.b);
-        }else if(cmd.tb==DATA_FLOAT){
-            dat=cmd.b>>29;
-            num=cmd.b&0x1FFFFFFF;
-            n=1;
-            while(dat--){
-                n*=10;
-            }
-            sprintf(temp,",%d.%d",num/n,num%n);
         }else if(cmd.tb==DATA_POINTER){
             sprintf(temp,",[%d]",cmd.b);
         }else if(cmd.tb==DATA_REG){
@@ -204,4 +172,20 @@ void connectCmdList(CmdList*clist,CmdList newClist){
     for(int i=0;i<newClist.count;i++){
         clist->vals[start+i]=newClist.vals[i];
     }
+}
+void addCmd1(CmdList*clist,HandleType ht,DataType ta,int a){
+    Cmd cmd;
+    cmd.handle=ht;
+    cmd.ta=ta;
+    cmd.a=a;
+    LIST_ADD((*clist),Cmd,cmd);
+}
+void addCmd2(CmdList*clist,HandleType ht,DataType ta,DataType tb,int a,int b){
+    Cmd cmd;
+    cmd.handle=ht;
+    cmd.ta=ta;
+    cmd.tb=tb;
+    cmd.a=a;
+    cmd.b=b;
+    LIST_ADD((*clist),Cmd,cmd);
 }

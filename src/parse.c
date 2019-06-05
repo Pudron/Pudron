@@ -280,20 +280,30 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                         cmd.b=1;
                         LIST_ADD((*clist),Cmd,cmd);
                     }else if(operat.type==OPT_POINTER){
-                        
+                        addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CX,REG_BX);
+                        addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_CX,1);
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG_POINTER,DATA_INTEGER,REG_CX,TYPE_INTEGER);
+                        addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,3);
+                        addCmd2(clist,HANDLE_ADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
+                        addCmd1(clist,HANDLE_JMP,DATA_INTEGER,4);
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG_POINTER,DATA_INTEGER,REG_CX,TYPE_FLOAT);
+                        addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,2);
+                        addCmd2(clist,HANDLE_FADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
+                    }else if(operat.type==OPT_MIX){
+                        reportWarning(parser,"the expression do not support mixture postfix calculation.");
                     }
-                    
-                }
-                if(operat.handle_postfix!=HANDLE_NOP){
-                    cmd.handle=operat.handle_postfix;
-                    LIST_ADD((*clist),Cmd,cmd);
                     operat.handle_postfix=HANDLE_NOP;
                 }
                 if(operat.handle_prefix!=HANDLE_NOP){
-                    cmd.handle=operat.handle_prefix;
-                    LIST_ADD((*clist),Cmd,cmd);
+                    if(operat.type==OPT_POINTER){
+                        addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_BX,REG_BX);
+                        addCmd1(clist,operat.handle_prefix,DATA_REG,REG_BX);
+                    }else{
+                        addCmd1(clist,operat.handle_prefix,DATA_REG_POINTER,REG_BX);
+                    }
                     operat.handle_prefix=HANDLE_NOP;
                 }
+                operat.type=OPT_MIX;
             }
             while(olist.count>=1){
                 Operat opt=olist.vals[olist.count-1];

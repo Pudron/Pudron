@@ -153,7 +153,7 @@ typedef struct{
     char*code;
     int ptr;
     int line;
-    int dataSize;
+    int dataSize;/*数据储存方式：先值后类型*/
     VariableList varlist;
 }Parser;
 void clistToString(char*text,CmdList clist);
@@ -162,4 +162,6 @@ void initParser(Parser*parser);
 void reportError(Parser*parser,char*msg);
 void reportWarning(Parser*parser,char*msg);
 void connectCmdList(CmdList*clist,CmdList newClist);
+void addCmd1(CmdList*clist,HandleType ht,DataType ta,int a);
+void addCmd2(CmdList*clist,HandleType ht,DataType ta,DataType tb,int a,int b);
 #endif
