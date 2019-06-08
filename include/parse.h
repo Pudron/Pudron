@@ -7,7 +7,7 @@ typedef struct{
         OPT_INTEGER,
         OPT_FLOAT,
         OPT_POINTER,
-        OPT_MIX/*已运算的项*/
+        OPT_MIX/*已运算的项,在栈中先储存类型后储存值*/
     }type;
     HandleType handle_prefix;
     HandleType handle_infix;

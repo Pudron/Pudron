@@ -268,6 +268,15 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                 cmd.ta=DATA_REG;
                 cmd.a=REG_BX;
                 LIST_ADD((*clist),Cmd,cmd);
+                if(operat.type==OPT_MIX){
+                    addCmd1(clist,HANDLE_POP,DATA_REG,REG_DX);
+                }else if(operat.type==OPT_POINTER){
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_DX,REG_BX);
+                    addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_DX,1);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_EX,REG_BX);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_BX,REG_BX);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_DX,REG_DX);
+                }
                 if(operat.handle_postfix==HANDLE_ADD){
                     if(operat.type==OPT_FLOAT){
                         cmd.handle=HANDLE_FADD;
@@ -280,17 +289,17 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                         cmd.b=1;
                         LIST_ADD((*clist),Cmd,cmd);
                     }else if(operat.type==OPT_POINTER){
-                        addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CX,REG_BX);
-                        addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_CX,1);
-                        addCmd2(clist,HANDLE_EQUAL,DATA_REG_POINTER,DATA_INTEGER,REG_CX,TYPE_INTEGER);
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG,DATA_INTEGER,REG_DX,TYPE_INTEGER);
                         addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,3);
-                        addCmd2(clist,HANDLE_ADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
+                        addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_BX,1);
                         addCmd1(clist,HANDLE_JMP,DATA_INTEGER,4);
-                        addCmd2(clist,HANDLE_EQUAL,DATA_REG_POINTER,DATA_INTEGER,REG_CX,TYPE_FLOAT);
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG,DATA_INTEGER,REG_DX,TYPE_FLOAT);
                         addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,2);
-                        addCmd2(clist,HANDLE_FADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
+                        addCmd2(clist,HANDLE_FADD,DATA_REG,DATA_INTEGER,REG_BX,1);
+                        addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_EX,REG_BX);
+                        operat.type=OPT_MIX;
                     }else if(operat.type==OPT_MIX){
-                        reportWarning(parser,"the expression do not support mixture postfix calculation.");
+                        reportWarning(parser,"the expression does not support mixture postfix calculation.");
                     }
                     operat.handle_postfix=HANDLE_NOP;
                 }
@@ -298,12 +307,12 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                     if(operat.type==OPT_POINTER){
                         addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_BX,REG_BX);
                         addCmd1(clist,operat.handle_prefix,DATA_REG,REG_BX);
+                        operat.type=OPT_MIX;
                     }else{
-                        addCmd1(clist,operat.handle_prefix,DATA_REG_POINTER,REG_BX);
+                        addCmd1(clist,operat.handle_prefix,DATA_REG,REG_BX);
                     }
                     operat.handle_prefix=HANDLE_NOP;
                 }
-                operat.type=OPT_MIX;
             }
             while(olist.count>=1){
                 Operat opt=olist.vals[olist.count-1];
@@ -315,14 +324,90 @@ bool getExpression(Parser*parser,CmdList*clist,Environment envirn){
                 cmd.tb=DATA_REG;
                 cmd.a=REG_AX;
                 LIST_ADD((*clist),Cmd,cmd);
-                if(opt.handle_postfix!=HANDLE_NOP){
-                    cmd.handle=opt.handle_postfix;
-                    LIST_ADD((*clist),Cmd,cmd);
+                if(opt.type==OPT_MIX){
+                    addCmd1(clist,HANDLE_POP,DATA_REG,REG_CX);
+                }else if(opt.type==OPT_POINTER){
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CX,REG_AX);
+                    addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_CX,1);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_EX,REG_AX);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_AX,REG_AX);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_CX,REG_CX);
+                }
+                if(opt.handle_postfix==HANDLE_ADD){
+                    if(operat.type==OPT_FLOAT){
+                        cmd.handle=HANDLE_FADD;
+                        cmd.tb=DATA_INTEGER;
+                        cmd.b=1;
+                        LIST_ADD((*clist),Cmd,cmd);
+                    }else if(opt.type==OPT_INTEGER){
+                        cmd.handle=HANDLE_ADD;
+                        cmd.tb=DATA_INTEGER;
+                        cmd.b=1;
+                        LIST_ADD((*clist),Cmd,cmd);
+                    }else if(opt.type==OPT_POINTER){
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG,DATA_INTEGER,REG_CX,TYPE_INTEGER);
+                        addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,3);
+                        addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_AX,1);
+                        addCmd1(clist,HANDLE_JMP,DATA_INTEGER,4);
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG,DATA_INTEGER,REG_CX,TYPE_FLOAT);
+                        addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,2);
+                        addCmd2(clist,HANDLE_FADD,DATA_REG,DATA_INTEGER,REG_AX,1);
+                        addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_EX,REG_AX);
+                        opt.type=OPT_MIX;
+                    }else if(opt.type==OPT_MIX){
+                        reportWarning(parser,"the expression does not support mixture postfix calculation.");
+                    }
+                    opt.handle_postfix=HANDLE_NOP;
                 }
                 if(opt.handle_prefix!=HANDLE_NOP){
-                    cmd.handle=opt.handle_prefix;
-                    LIST_ADD((*clist),Cmd,cmd);
+                    if(opt.type==OPT_POINTER){
+                        addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_AX,REG_AX);
+                        addCmd1(clist,opt.handle_prefix,DATA_REG,REG_AX);
+                    }else{
+                        addCmd1(clist,opt.handle_prefix,DATA_REG,REG_AX);
+                    }
+                    opt.handle_prefix=HANDLE_NOP;
                 }
+                HandleType ht;
+                switch(opt.handle_infix){
+                    case HANDLE_ADD:
+                        ht=HANDLE_FADD;
+                        break;
+                    case HANDLE_SUB:
+                        ht=HANDLE_FSUB;
+                        break;
+                    case HANDLE_MUL:
+                        ht=HANDLE_FMUL;
+                        break;
+                    case HANDLE_DIV:
+                        ht=HANDLE_FDIV;
+                        break;
+                    default:
+                        ht=opt.handle_infix;
+                        break;
+                }
+                if(opt.type==OPT_INTEGER){
+                    if(ht==opt.type){
+                        addCmd2(clist,ht,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                    }else if(operat.type==OPT_FLOAT){
+                        addCmd2(clist,ht,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                    }else if(operat.type==OPT_MIX){
+                        addCmd2(clist,HANDLE_EQUAL,DATA_REG,DATA_INTEGER,REG_DX,TYPE_FLOAT);
+                        addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,3);
+                        addCmd2(clist,ht,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                        addCmd1(clist,HANDLE_JMP,DATA_INTEGER,2);
+                        addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                    }
+                }else if(opt.type==OPT_FLOAT){
+                    addCmd2(clist,ht,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                }else if(opt.type==OPT_MIX){
+                    addCmd2(clist,HANDLE_EQUAL,DATA_REG,DATA_INTEGER,REG_CX,TYPE_INTEGER);
+                    addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,xxx);
+                    if(operat.type==OPT_INTEGER){
+                        
+                    }
+                }
+                
                 cmd.handle=opt.handle_infix;
                 cmd.b=REG_BX;
                 LIST_ADD((*clist),Cmd,cmd);

@@ -10,9 +10,10 @@
 #define REG_NULL 0
 #define REG_AX 1
 #define REG_BX 2
-#define REG_CX 3/*用于小数运算*/
+#define REG_CX 3/*用于类型运算*/
 #define REG_DX 4
-#define REG_CF 5
+#define REG_EX 5/*用于变量赋值*/
+#define REG_CF 6
 
 /*Types*/
 #define TYPE_INTEGER 0
@@ -121,7 +122,9 @@ typedef enum{
     HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
     HANDLE_SFREE,/*释放栈中指定数量的元素*/
     HANDLE_CAND,/*条件与*/
-    HANDLE_COR/*条件或*/
+    HANDLE_COR,/*条件或*/
+    HANDLE_CALL,
+    HANDLE_RET
 }HandleType;
 typedef struct{
     TokenType type;
