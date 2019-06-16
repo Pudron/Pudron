@@ -18,8 +18,6 @@
 /*Types*/
 #define TYPE_INTEGER 0
 #define TYPE_FLOAT 1
-#define TYPE_POINTER 2
-#define TYPE_ARRAY 3
 
 /*List Operations*/
 #define LIST_UNIT_SIZE 10
@@ -68,7 +66,8 @@ typedef enum{
     TOKEN_INTEGER,
     TOKEN_FLOAT,
     TOKEN_WORD,
-    TOKEN_VAR,
+    TOKEN_INT,
+    TOKEN_FLOAT,
     TOKEN_FUNC,
     TOKEN_ARRAY,
     TOKEN_WHILE,
@@ -145,6 +144,7 @@ typedef struct{
 LIST_DECLARE(ClassType)
 typedef struct{
     char name[WORD_MAX];
+    int class;
     int ptr;
 }Variable;
 LIST_DECLARE(Variable)
@@ -156,8 +156,9 @@ typedef struct{
     char*code;
     int ptr;
     int line;
-    int dataSize;/*数据储存方式：先值后类型*/
+    int dataSize;
     VariableList varlist;
+    ClassTypeList classList;
 }Parser;
 void clistToString(char*text,CmdList clist);
 void vlistToString(char*text,VariableList vlist);

@@ -5,6 +5,13 @@ void initParser(Parser*parser){
     parser->ptr=0;
     parser->line=1;
     LIST_INIT(parser->varlist,Variable);
+    LIST_INIT(parser->classList,ClassType);
+    ClassType classType;
+    classType.size=1;
+    strcpy(classType.name,"int");
+    LIST_ADD(parser->classList,ClassType,classType);
+    strcpy(classType.name,"float");
+    LIST_ADD(parser->classList,ClassType,classType);
 }
 void clistToString(char*text,CmdList clist){
     Cmd cmd;
