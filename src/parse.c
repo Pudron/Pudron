@@ -382,6 +382,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
                 }
                 addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
             }*/
+            *rclass=operat.class;
             break;
         }
         LIST_ADD(olist,Operat,operat);
@@ -397,7 +398,24 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
     int rptr=parser->ptr;
     int rline=parser->line;
     token=nextToken(parser);
-    if(token.type!=TOKEN_VAR){
+    if(token.type==TOKEN_INT){
+        var.class=TYPE_INTEGER;
+    }else if(token.type==TOKEN_FLOAT){
+        var.class=TYPE_FLOAT;
+    }else if(token.type==TOKEN_WORD){
+        bool isFound=false;
+        for(int i=2;i<parser->classList.count;i++){
+            if(strcmp(token.word,parser->classList.vals[i].name)==0){
+                var.class=i;
+                isFound=true;
+            }
+        }
+        if(!isFound){
+            parser->ptr=rptr;
+            parser->line=rline;
+            return false;  
+        }
+    }else{
         parser->ptr=rptr;
         parser->line=rline;
         return false;
