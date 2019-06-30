@@ -1,5 +1,6 @@
 #include"normal.h"
 #include"pio.h"
+#include"parse.h"
 int main(int argc,char**argv){
     Parser parser;
     if(argc==1){
@@ -11,6 +12,13 @@ int main(int argc,char**argv){
     if(!readTextFile(&parser.code,argv[1])){
         return -1;
     }
-    //compile(&parser);
+    CmdList clist;
+    LIST_INIT(clist,Cmd);
+    Environment e;
+    int rclass;
+    getExpression(&parser,&clist,&rclass,e);
+    char t[500];
+    clistToString(t,clist);
+    printf("CList:\n%s\n",t);
     return 0;
 }

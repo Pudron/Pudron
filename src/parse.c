@@ -69,7 +69,7 @@ Token nextToken(Parser*parser){
         if(strcmp(token.word,"int")==0){
             token.type=TOKEN_INT;
         }else if(strcmp(token.word,"float")==0){
-            token.type=TOKEN_FLOAT;
+            token.type=TOKEN_FLOAT_CLASS;
         }else if(strcmp(token.word,"func")==0){
             token.type=TOKEN_FUNC;
         }else if(strcmp(token.word,"array")==0){
@@ -197,8 +197,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
     Token token;
     OperatList olist;
     Operat operat;
-    Cmd cmd;
-    char msg[50];
+    char msg[100];
     int rptr,rline;
     bool isEnd=false;
     LIST_INIT(olist,Operat);
@@ -295,7 +294,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
                     }else if(operat.class==TYPE_FLOAT){
                         addCmd2(clist,HANDLE_FADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
                     }else{
-                        sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.class]);
+                        sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.class].name);
                         reportWarning(parser,msg);
                     }
                 }else{
@@ -330,7 +329,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
                         }else if(operat.class==TYPE_FLOAT){
                             addCmd2(clist,HANDLE_FADD,DATA_REG_POINTER,DATA_INTEGER,REG_AX,1);
                         }else{
-                            sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.class]);
+                            sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.class].name);
                             reportWarning(parser,msg);
                         }
                     }else{
@@ -393,14 +392,14 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
 bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn){
     Token token;
     Variable var;
-    Cmd cmd;
-    char msg[60];
+    char msg[100];
     int rptr=parser->ptr;
     int rline=parser->line;
+    int rclass;
     token=nextToken(parser);
     if(token.type==TOKEN_INT){
         var.class=TYPE_INTEGER;
-    }else if(token.type==TOKEN_FLOAT){
+    }else if(token.type==TOKEN_FLOAT_CLASS){
         var.class=TYPE_FLOAT;
     }else if(token.type==TOKEN_WORD){
         bool isFound=false;
@@ -432,25 +431,27 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
             }
         }
         strcpy(var.name,token.word);
-        var.value.size=0;
-        var.value.type=TYPE_INTEGER;
-        var.value.val=0;
+        var.ptr=parser->dataSize;
+        parser->dataSize+=parser->classList.vals[var.class].size;
         LIST_ADD((*vlist),Variable,var);
         token=nextToken(parser);
         if(token.type==TOKEN_EQUAL){
-            if(!getExpression(parser,clist,envirn)){
+            if(!getExpression(parser,clist,&rclass,envirn)){
                 reportError(parser,"expected an expression when initializing variable");
             }
-            cmd.handle=HANDLE_POP;
-            cmd.ta=DATA_REG;
-            cmd.a=REG_AX;
-            LIST_ADD((*clist),Cmd,cmd);
-            cmd.handle=HANDLE_MOV;
-            cmd.ta=DATA_POINTER;
-            cmd.tb=DATA_REG;
-            cmd.a=vlist->count-1;
-            cmd.b=REG_AX;
-            LIST_ADD((*clist),Cmd,cmd);
+            if((var.class==TYPE_FLOAT || var.class==TYPE_INTEGER) && (rclass==TYPE_FLOAT || rclass==TYPE_INTEGER)){
+                addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
+            }else if(var.class!=rclass){
+                sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rclass].name);
+                reportError(parser,msg);
+            }else{
+                /*for(int i=0;i<parser->classList.vals[rclass].size;i++){
+                    addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_POINTER,var.ptr+i,)
+                }*/
+                addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
+            }
             token=nextToken(parser);
         }
         if(token.type==TOKEN_COMMA){
@@ -465,7 +466,7 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
 }
 bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
-    Cmd cmd;
+    int class;
     int rptr,rline;
     int stackPtr=-1;
     rptr=parser->ptr;
@@ -477,15 +478,12 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
             parser->line=rline;
             return false;
         }
-        if(!getVarRef(parser,token.word,clist,envirn)){
+        if(!getVarRef(parser,token.word,clist,&class,envirn)){
             parser->ptr=rptr;
             parser->line=rline;
             return false;
         }
-        cmd.handle=HANDLE_PUSH;
-        cmd.ta=DATA_REG;
-        cmd.a=REG_AX;
-        LIST_ADD((*clist),Cmd,cmd);
+        addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
         token=nextToken(parser);
         stackPtr++;
         if(token.type==TOKEN_COMMA){
@@ -499,40 +497,25 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }
     }
     int sCount=stackPtr+1;
+    int rclass;
     while(1){
         if(stackPtr<0){
             reportError(parser,"too many assignment.");
         }
-        if(!getExpression(parser,clist,envirn)){
+        if(!getExpression(parser,clist,&rclass,envirn)){
             reportError(parser,"expected an expression in assignment.");
         }
-        cmd.handle=HANDLE_POP;
-        cmd.ta=DATA_REG;
-        cmd.a=REG_BX;
-        LIST_ADD((*clist),Cmd,cmd);
-        cmd.handle=HANDLE_POPT;
-        cmd.tb=DATA_INTEGER;
-        cmd.a=REG_AX;
-        cmd.b=stackPtr;
-        LIST_ADD((*clist),Cmd,cmd);
-        cmd.handle=HANDLE_SET;
-        cmd.tb=DATA_REG;
-        cmd.b=REG_BX;
-        LIST_ADD((*clist),Cmd,cmd);
+        addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
+        addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
+        addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
         stackPtr--;
         token=nextToken(parser);
         if(token.type==TOKEN_COMMA){
             continue;
         }else if(token.type==TOKEN_SEMI){
             while(stackPtr>=0){
-                cmd.handle=HANDLE_POPT;
-                cmd.tb=DATA_INTEGER;
-                cmd.b=stackPtr;
-                LIST_ADD((*clist),Cmd,cmd);
-                cmd.handle=HANDLE_SET;
-                cmd.tb=DATA_REG;
-                cmd.b=REG_BX;
-                LIST_ADD((*clist),Cmd,cmd);
+                addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
+                addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
                 stackPtr--;
             }
             break;
@@ -540,23 +523,15 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
             reportError(parser,"expected \",\" or \";\" after the assignment.");
         }
     }
-    cmd.handle=HANDLE_SFREE;
-    cmd.ta=DATA_INTEGER;
-    cmd.a=sCount;
-    LIST_ADD((*clist),Cmd,cmd);
+    addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,sCount);
     return true;
 }
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,int*class,Environment envirn){
-    Cmd cmd;
     bool isFound=false;
     for(int i=0;i<parser->varlist.count;i++){
         if(strcmp(varName,parser->varlist.vals[i].name)==0){
-            cmd.handle=HANDLE_MOV;
-            cmd.ta=DATA_REG;
-            cmd.tb=DATA_INTEGER;
-            cmd.a=REG_AX;
-            cmd.b=parser->varlist.vals[i].ptr;
-            LIST_ADD((*clist),Cmd,cmd);
+            *class=parser->varlist.vals[i].class;
+            addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,parser->varlist.vals[i].ptr);
             isFound=true;
             break;
         }
@@ -569,7 +544,7 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,int*class,Environment en
 void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
     Token token;
     int rptr,rline;
-    Cmd cmd;
+    int rclass;
     token=nextToken(parser);
     if(token.type!=TOKEN_BRACE1){
         reportError(parser,"expected \"{\".");
@@ -593,15 +568,12 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
             
         }else if(getWhileLoop(parser,clist,vlist,envirn)){
             
-        }else if(getExpression(parser,clist,envirn)){
+        }else if(getExpression(parser,clist,&rclass,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){
                 reportError(parser,"expected \";\" after an expression");
             }
-            cmd.handle=HANDLE_SFREE;
-            cmd.ta=DATA_INTEGER;
-            cmd.a=1;
-            LIST_ADD((*clist),Cmd,cmd);
+            addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,1);
         }else{
             reportError(parser,"unknown expression.");
         }
@@ -611,8 +583,8 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     Token token;
     int rptr,rline;
     intList ilist;
-    Cmd cmd;
     int jptr;
+    int rclass;
     rptr=parser->ptr;
     rline=parser->line;
     LIST_INIT(ilist,int);
@@ -626,53 +598,31 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     if(token.type!=TOKEN_PARE1){
         reportError(parser,"expected \"(\" after \"if\".");
     }
-    if(!getExpression(parser,clist,envirn)){
+    if(!getExpression(parser,clist,&rclass,envirn)){
         reportError(parser,"expected an expression in the conditional statement.");
     }
     token=nextToken(parser);
     if(token.type!=TOKEN_PARE2){
         reportError(parser,"expected \")\" after \"if(expression...\".");
     }
-    cmd.handle=HANDLE_POP;
-    cmd.ta=DATA_REG;
-    cmd.a=REG_AX;
-    LIST_ADD((*clist),Cmd,cmd);
-    cmd.handle=HANDLE_MOV;
-    cmd.tb=DATA_REG;
-    cmd.a=REG_CF;
-    cmd.b=REG_AX;
-    LIST_ADD((*clist),Cmd,cmd);
-    cmd.handle=HANDLE_JMPC;
-    cmd.ta=DATA_INTEGER;
-    cmd.a=1;
-    LIST_ADD((*clist),Cmd,cmd);
+    addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
+    addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
     jptr=clist->count-1;
     getBlock(parser,clist,vlist,envirn);
     rptr=parser->ptr;
     rline=parser->line;
     token=nextToken(parser);
     while(token.type==TOKEN_ELIF){
-        cmd.handle=HANDLE_JMP;
-        cmd.ta=DATA_INTEGER;
-        LIST_ADD((*clist),Cmd,cmd);
+        addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
         LIST_ADD(ilist,int,clist->count-1);
         clist->vals[jptr].a=clist->count-jptr;
-        if(!getExpression(parser,clist,envirn)){
+        if(!getExpression(parser,clist,&rclass,envirn)){
             reportError(parser,"expected an expression in the conditional statement.");
         }
-        cmd.handle=HANDLE_POP;
-        cmd.ta=DATA_REG;
-        cmd.a=REG_AX;
-        LIST_ADD((*clist),Cmd,cmd);
-        cmd.handle=HANDLE_MOV;
-        cmd.tb=DATA_REG;
-        cmd.a=REG_CF;
-        cmd.b=REG_AX;
-        LIST_ADD((*clist),Cmd,cmd);
-        cmd.handle=HANDLE_JMPC;
-        cmd.ta=DATA_INTEGER;
-        cmd.a=1;
-        LIST_ADD((*clist),Cmd,cmd);
+        addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+        addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
+        addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
         jptr=clist->count-1;
         getBlock(parser,clist,vlist,envirn);
         rptr=parser->ptr;
@@ -681,9 +631,7 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     }
     clist->vals[jptr].a=clist->count-jptr;
     if(token.type==TOKEN_ELSE){
-        cmd.handle=HANDLE_JMP;
-        cmd.ta=DATA_INTEGER;
-        LIST_ADD((*clist),Cmd,cmd);
+        addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
         LIST_ADD(ilist,int,clist->count-1);
         getBlock(parser,clist,vlist,envirn);
     }else{
@@ -698,9 +646,9 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
 }
 bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
     Token token;
-    Cmd cmd;
     int rptr,rline;
     int jptr,wptr;
+    int rclass;
     rptr=parser->ptr;
     rline=parser->line;
     token=nextToken(parser);
@@ -714,31 +662,19 @@ bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment env
         reportError(parser,"expected \"(\" after \"while\".");
     }
     wptr=clist->count;
-    if(!getExpression(parser,clist,envirn)){
+    if(!getExpression(parser,clist,&rclass,envirn)){
         reportError(parser,"expected an expression in the loop statement.");
     }
     token=nextToken(parser);
     if(token.type!=TOKEN_PARE2){
         reportError(parser,"expected \")\" after \"while\".");
     }
-    cmd.handle=HANDLE_POP;
-    cmd.ta=DATA_REG;
-    cmd.a=REG_AX;
-    LIST_ADD((*clist),Cmd,cmd);
-    cmd.handle=HANDLE_MOV;
-    cmd.tb=DATA_REG;
-    cmd.a=REG_CF;
-    cmd.b=REG_AX;
-    LIST_ADD((*clist),Cmd,cmd);
-    cmd.handle=HANDLE_JMPC;
-    cmd.ta=DATA_INTEGER;
-    LIST_ADD((*clist),Cmd,cmd);
+    addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
+    addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
     jptr=clist->count-1;
     getBlock(parser,clist,vlist,envirn);
-    cmd.handle=HANDLE_JMP;
-    cmd.ta=DATA_INTEGER;
-    cmd.a=-(clist->count-wptr);
-    LIST_ADD((*clist),Cmd,cmd);
+    addCmd1(clist,HANDLE_JMP,DATA_INTEGER,-(clist->count-wptr));
     clist->vals[jptr].a=clist->count-jptr;
     return true;
 }

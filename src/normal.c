@@ -17,8 +17,6 @@ void clistToString(char*text,CmdList clist){
     Cmd cmd;
     char paraCount=0;
     char temp[50];
-    char dat;
-    int num,n;
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
         cmd=clist.vals[i];
@@ -117,6 +115,22 @@ void clistToString(char*text,CmdList clist){
             }else{
                 sprintf(temp," unknownReg(%d)",cmd.a);
             }
+        }else if(cmd.ta==DATA_REG_POINTER){
+            if(cmd.a==REG_AX){
+                strcpy(temp," [ax]");
+            }else if(cmd.a==REG_BX){
+                strcpy(temp," [bx]");
+            }else if(cmd.a==REG_CX){
+                strcpy(temp," [cx]");
+            }else if(cmd.a==REG_DX){
+                strcpy(temp," [dx]");
+            }else if(cmd.a==REG_CF){
+                strcpy(temp," [cf]");
+            }else if(cmd.a==REG_NULL){
+                strcpy(temp," [null]");
+            }else{
+                sprintf(temp," unknownReg(%d)",cmd.a);
+            }
         }else{
             sprintf(temp," unknownType(%d)",cmd.ta);
         }
@@ -145,6 +159,22 @@ void clistToString(char*text,CmdList clist){
             }else{
                 sprintf(temp,",unknownReg(%d)",cmd.b);
             }
+        }else if(cmd.tb==DATA_REG_POINTER){
+            if(cmd.b==REG_AX){
+                strcpy(temp,",[ax]");
+            }else if(cmd.b==REG_BX){
+                strcpy(temp,",[bx]");
+            }else if(cmd.b==REG_CX){
+                strcpy(temp,",[cx]");
+            }else if(cmd.b==REG_DX){
+                strcpy(temp,",[dx]");
+            }else if(cmd.b==REG_CF){
+                strcpy(temp,",[cf]");
+            }else if(cmd.b==REG_NULL){
+                strcpy(temp,",[null]");
+            }else{
+                sprintf(temp,",unknownReg(%d)",cmd.b);
+            }
         }else{
             sprintf(temp,",unknownType(%d)",cmd.tb);
         }
@@ -159,7 +189,7 @@ void vlistToString(char*text,VariableList vlist){
     text[0]='\0';
     for(int i=0;i<vlist.count;i++){
         var=vlist.vals[i];
-        sprintf(temp,"%d:name:%s,type:%d,size:%d\n",i,var.name,var.value.type,var.value.size);
+        sprintf(temp,"%d:name:%s,class:%d,ptr:%d\n",i,var.name,var.class,var.ptr);
         strcat(text,temp);
     }
     strcat(text,"\0");

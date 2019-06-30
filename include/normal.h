@@ -67,7 +67,7 @@ typedef enum{
     TOKEN_FLOAT,
     TOKEN_WORD,
     TOKEN_INT,
-    TOKEN_FLOAT,
+    TOKEN_FLOAT_CLASS,
     TOKEN_FUNC,
     TOKEN_ARRAY,
     TOKEN_WHILE,
