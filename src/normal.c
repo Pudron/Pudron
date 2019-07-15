@@ -4,8 +4,10 @@ void initParser(Parser*parser){
     parser->fileName=NULL;
     parser->ptr=0;
     parser->line=1;
+    parser->dataSize=0;
     LIST_INIT(parser->varlist,Variable);
     LIST_INIT(parser->classList,ClassType);
+    LIST_INIT(parser->exeClist,Cmd);
     ClassType classType;
     classType.size=1;
     strcpy(classType.name,"int");
@@ -84,6 +86,22 @@ void clistToString(char*text,CmdList clist){
             case HANDLE_NOP:
                 strcat(text,"nop\n");
                 continue;
+                break;
+            case HANDLE_FADD:
+                strcat(text,"fadd");
+                paraCount=2;
+                break;
+            case HANDLE_FSUB:
+                strcat(text,"fsub");
+                paraCount=2;
+                break;
+            case HANDLE_FMUL:
+                strcat(text,"fmul");
+                paraCount=2;
+                break;
+            case HANDLE_FDIV:
+                strcat(text,"fdiv");
+                paraCount=2;
                 break;
             default:
                 sprintf(temp,"unknown:%d\n",cmd.handle);

@@ -159,6 +159,7 @@ typedef struct{
     int dataSize;
     VariableList varlist;
     ClassTypeList classList;
+    CmdList exeClist;/*用于直接执行的指令*/
 }Parser;
 void clistToString(char*text,CmdList clist);
 void vlistToString(char*text,VariableList vlist);
