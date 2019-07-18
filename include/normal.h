@@ -6,7 +6,7 @@
 
 #define WORD_MAX 20
 /*Regs*/
-#define REG_COUNT 6
+#define REG_COUNT 7
 #define REG_NULL 0
 #define REG_AX 1
 #define REG_BX 2

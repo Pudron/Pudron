@@ -162,3 +162,68 @@ void execute(Parser*parser,CmdList clist){
         }
     }
 }*/
+void exeError(char*text){
+    printf("Execute error:%s\n",text);
+    exit(2);
+}
+int getCmdData(VM*vm,DataType dt,int val){
+    char msg[100];
+    if(dt==DATA_INTEGER){
+        return val;
+    }else if(dt==DATA_POINTER){
+        return vm->data[val];
+    }else if(dt==DATA_REG){
+        return vm->reg[val];
+    }else if(dt==DATA_REG_POINTER){
+        return vm->data[vm->reg[val]];
+    }else{
+        sprintf(msg,"unsupport data type:%d.",val);
+        exeError(msg);
+    }
+    return 0;
+}
+int*getCmdPtr(VM*vm,DataType dt,int val){
+    char msg[100];
+    if(dt==DATA_POINTER){
+        return &vm->data[val];
+    }else if(dt==DATA_REG){
+        return &vm->reg[val];
+    }else if(dt==DATA_REG_POINTER){
+        return &vm->data[vm->reg[val]];
+    }else{
+        sprintf(msg,"unsupport data type:%d.",val);
+        exeError(msg);
+    }
+    return NULL;
+}
+void eNop(){
+    return;
+}
+void eMov(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)=getCmdData(vm,cmd.tb,cmd.b);
+}
+void eAdd(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)+=getCmdData(vm,cmd.tb,cmd.b);
+}
+void eSub(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)-=getCmdData(vm,cmd.tb,cmd.b);
+}
+void eMul(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)*=getCmdData(vm,cmd.tb,cmd.b);
+}
+void eDiv(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)/=getCmdData(vm,cmd.tb,cmd.b);
+}
+/*a的cf次方 */
+int myPow(int a,int cf){
+    int result=1;
+    while(cf--){
+        result*=a;
+    }
+    return result;
+}
+void eFadd(VM*vm,Cmd cmd){
+    
+}
+
+
