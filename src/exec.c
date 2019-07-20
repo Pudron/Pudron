@@ -222,8 +222,14 @@ int myPow(int a,int cf){
     }
     return result;
 }
+void getFloat(int val,int*num,int*dat){
+    *num=val&0x1FFFFFFF;
+    *dat=val>>29;
+}
 void eFadd(VM*vm,Cmd cmd){
-    
+    int na,nb,da,db;
+    getFloat(cmd.a,&na,&da);
+    getFloat(cmd.b,&nb,&db);
 }
 
 
