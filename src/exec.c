@@ -226,10 +226,33 @@ void getFloat(int val,int*num,int*dat){
     *num=val&0x1FFFFFFF;
     *dat=val>>29;
 }
-void eFadd(VM*vm,Cmd cmd){
+void eFaddOrSub(VM*vm,Cmd cmd,bool isAdd){
     int na,nb,da,db;
-    getFloat(cmd.a,&na,&da);
-    getFloat(cmd.b,&nb,&db);
+    int*val=getCmdPtr(vm,cmd.ta,cmd.a);
+    getFloat(*val,&na,&da);
+    getFloat(getCmdData(vm,cmd.tb,cmd.b),&nb,&db);
+    if(da>db){
+        na*=myPow(10,da-db);
+        da=db;
+    }else{
+        nb*=myPow(10,db-da);
+    }
+    if(isAdd){
+        na=na+nb;
+    }else{
+        na=na-nb;
+    }
+    *val=(na&0x1FFFFFFF)|(da<<29);
 }
-
+void eFmulOrDiv(VM*vm,Cmd cmd,bool isMul){
+    int na,nb,da,db;
+    int*val=getCmdPtr(vm,cmd.ta,cmd.a);
+    getFloat(*val,&na,&da);
+    getFloat(getCmdData(vm,cmd.tb,cmd.b),&nb,&db);
+    if(isMul){
+        *val=((na*nb)&0x1FFFFFFF)|((da+db)<<29);
+    }else{
+        *val=((na/nb)&0x1FFFFFFF)|((da-db)<<29);
+    }
+}
 

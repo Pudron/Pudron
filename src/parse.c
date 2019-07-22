@@ -207,7 +207,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
         token=nextToken(parser);
         /*处理前缀运算*/
         if(token.type==TOKEN_SUB){
-            operat.handle_prefix=HANDLE_SUB;
+            operat.handle_prefix=HANDLE_SUBS;
             token=nextToken(parser);
         }else{
             operat.handle_prefix=HANDLE_NOP;
@@ -371,16 +371,6 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
             addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
         }
         if(isEnd){
-            /*if(olist.count==0 && (operat.handle_postfix!=HANDLE_NOP || operat.handle_prefix!=HANDLE_NOP)){
-                addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
-                if(operat.handle_postfix!=HANDLE_NOP){
-                    addCmd1(clist,operat.handle_postfix,DATA_REG,REG_AX);
-                }
-                if(operat.handle_prefix!=HANDLE_NOP){
-                    addCmd1(clist,operat.handle_prefix,DATA_REG,REG_AX);
-                }
-                addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
-            }*/
             *rclass=operat.class;
             break;
         }
