@@ -255,6 +255,10 @@ void eFmulOrDiv(VM*vm,Cmd cmd,bool isMul){
         *val=((na/nb)&0x1FFFFFFF)|((da-db)<<29);
     }
 }
+void eSubs(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    *a=-(*a);
+}
 void eEqual(VM*vm,Cmd cmd){
     if(getCmdData(vm,cmd.ta,cmd.a)==getCmdData(vm,cmd.tb,cmd.b)){
         vm->reg[REG_CF]=1;

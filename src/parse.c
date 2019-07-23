@@ -313,6 +313,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
                 operat.isVar=false;
             }
             if(operat.handle_prefix!=HANDLE_NOP){
+                if(operat.handle_prefix==HANDLE_SUB){
                 addCmd1(clist,operat.handle_prefix,DATA_REG,REG_BX);
                 operat.handle_prefix=HANDLE_NOP;
             }
