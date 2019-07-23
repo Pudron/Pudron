@@ -10,7 +10,6 @@ typedef struct{
     HandleType handle_postfix;
 }Operat;
 LIST_DECLARE(Operat)
-LIST_DECLARE(int)
 Token nextToken(Parser*parser);
 bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn);
 bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
