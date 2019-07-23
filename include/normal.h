@@ -125,6 +125,7 @@ typedef enum{
     HANDLE_CALL,
     HANDLE_RET
 }HandleType;
+LIST_DECLARE(int)
 typedef struct{
     TokenType type;
     int num;

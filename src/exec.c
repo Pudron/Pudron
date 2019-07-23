@@ -262,3 +262,18 @@ void eEqual(VM*vm,Cmd cmd){
         vm->reg[REG_CF]=0;
     }
 }
+void eJmp(VM*vm,Cmd cmd){
+    vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a);
+}
+void eJmpc(VM*vm,Cmd,cmd){
+    if(vm->reg[REG_CF]==0){
+        vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a);
+    }
+}
+void ePush(VM*vm,Cmd cmd){
+    LIST_ADD(vm->stack,int,getCmdData(vm,cmd.ta,cmd.a));
+}
+void ePop(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)=vm->stack.vals[vm->stack.count-1];
+    LIST_SUB(vm->stack,int);
+}
