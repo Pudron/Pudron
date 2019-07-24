@@ -269,7 +269,7 @@ void eEqual(VM*vm,Cmd cmd){
 void eJmp(VM*vm,Cmd cmd){
     vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a);
 }
-void eJmpc(VM*vm,Cmd,cmd){
+void eJmpc(VM*vm,Cmd cmd){
     if(vm->reg[REG_CF]==0){
         vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a);
     }
@@ -280,4 +280,118 @@ void ePush(VM*vm,Cmd cmd){
 void ePop(VM*vm,Cmd cmd){
     *getCmdPtr(vm,cmd.ta,cmd.a)=vm->stack.vals[vm->stack.count-1];
     LIST_SUB(vm->stack,int);
+}
+void ePopt(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)=vm->stack.vals[vm->stack.count-1-getCmdData(vm,cmd.tb,cmd.b)];
+}
+void eSfree(VM*vm,Cmd cmd){
+    vm->stack.count-=getCmdData(vm,cmd.ta,cmd.a);
+    vm->stack.size=(vm->stack.count/LIST_UNIT_SIZE+1)*LIST_UNIT_SIZE;/*可能会有误差*/
+    vm->stack.vals=realloc(vm->stack.vals,vm->stack.size);
+}
+void eCand(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    int b=getCmdData(vm,cmd.tb,cmd.b);
+    if(*a && b){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void eCor(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    int b=getCmdData(vm,cmd.tb,cmd.b);
+    if(*a || b){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void initVM(VM*vm,Parser parser){
+    LIST_INIT(vm->stack,int);
+    vm->dataSize=parser.dataSize;
+    vm->data=(int*)malloc(vm->dataSize);
+    vm->ptr=0;
+    vm->exeClist=parser.exeClist;
+}
+void execute(VM*vm){
+    Cmd cmd;
+    char msg[100];
+    for(vm->ptr=0;vm->ptr<vm->exeClist.count;vm->ptr++){
+        cmd=vm->exeClist.vals[vm->ptr];
+        switch(cmd.handle){
+            case HANDLE_NOP:
+                eNop();
+                break;
+            case HANDLE_MOV:
+                eMov(vm,cmd);
+                break;
+            case HANDLE_ADD:
+                eAdd(vm,cmd);
+                break;
+            case HANDLE_SUB:
+                eSub(vm,cmd);
+                break;
+            case HANDLE_SUBS:
+                eSubs(vm,cmd);
+                break;
+            case HANDLE_MUL:
+                eMul(vm,cmd);
+                break;
+            case HANDLE_DIV:
+                eDiv(vm,cmd);
+                break;
+            case HANDLE_FADD:
+                eFaddOrSub(vm,cmd,true);
+                break;
+            case HANDLE_FSUB:
+                eFaddOrSub(vm,cmd,false);
+                break;
+            case HANDLE_FMUL:
+                eFmulOrDiv(vm,cmd,true);
+                break;
+            case HANDLE_FDIV:
+                eFmulOrDiv(vm,cmd,false);
+                break;
+            case HANDLE_EQUAL:
+                eEqual(vm,cmd);
+                break;
+            case HANDLE_JMP:
+                eJmp(vm,cmd);
+                break;
+            case HANDLE_JMPC:
+                eJmpc(vm,cmd);
+                break;
+            case HANDLE_PUSH:
+                ePush(vm,cmd);
+                break;
+            case HANDLE_POP:
+                ePop(vm,cmd);
+                break;
+            case HANDLE_POPT:
+                ePopt(vm,cmd);
+                break;
+            case HANDLE_SFREE:
+                eSfree(vm,cmd);
+                break;
+            case HANDLE_CAND:
+                eCand(vm,cmd);
+                break;
+            case HANDLE_COR:
+                eCor(vm,cmd);
+                break;
+            default:
+                sprintf(msg,"unknown command (%d)",cmd.handle);
+                exeError(msg);
+                break;
+        }
+    }
+}
+void dataToString(char*text,VM vm){
+    char temp[50];
+    text[0]='\0';
+    for(int i=0;i<vm.dataSize;i++){
+        sprintf(temp,"%d:%d\n",i,vm.data[i]);
+        strcat(text,temp);
+    }
 }

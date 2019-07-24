@@ -1,6 +1,7 @@
 #include"normal.h"
 #include"pio.h"
 #include"compiler.h"
+#include"exec.h"
 int main(int argc,char**argv){
     Parser parser;
     if(argc==1){
@@ -18,5 +19,10 @@ int main(int argc,char**argv){
     printf("Clist:\n%s\n",text);
     vlistToString(text,parser.varlist);
     printf("varlist:\n%s\n",text);
+    VM vm;
+    initVM(&vm,parser);
+    execute(&vm);
+    dataToString(text,vm);
+    printf("data:\n%s\n",text);
     return 0;
 }

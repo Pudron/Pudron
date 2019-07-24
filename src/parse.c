@@ -212,6 +212,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
         }else{
             operat.handle_prefix=HANDLE_NOP;
         }
+        operat.isVar=false;
         if(token.type==TOKEN_PARE1){
             if(!getExpression(parser,clist,&operat.class,envirn)){
                 reportWarning(parser,"expected an expression in the \"( )\".");
@@ -220,7 +221,6 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
             if(token.type!=TOKEN_PARE2){
                 reportError(parser,"expected \")\".");
             }
-            operat.isVar=false;
         }else if(token.type==TOKEN_INTEGER || token.type==TOKEN_FLOAT){
             addCmd1(clist,HANDLE_PUSH,DATA_INTEGER,token.num);
             operat.class=(token.type==TOKEN_INTEGER)?TYPE_INTEGER:TYPE_FLOAT;
@@ -313,7 +313,6 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
                 operat.isVar=false;
             }
             if(operat.handle_prefix!=HANDLE_NOP){
-                if(operat.handle_prefix==HANDLE_SUB){
                 addCmd1(clist,operat.handle_prefix,DATA_REG,REG_BX);
                 operat.handle_prefix=HANDLE_NOP;
             }
@@ -369,7 +368,7 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
                 operat.class=opt.class;
                 LIST_SUB(olist,Operat);
             }
-            addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
+            addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_BX);
         }
         if(isEnd){
             *rclass=operat.class;
