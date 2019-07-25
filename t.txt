@@ -1,8 +1,14 @@
-int a=2,b;
-if(a=1){
-    b=123;
-}elif(a=2){
-    b=234;
-}else{
-    b=a;
+int a=5;
+while(a){
+    int b=10;
+    a=a-1;
+    if(a=2){
+        break;
+    }
+    while(b){
+        b=b-1;
+        if(b=5){
+            break;
+        }
+    }
 }

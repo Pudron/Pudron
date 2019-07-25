@@ -69,8 +69,8 @@ typedef enum{
     TOKEN_INT,
     TOKEN_FLOAT_CLASS,
     TOKEN_FUNC,
-    TOKEN_ARRAY,
     TOKEN_WHILE,
+    TOKEN_BREAK,
     TOKEN_IF,
     TOKEN_ELIF,/*else if*/
     TOKEN_ELSE,
@@ -151,6 +151,7 @@ typedef struct{
 LIST_DECLARE(Variable)
 typedef struct{
     VariableList*funcVarlist;
+    intList*breakList;
 }Environment;
 typedef struct{
     char*fileName;

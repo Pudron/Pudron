@@ -72,8 +72,6 @@ Token nextToken(Parser*parser){
             token.type=TOKEN_FLOAT_CLASS;
         }else if(strcmp(token.word,"func")==0){
             token.type=TOKEN_FUNC;
-        }else if(strcmp(token.word,"array")==0){
-            token.type=TOKEN_ARRAY;
         }else if(strcmp(token.word,"while")==0){
             token.type=TOKEN_WHILE;
         }else if(strcmp(token.word,"if")==0){
@@ -86,6 +84,8 @@ Token nextToken(Parser*parser){
             token.type=TOKEN_CAND;
         }else if(strcmp(token.word,"or")==0){
             token.type=TOKEN_COR;
+        }else if(strcmp(token.word,"break")==0){
+            token.type=TOKEN_BREAK;
         }else{
             token.type=TOKEN_WORD;
         }
@@ -545,6 +545,18 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
         token=nextToken(parser);
         if(token.type==TOKEN_BRACE2){
             break;
+        }else if(token.type==TOKEN_BREAK){
+            token=nextToken(parser);
+            if(token.type!=TOKEN_SEMI){
+                reportError(parser,"expected \";\" after \"break\".");
+            }
+            if(envirn.breakList==NULL){
+                reportWarning(parser,"unuseful break.");
+            }else{
+                addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
+                LIST_ADD((*envirn.breakList),int,clist->count-1);
+            }
+            continue;
         }else if(token.type==TOKEN_END){
             reportError(parser,"expected \"}\".");
         }
@@ -667,6 +679,9 @@ bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment env
     if(token.type!=TOKEN_PARE2){
         reportError(parser,"expected \")\" after \"while\".");
     }
+    intList breakList;
+    LIST_INIT(breakList,int);
+    envirn.breakList=&breakList;
     addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
     addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
     addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
@@ -674,5 +689,9 @@ bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment env
     getBlock(parser,clist,vlist,envirn);
     addCmd1(clist,HANDLE_JMP,DATA_INTEGER,-(clist->count-wptr));
     clist->vals[jptr].a=clist->count-jptr;
+    for(int i=0;i<breakList.count;i++){
+        clist->vals[breakList.vals[i]].a=clist->count-breakList.vals[i];
+    }
+    LIST_DELETE(breakList);
     return true;
 }

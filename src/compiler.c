@@ -3,7 +3,7 @@ void compile(Parser*parser){
     Token token;
     int rline,rptr;
     int rclass;
-    Environment envirn={NULL};
+    Environment envirn={NULL,NULL};
     while(1){
         rline=parser->line;
         rptr=parser->ptr;
