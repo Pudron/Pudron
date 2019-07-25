@@ -1,6 +1,8 @@
 int a=2,b;
 if(a=1){
-    b=a;
+    b=123;
+}elif(a=2){
+    b=234;
 }else{
-    b=1;
+    b=a;
 }

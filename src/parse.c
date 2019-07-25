@@ -627,7 +627,6 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         rline=parser->line;
         token=nextToken(parser);
     }
-    clist->vals[jptr].a=clist->count-jptr;
     if(token.type==TOKEN_ELSE){
         addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
         LIST_ADD(ilist,int,clist->count-1);
@@ -636,6 +635,7 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         parser->ptr=rptr;
         parser->line=rline;
     }
+    clist->vals[jptr].a=clist->count-jptr;
     for(int i=0;i<ilist.count;i++){
         clist->vals[ilist.vals[i]].a=clist->count-ilist.vals[i];
     }
