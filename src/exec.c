@@ -260,18 +260,19 @@ void eSubs(VM*vm,Cmd cmd){
     *a=-(*a);
 }
 void eEqual(VM*vm,Cmd cmd){
-    if(getCmdData(vm,cmd.ta,cmd.a)==getCmdData(vm,cmd.tb,cmd.b)){
-        vm->reg[REG_CF]=1;
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    if(*a==getCmdData(vm,cmd.tb,cmd.b)){
+        *a=1;
     }else{
-        vm->reg[REG_CF]=0;
+        *a=0;
     }
 }
 void eJmp(VM*vm,Cmd cmd){
-    vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a);
+    vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a)-1;
 }
 void eJmpc(VM*vm,Cmd cmd){
     if(vm->reg[REG_CF]==0){
-        vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a);
+        vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a)-1;
     }
 }
 void ePush(VM*vm,Cmd cmd){
@@ -287,7 +288,7 @@ void ePopt(VM*vm,Cmd cmd){
 void eSfree(VM*vm,Cmd cmd){
     vm->stack.count-=getCmdData(vm,cmd.ta,cmd.a);
     vm->stack.size=(vm->stack.count/LIST_UNIT_SIZE+1)*LIST_UNIT_SIZE;/*可能会有误差*/
-    vm->stack.vals=realloc(vm->stack.vals,vm->stack.size);
+    vm->stack.vals=realloc(vm->stack.vals,vm->stack.size*sizeof(int));
 }
 void eCand(VM*vm,Cmd cmd){
     int*a=getCmdPtr(vm,cmd.ta,cmd.a);
@@ -310,9 +311,12 @@ void eCor(VM*vm,Cmd cmd){
 void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->stack,int);
     vm->dataSize=parser.dataSize;
-    vm->data=(int*)malloc(vm->dataSize);
+    vm->data=(int*)malloc(vm->dataSize*sizeof(int));
     vm->ptr=0;
     vm->exeClist=parser.exeClist;
+    for(int i=0;i<vm->dataSize;i++){
+        vm->data[i]=0;
+    }
 }
 void execute(VM*vm){
     Cmd cmd;

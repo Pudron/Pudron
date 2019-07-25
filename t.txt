@@ -1,2 +1,6 @@
-int a;
-a=123;
+int a=2,b;
+if(a=1){
+    b=a;
+}else{
+    b=1;
+}

@@ -607,8 +607,16 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
         LIST_ADD(ilist,int,clist->count-1);
         clist->vals[jptr].a=clist->count-jptr;
+        token=nextToken(parser);
+        if(token.type!=TOKEN_PARE1){
+            reportError(parser,"expected \"(\" after \"if(expression...\".");
+        }
         if(!getExpression(parser,clist,&rclass,envirn)){
             reportError(parser,"expected an expression in the conditional statement.");
+        }
+        token=nextToken(parser);
+        if(token.type!=TOKEN_PARE2){
+            reportError(parser,"expected \")\" after \"if\".");
         }
         addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
         addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);

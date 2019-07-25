@@ -22,6 +22,7 @@ int main(int argc,char**argv){
     VM vm;
     initVM(&vm,parser);
     execute(&vm);
+    printf("dataSize:%d\n",vm.dataSize);
     dataToString(text,vm);
     printf("data:\n%s\n",text);
     return 0;

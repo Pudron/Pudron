@@ -13,13 +13,7 @@ void compile(Parser*parser){
         }
         parser->ptr=rptr;
         parser->line=rline;
-        if(getExpression(parser,&parser->exeClist,&rclass,envirn)){
-            token=nextToken(parser);
-            if(token.type!=TOKEN_SEMI){
-                reportError(parser,"expected \";\" after an expression");
-            }
-            addCmd1(&parser->exeClist,HANDLE_SFREE,DATA_INTEGER,1);
-        }else if(getAssignment(parser,&parser->exeClist,envirn)){
+        if(getAssignment(parser,&parser->exeClist,envirn)){
             
         }else if(getVariableDef(parser,&parser->varlist,&parser->exeClist,envirn)){
 
@@ -27,8 +21,15 @@ void compile(Parser*parser){
 
         }else if(getWhileLoop(parser,&parser->exeClist,&parser->varlist,envirn)){
 
+        }else if(getExpression(parser,&parser->exeClist,&rclass,envirn)){
+            token=nextToken(parser);
+            if(token.type!=TOKEN_SEMI){
+                reportError(parser,"expected \";\" after an expression");
+            }
+            addCmd1(&parser->exeClist,HANDLE_SFREE,DATA_INTEGER,1);
         }else{
             reportError(parser,"unknown expression.");
         }
     }
+    addCmd1(&parser->exeClist,HANDLE_NOP,DATA_INTEGER,0);
 }
