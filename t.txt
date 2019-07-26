@@ -7,7 +7,7 @@ while(a){
     }
     while(b){
         b=b-1;
-        if(b=5){
+        if(b=8){
             break;
         }
     }

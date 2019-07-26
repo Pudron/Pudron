@@ -686,7 +686,14 @@ bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment env
     addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
     addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
     jptr=clist->count-1;
-    getBlock(parser,clist,vlist,envirn);
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_SEMI){
+        parser->line=rline;
+        parser->ptr=rptr;
+        getBlock(parser,clist,vlist,envirn);
+    }
     addCmd1(clist,HANDLE_JMP,DATA_INTEGER,-(clist->count-wptr));
     clist->vals[jptr].a=clist->count-jptr;
     for(int i=0;i<breakList.count;i++){

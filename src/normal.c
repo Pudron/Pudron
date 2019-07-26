@@ -15,13 +15,17 @@ void initParser(Parser*parser){
     strcpy(classType.name,"float");
     LIST_ADD(parser->classList,ClassType,classType);
 }
-void clistToString(char*text,CmdList clist){
+void clistToString(char*text,CmdList clist,bool isNum){
     Cmd cmd;
     char paraCount=0;
     char temp[50];
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
         cmd=clist.vals[i];
+        if(isNum){
+            sprintf(temp,"%d.",i);
+            strcat(text,temp);
+        }
         switch(cmd.handle){
             case HANDLE_MOV:
                 strcat(text,"mov");

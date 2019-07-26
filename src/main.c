@@ -15,7 +15,7 @@ int main(int argc,char**argv){
     }
     compile(&parser);
     char text[500];
-    clistToString(text,parser.exeClist);
+    clistToString(text,parser.exeClist,true);
     printf("Clist:\n%s\n",text);
     vlistToString(text,parser.varlist);
     printf("varlist:\n%s\n",text);

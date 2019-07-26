@@ -163,7 +163,7 @@ typedef struct{
     ClassTypeList classList;
     CmdList exeClist;/*用于直接执行的指令*/
 }Parser;
-void clistToString(char*text,CmdList clist);
+void clistToString(char*text,CmdList clist,bool isNum);
 void vlistToString(char*text,VariableList vlist);
 void initParser(Parser*parser);
 void reportError(Parser*parser,char*msg);
