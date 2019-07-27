@@ -92,8 +92,14 @@ typedef enum{
     TOKEN_BRACE2,/*}*/
     TOKEN_GTHAN,/*>*/
     TOKEN_LTHAN,/*<*/
+    TOKEN_INVERT,/*~*/
+    TOKEN_NOT_EQUAL,/*!=*/
     TOKEN_GTHAN_EQUAL,/*>=*/
     TOKEN_LTHAN_EQUAL,/*<=*/
+    TOKEN_AND,/*&*/
+    TOKEN_OR,/*|*/
+    TOKEN_LEFT,
+    TOKEN_RIGHT,
     TOKEN_PUTC
 }TokenType;
 typedef enum{
@@ -125,6 +131,17 @@ typedef enum{
     HANDLE_COR,/*条件或*/
     HANDLE_CALL,
     HANDLE_RET,
+    HANDLE_AND,
+    HANDLE_OR,
+    HANDLE_INVERT,/*非*/
+    HANDLE_INVERT2,/*桉位取反*/
+    HANDLE_GTHAN,
+    HANDLE_GTHAN_EQUAL,
+    HANDLE_LTHAN,
+    HANDLE_LTHAN_EQUAL,
+    HANDLE_NOT_EQUAL,
+    HANDLE_LEFT,
+    HANDLE_RIGHT,
     HANDLE_PUTC/*输出一个字符*/
 }HandleType;
 LIST_DECLARE(int)

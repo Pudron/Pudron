@@ -107,6 +107,46 @@ void clistToString(char*text,CmdList clist,bool isNum){
                 strcat(text,"fdiv");
                 paraCount=2;
                 break;
+            case HANDLE_GTHAN:
+                strcat(text,"gthan");
+                paraCount=2;
+                break;
+            case HANDLE_GTHAN_EQUAL:
+                strcat(text,"gthanEqual");
+                paraCount=2;
+                break;
+            case HANDLE_LTHAN:
+                strcat(text,"lthan");
+                paraCount=2;
+                break;
+            case HANDLE_LTHAN_EQUAL:
+                strcat(text,"lthanEqual");
+                paraCount=2;
+                break;
+            case HANDLE_NOT_EQUAL:
+                strcat(text,"notEqual");
+                paraCount=2;
+                break;
+            case HANDLE_INVERT:
+                strcat(text,"invert");
+                paraCount=1;
+                break;
+            case HANDLE_AND:
+                strcat(text,"and");
+                paraCount=2;
+                break;
+            case HANDLE_OR:
+                strcat(text,"or");
+                paraCount=2;
+                break;
+            case HANDLE_LEFT:
+                strcat(text,"left");
+                paraCount=2;
+                break;
+            case HANDLE_RIGHT:
+                strcat(text,"right");
+                paraCount=2;
+                break;
             default:
                 sprintf(temp,"unknown:%d\n",cmd.handle);
                 strcat(text,temp);

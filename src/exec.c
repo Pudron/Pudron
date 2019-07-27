@@ -145,6 +145,64 @@ void eCor(VM*vm,Cmd cmd){
         *a=0;
     }
 }
+void eAnd(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)&=getCmdData(vm,cmd.tb,cmd.b);
+}
+void eOr(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)|=getCmdData(vm,cmd.tb,cmd.b);
+}
+void eInvert(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    *a=!(*a);
+}
+void eGthan(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    if(*a>getCmdData(vm,cmd.tb,cmd.b)){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void eGthanEqual(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    if(*a>=getCmdData(vm,cmd.tb,cmd.b)){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void eLthan(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    if(*a<getCmdData(vm,cmd.tb,cmd.b)){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void eLthanEqual(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    if(*a<=getCmdData(vm,cmd.tb,cmd.b)){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void eNotEqual(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    if(*a!=getCmdData(vm,cmd.tb,cmd.b)){
+        *a=1;
+    }else{
+        *a=0;
+    }
+}
+void eLeft(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    *a=(*a)<<getCmdData(vm,cmd.tb,cmd.b);
+}
+void eRight(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    *a=(*a)>>getCmdData(vm,cmd.tb,cmd.b);
+}
 void ePutc(VM*vm,Cmd cmd){
     putchar(getCmdData(vm,cmd.ta,cmd.a));
 }
@@ -224,8 +282,38 @@ void execute(VM*vm){
             case HANDLE_COR:
                 eCor(vm,cmd);
                 break;
+            case HANDLE_AND:
+                eAnd(vm,cmd);
+                break;
+            case HANDLE_OR:
+                eOr(vm,cmd);
+                break;
+            case HANDLE_GTHAN:
+                eGthan(vm,cmd);
+                break;
+            case HANDLE_GTHAN_EQUAL:
+                eGthanEqual(vm,cmd);
+                break;
+            case HANDLE_LTHAN:
+                eLthan(vm,cmd);
+                break;
+            case HANDLE_LTHAN_EQUAL:
+                eLthanEqual(vm,cmd);
+                break;
+            case HANDLE_NOT_EQUAL:
+                eNotEqual(vm,cmd);
+                break;
             case HANDLE_PUTC:
                 ePutc(vm,cmd);
+                break;
+            case HANDLE_INVERT:
+                eInvert(vm,cmd);
+                break;
+            case HANDLE_LEFT:
+                eLeft(vm,cmd);
+                break;
+            case HANDLE_RIGHT:
+                eRight(vm,cmd);
                 break;
             default:
                 sprintf(msg,"unknown command (%d)",cmd.handle);

@@ -1,2 +1,1 @@
-int a=51;
-putc(a);
+int a=1<<1;

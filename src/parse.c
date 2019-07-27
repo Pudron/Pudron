@@ -145,13 +145,27 @@ Token nextToken(Parser*parser){
         token.type=TOKEN_EQUAL;
         parser->ptr++;
         return token;
+    }else if(c=='~'){
+        token.type=TOKEN_INVERT;
+        parser->ptr++;
+        return token;
     }else if(c=='!'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_NOT_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_EXCL;
         parser->ptr++;
         return token;
     }else if(c=='>'){
         if(parser->code[parser->ptr+1]=='='){
             token.type=TOKEN_GTHAN_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
+        if(parser->code[parser->ptr+1]=='>'){
+            token.type=TOKEN_RIGHT;
             parser->ptr+=2;
             return token;
         }
@@ -164,7 +178,20 @@ Token nextToken(Parser*parser){
             parser->ptr+=2;
             return token;
         }
+        if(parser->code[parser->ptr+1]=='<'){
+            token.type=TOKEN_LEFT;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_LTHAN;
+        parser->ptr++;
+        return token;
+    }else if(c=='&'){
+        token.type=TOKEN_AND;
+        parser->ptr++;
+        return token;
+    }else if(c=='|'){
+        token.type=TOKEN_OR;
         parser->ptr++;
         return token;
     }else{
@@ -210,6 +237,9 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
         /*处理前缀运算*/
         if(token.type==TOKEN_SUB){
             operat.handle_prefix=HANDLE_SUBS;
+            token=nextToken(parser);
+        }else if(token.type==TOKEN_EXCL){
+            operat.handle_prefix=HANDLE_INVERT;
             token=nextToken(parser);
         }else{
             operat.handle_prefix=HANDLE_NOP;
@@ -272,6 +302,33 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
         }else if(token.type==TOKEN_COR){
             operat.handle_infix=HANDLE_COR;
             operat.power=10;
+        }else if(token.type==TOKEN_AND){
+            operat.handle_infix=HANDLE_AND;
+            operat.power=100;
+        }else if(token.type==TOKEN_OR){
+            operat.handle_infix=HANDLE_OR;
+            operat.power=100;
+        }else if(token.type==TOKEN_GTHAN){
+            operat.handle_infix=HANDLE_GTHAN;
+            operat.power=30;
+        }else if(token.type==TOKEN_GTHAN_EQUAL){
+            operat.handle_infix=HANDLE_GTHAN_EQUAL;
+            operat.power=30;
+        }else if(token.type==TOKEN_LTHAN){
+            operat.handle_infix=HANDLE_LTHAN;
+            operat.power=30;
+        }else if(token.type==TOKEN_LTHAN_EQUAL){
+            operat.handle_infix=HANDLE_LTHAN_EQUAL;
+            operat.power=30;
+        }else if(token.type==TOKEN_NOT_EQUAL){
+            operat.handle_infix=HANDLE_NOT_EQUAL;
+            operat.power=30;
+        }else if(token.type==TOKEN_LEFT){
+            operat.handle_infix=HANDLE_LEFT;
+            operat.power=110;
+        }else if(token.type==TOKEN_RIGHT){
+            operat.handle_infix=HANDLE_RIGHT;
+            operat.power=110;
         }else{
             /*表达式结束*/
             parser->ptr=rptr;
