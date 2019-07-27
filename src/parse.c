@@ -86,6 +86,8 @@ Token nextToken(Parser*parser){
             token.type=TOKEN_COR;
         }else if(strcmp(token.word,"break")==0){
             token.type=TOKEN_BREAK;
+        }else if(strcmp(token.word,"putc")==0){
+            token.type=TOKEN_PUTC;
         }else{
             token.type=TOKEN_WORD;
         }
@@ -570,6 +572,8 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
             
         }else if(getWhileLoop(parser,clist,vlist,envirn)){
             
+        }else if(getInsideSub(parser,&parser->exeClist,envirn)){
+
         }else if(getExpression(parser,clist,&rclass,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){
@@ -700,5 +704,40 @@ bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment env
         clist->vals[breakList.vals[i]].a=clist->count-breakList.vals[i];
     }
     LIST_DELETE(breakList);
+    return true;
+}
+bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn){
+    Token token;
+    int rline,rptr;
+    int rclass;
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    if(token.type==TOKEN_PUTC){
+        token=nextToken(parser);
+        if(token.type!=TOKEN_PARE1){
+            reportError(parser,"expected \"(\" after putc.");
+        }
+        if(!getExpression(parser,clist,&rclass,envirn)){
+            reportError(parser,"expected an expression in putc.");
+        }
+        token=nextToken(parser);
+        if(token.type!=TOKEN_PARE2){
+            reportError(parser,"expected \")\" after putc.");
+        }
+        token=nextToken(parser);
+        if(token.type!=TOKEN_SEMI){
+            reportError(parser,"expected \";\" after putc.");
+        }
+        if(rclass!=TYPE_INTEGER){
+            reportError(parser,"putc only can output integer.");
+        }
+        addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+        addCmd1(clist,HANDLE_PUTC,DATA_REG,REG_AX);
+    }else{
+        parser->ptr=rptr;
+        parser->line=rline;
+        return false;
+    }
     return true;
 }

@@ -1,14 +1,2 @@
-int a=5;
-while(a){
-    int b=10;
-    a=a-1;
-    if(a=2){
-        break;
-    }
-    while(b){
-        b=b-1;
-        if(b=8){
-            break;
-        }
-    }
-}
+int a=51;
+putc(a);

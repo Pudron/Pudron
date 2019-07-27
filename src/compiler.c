@@ -21,6 +21,8 @@ void compile(Parser*parser){
 
         }else if(getWhileLoop(parser,&parser->exeClist,&parser->varlist,envirn)){
 
+        }else if(getInsideSub(parser,&parser->exeClist,envirn)){
+
         }else if(getExpression(parser,&parser->exeClist,&rclass,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){

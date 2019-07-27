@@ -19,4 +19,6 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,int*class,Environment en
 void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
+/*getInsideSub():获得内建方法*/
+bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn);
 #endif

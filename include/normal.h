@@ -93,7 +93,8 @@ typedef enum{
     TOKEN_GTHAN,/*>*/
     TOKEN_LTHAN,/*<*/
     TOKEN_GTHAN_EQUAL,/*>=*/
-    TOKEN_LTHAN_EQUAL/*<=*/
+    TOKEN_LTHAN_EQUAL,/*<=*/
+    TOKEN_PUTC
 }TokenType;
 typedef enum{
     DATA_REG,
@@ -123,7 +124,8 @@ typedef enum{
     HANDLE_CAND,/*条件与*/
     HANDLE_COR,/*条件或*/
     HANDLE_CALL,
-    HANDLE_RET
+    HANDLE_RET,
+    HANDLE_PUTC/*输出一个字符*/
 }HandleType;
 LIST_DECLARE(int)
 typedef struct{

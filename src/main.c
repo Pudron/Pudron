@@ -14,7 +14,7 @@ int main(int argc,char**argv){
         return -1;
     }
     compile(&parser);
-    char text[500];
+    char text[1000];/*随时注意这里的大小*/
     clistToString(text,parser.exeClist,true);
     printf("Clist:\n%s\n",text);
     vlistToString(text,parser.varlist);
@@ -25,5 +25,6 @@ int main(int argc,char**argv){
     printf("dataSize:%d\n",vm.dataSize);
     dataToString(text,vm);
     printf("data:\n%s\n",text);
+    puts("OK\n");
     return 0;
 }

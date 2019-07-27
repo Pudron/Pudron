@@ -145,6 +145,9 @@ void eCor(VM*vm,Cmd cmd){
         *a=0;
     }
 }
+void ePutc(VM*vm,Cmd cmd){
+    putchar(getCmdData(vm,cmd.ta,cmd.a));
+}
 void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->stack,int);
     vm->dataSize=parser.dataSize;
@@ -220,6 +223,9 @@ void execute(VM*vm){
                 break;
             case HANDLE_COR:
                 eCor(vm,cmd);
+                break;
+            case HANDLE_PUTC:
+                ePutc(vm,cmd);
                 break;
             default:
                 sprintf(msg,"unknown command (%d)",cmd.handle);
