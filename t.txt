@@ -1,1 +1,3 @@
-int a=1<<1;
+int x0=48;
+int a=1;
+putc(a+x0);

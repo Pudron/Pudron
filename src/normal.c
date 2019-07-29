@@ -147,6 +147,14 @@ void clistToString(char*text,CmdList clist,bool isNum){
                 strcat(text,"right");
                 paraCount=2;
                 break;
+            case HANDLE_INVERT2:
+                strcat(text,"invert2");
+                paraCount=1;
+                break;
+            case HANDLE_PUTC:
+                strcat(text,"putc");
+                paraCount=1;
+                break;
             default:
                 sprintf(temp,"unknown:%d\n",cmd.handle);
                 strcat(text,temp);

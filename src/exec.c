@@ -203,6 +203,10 @@ void eRight(VM*vm,Cmd cmd){
     int*a=getCmdPtr(vm,cmd.ta,cmd.a);
     *a=(*a)>>getCmdData(vm,cmd.tb,cmd.b);
 }
+void eInvert2(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    *a=~(*a);
+}
 void ePutc(VM*vm,Cmd cmd){
     putchar(getCmdData(vm,cmd.ta,cmd.a));
 }
@@ -314,6 +318,9 @@ void execute(VM*vm){
                 break;
             case HANDLE_RIGHT:
                 eRight(vm,cmd);
+                break;
+            case HANDLE_INVERT2:
+                eInvert2(vm,cmd);
                 break;
             default:
                 sprintf(msg,"unknown command (%d)",cmd.handle);

@@ -241,6 +241,9 @@ bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
         }else if(token.type==TOKEN_EXCL){
             operat.handle_prefix=HANDLE_INVERT;
             token=nextToken(parser);
+        }else if(token.type==TOKEN_INVERT){
+            operat.handle_prefix=HANDLE_INVERT2;
+            token=nextToken(parser);
         }else{
             operat.handle_prefix=HANDLE_NOP;
         }
