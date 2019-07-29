@@ -98,18 +98,38 @@ Token nextToken(Parser*parser){
             parser->ptr+=2;
             return token;
         }
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_ADD_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_ADD;
         parser->ptr++;
         return token;
     }else if(c=='-'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_SUB_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_SUB;
         parser->ptr++;
         return token;
     }else if(c=='*'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_MUL_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_MUL;
         parser->ptr++;
         return token;
     }else if(c=='/'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_DIV_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_DIV;
         parser->ptr++;
         return token;
@@ -165,6 +185,11 @@ Token nextToken(Parser*parser){
             return token;
         }
         if(parser->code[parser->ptr+1]=='>'){
+            if(parser->code[parser->ptr+2]=='='){
+                token.type=TOKEN_RIGHT_EQUAL;
+                parser->ptr+=3;
+                return token;
+            }
             token.type=TOKEN_RIGHT;
             parser->ptr+=2;
             return token;
@@ -179,6 +204,11 @@ Token nextToken(Parser*parser){
             return token;
         }
         if(parser->code[parser->ptr+1]=='<'){
+            if(parser->code[parser->ptr+2]=='='){
+                token.type=TOKEN_LEFT_EQUAL;
+                parser->ptr+=3;
+                return token;
+            }
             token.type=TOKEN_LEFT;
             parser->ptr+=2;
             return token;
@@ -187,10 +217,20 @@ Token nextToken(Parser*parser){
         parser->ptr++;
         return token;
     }else if(c=='&'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_AND_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_AND;
         parser->ptr++;
         return token;
     }else if(c=='|'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_OR_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_OR;
         parser->ptr++;
         return token;
@@ -520,6 +560,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     int class;
     int rptr,rline;
+    HandleType ht;
     int stackPtr=-1;
     rptr=parser->ptr;
     rline=parser->line;
@@ -541,6 +582,31 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         if(token.type==TOKEN_COMMA){
             continue;
         }else if(token.type==TOKEN_EQUAL){
+            ht=HANDLE_MOV;
+            break;
+        }else if(token.type==TOKEN_ADD_EQUAL){
+            ht=HANDLE_ADD;
+            break;
+        }else if(token.type==TOKEN_SUB_EQUAL){
+            ht=HANDLE_SUB;
+            break;
+        }else if(token.type==TOKEN_MUL_EQUAL){
+            ht=HANDLE_MUL;
+            break;
+        }else if(token.type==TOKEN_DIV_EQUAL){
+            ht=HANDLE_DIV;
+            break;
+        }else if(token.type==TOKEN_AND_EQUAL){
+            ht=HANDLE_AND;
+            break;
+        }else if(token.type==TOKEN_OR_EQUAL){
+            ht=HANDLE_OR;
+            break;
+        }else if(token.type==TOKEN_LEFT_EQUAL){
+            ht=HANDLE_LEFT;
+            break;
+        }else if(token.type==TOKEN_RIGHT_EQUAL){
+            ht=HANDLE_RIGHT;
             break;
         }else{
             parser->ptr=rptr;
@@ -559,7 +625,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }
         addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
         addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
-        addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+        addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
         stackPtr--;
         token=nextToken(parser);
         if(token.type==TOKEN_COMMA){
@@ -567,7 +633,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }else if(token.type==TOKEN_SEMI){
             while(stackPtr>=0){
                 addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
-                addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
                 stackPtr--;
             }
             break;

@@ -100,7 +100,15 @@ typedef enum{
     TOKEN_OR,/*|*/
     TOKEN_LEFT,
     TOKEN_RIGHT,
-    TOKEN_PUTC
+    TOKEN_PUTC,
+    TOKEN_ADD_EQUAL,
+    TOKEN_SUB_EQUAL,
+    TOKEN_MUL_EQUAL,
+    TOKEN_DIV_EQUAL,
+    TOKEN_AND_EQUAL,
+    TOKEN_OR_EQUAL,
+    TOKEN_LEFT_EQUAL,
+    TOKEN_RIGHT_EQUAL
 }TokenType;
 typedef enum{
     DATA_REG,
