@@ -35,3 +35,21 @@ void compile(Parser*parser){
     }
     addCmd1(&parser->exeClist,HANDLE_NOP,DATA_INTEGER,0);
 }
+#ifndef RELEASE
+void test(Parser*parser){
+    compile(parser);
+    char text[1000];/*随时注意这里的大小*/
+    clistToString(text,parser->exeClist,true);
+    printf("Clist:\n%s\n",text);
+    vlistToString(text,parser->varlist);
+    printf("varlist:\n%s\n",text);
+    VM vm;
+    initVM(&vm,*parser);
+    puts("Output:\n");
+    execute(&vm);
+    printf("\ndataSize:%d\n",vm.dataSize);
+    dataToString(text,vm);
+    printf("data:\n%s\n",text);
+    puts("Test OK\n");
+}
+#endif

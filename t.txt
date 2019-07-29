@@ -1,3 +1,4 @@
 int x0=48;
 int a=1,b=2;
 a,b+=1,2;
+putc(a+x0);

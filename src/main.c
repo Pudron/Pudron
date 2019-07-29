@@ -13,18 +13,6 @@ int main(int argc,char**argv){
     if(!readTextFile(&parser.code,argv[1])){
         return -1;
     }
-    compile(&parser);
-    char text[1000];/*随时注意这里的大小*/
-    clistToString(text,parser.exeClist,true);
-    printf("Clist:\n%s\n",text);
-    vlistToString(text,parser.varlist);
-    printf("varlist:\n%s\n",text);
-    VM vm;
-    initVM(&vm,parser);
-    execute(&vm);
-    printf("dataSize:%d\n",vm.dataSize);
-    dataToString(text,vm);
-    printf("data:\n%s\n",text);
-    puts("OK\n");
+    test(&parser);
     return 0;
 }
