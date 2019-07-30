@@ -522,6 +522,7 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
                 reportError(parser,msg);
             }
         }
+        var.isArray=false;
         strcpy(var.name,token.word);
         var.ptr=parser->dataSize;
         parser->dataSize+=parser->classList.vals[var.class].size;
@@ -531,16 +532,18 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
             if(!getExpression(parser,clist,&rclass,envirn)){
                 reportError(parser,"expected an expression when initializing variable");
             }
-            if((var.class==TYPE_FLOAT || var.class==TYPE_INTEGER) && (rclass==TYPE_FLOAT || rclass==TYPE_INTEGER)){
+            if((var.class==TYPE_FLOAT && rclass==TYPE_INTEGER) || (var.class==TYPE_INTEGER && rclass==TYPE_INTEGER) || (var.class==TYPE_FLOAT && rclass==TYPE_FLOAT)){
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
+            }else if(var.class==TYPE_INTEGER && rclass==TYPE_FLOAT){
+                addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_AX,REG_AX);
                 addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
             }else if(var.class!=rclass){
                 sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rclass].name);
                 reportError(parser,msg);
             }else{
-                /*for(int i=0;i<parser->classList.vals[rclass].size;i++){
-                    addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_POINTER,var.ptr+i,)
-                }*/
+                /*对象赋值，有待改进 */
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
                 addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
             }
@@ -559,11 +562,14 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
 bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     int class;
+    intList classList;
     int rptr,rline;
     HandleType ht;
+    char msg[100];
     int stackPtr=-1;
     rptr=parser->ptr;
     rline=parser->line;
+    LIST_INIT(classList,int);
     while(1){
         token=nextToken(parser);
         if(token.type!=TOKEN_WORD){
@@ -579,6 +585,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
         token=nextToken(parser);
         stackPtr++;
+        LIST_ADD(classList,int,class);
         if(token.type==TOKEN_COMMA){
             continue;
         }else if(token.type==TOKEN_EQUAL){
@@ -616,6 +623,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
     }
     int sCount=stackPtr+1;
     int rclass;
+    int i=0;
     while(1){
         if(stackPtr<0){
             reportError(parser,"too many assignment.");
@@ -625,15 +633,46 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }
         addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
         addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
-        addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+        if((classList.vals[i]==TYPE_FLOAT && rclass==TYPE_INTEGER) || (classList.vals[i]==TYPE_INTEGER && rclass==TYPE_INTEGER) || (classList.vals[i]==TYPE_FLOAT && rclass==TYPE_FLOAT)){
+            addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+        }else if(classList.vals[i]==TYPE_INTEGER && rclass==TYPE_FLOAT){
+            addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_BX,REG_BX);
+            addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+        }else if(classList.vals[i]!=rclass){
+            sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[classList.vals[i]].name,parser->classList.vals[rclass].name);
+            reportError(parser,msg);
+        }else{
+            /*对象赋值 */
+            if(ht!=HANDLE_MOV){
+                sprintf(msg,"the type \"%s\" only support \"=\" to assign.",parser->classList.vals[classList.vals[i]].name);
+                reportError(parser,msg);
+            }
+            addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+        }
         stackPtr--;
         token=nextToken(parser);
         if(token.type==TOKEN_COMMA){
             continue;
+            i++;
         }else if(token.type==TOKEN_SEMI){
             while(stackPtr>=0){
                 addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
-                addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                if(classList.vals[i]==TYPE_FLOAT && (rclass==TYPE_INTEGER || rclass==TYPE_FLOAT)){
+                    addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                }else if(classList.vals[i]==TYPE_INTEGER && rclass==TYPE_FLOAT){
+                    addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_BX,REG_BX);
+                    addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                }else if(classList.vals[i]!=rclass){
+                    sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[classList.vals[i]].name,parser->classList.vals[rclass].name);
+                    reportError(parser,msg);
+                }else{
+                    /*对象赋值 */
+                    if(ht!=HANDLE_MOV){
+                        sprintf(msg,"the type \"%s\" only support \"=\" to assign.",parser->classList.vals[classList.vals[i]].name);
+                        reportError(parser,msg);
+                    }
+                    addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                }
                 stackPtr--;
             }
             break;
@@ -642,6 +681,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }
     }
     addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,sCount);
+    LIST_DELETE(classList);
     return true;
 }
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,int*class,Environment envirn){

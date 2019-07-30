@@ -150,6 +150,7 @@ typedef enum{
     HANDLE_NOT_EQUAL,
     HANDLE_LEFT,
     HANDLE_RIGHT,
+    HANDLE_FTOI,/*浮点小数转化为整数 */
     HANDLE_PUTC/*输出一个字符*/
 }HandleType;
 LIST_DECLARE(int)
@@ -174,6 +175,8 @@ typedef struct{
     char name[WORD_MAX];
     int class;
     int ptr;
+    bool isArray;
+    intList arrayCount;
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{

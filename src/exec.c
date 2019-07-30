@@ -210,6 +210,12 @@ void eInvert2(VM*vm,Cmd cmd){
 void ePutc(VM*vm,Cmd cmd){
     putchar(getCmdData(vm,cmd.ta,cmd.a));
 }
+void eFtoi(VM*vm,Cmd cmd){
+    int*a=getCmdPtr(vm,cmd.ta,cmd.a);
+    int b=getCmdData(vm,cmd.tb,cmd.b);
+    int dat=b>>29;
+    *a=(b&0x1FFFFFFF)/myPow(10,dat);
+}
 void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->stack,int);
     vm->dataSize=parser.dataSize;
@@ -321,6 +327,9 @@ void execute(VM*vm){
                 break;
             case HANDLE_INVERT2:
                 eInvert2(vm,cmd);
+                break;
+            case HANDLE_FTOI:
+                eFtoi(vm,cmd);
                 break;
             default:
                 sprintf(msg,"unknown command (%d)",cmd.handle);

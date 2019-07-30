@@ -151,6 +151,10 @@ void clistToString(char*text,CmdList clist,bool isNum){
                 strcat(text,"invert2");
                 paraCount=1;
                 break;
+            case HANDLE_FTOI:
+                strcat(text,"ftoi");
+                paraCount=2;
+                break;
             case HANDLE_PUTC:
                 strcat(text,"putc");
                 paraCount=1;
