@@ -21,4 +21,5 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
 bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 /*getInsideSub():获得内建方法*/
 bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn);
+bool getArray(Parser*parser,CmdList*clist,int*rclass,intList*arrayCount,Environment envirn);
 #endif

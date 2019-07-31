@@ -90,6 +90,8 @@ typedef enum{
     TOKEN_PARE2,/*)*/
     TOKEN_BRACE1,/*{*/
     TOKEN_BRACE2,/*}*/
+    TOKEN_BRACKET1,/*[*/
+    TOKEN_BRACKET2,/*]*/
     TOKEN_GTHAN,/*>*/
     TOKEN_LTHAN,/*<*/
     TOKEN_INVERT,/*~*/
@@ -176,7 +178,7 @@ typedef struct{
     int class;
     int ptr;
     bool isArray;
-    intList arrayCount;
+    intList arrayCount;/*第一项为数组的总大小,最后一项为数组的最小单位大小 */
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{

@@ -169,6 +169,14 @@ Token nextToken(Parser*parser){
         token.type=TOKEN_INVERT;
         parser->ptr++;
         return token;
+    }else if(c=='['){
+        token.type=TOKEN_BRACKET1;
+        parser->ptr++;
+        return token;
+    }else if(c==']'){
+        token.type=TOKEN_BRACKET2;
+        parser->ptr++;
+        return token;
     }else if(c=='!'){
         if(parser->code[parser->ptr+1]=='='){
             token.type=TOKEN_NOT_EQUAL;
@@ -525,10 +533,59 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
         var.isArray=false;
         strcpy(var.name,token.word);
         var.ptr=parser->dataSize;
-        parser->dataSize+=parser->classList.vals[var.class].size;
-        LIST_ADD((*vlist),Variable,var);
         token=nextToken(parser);
+        /*处理数组 */
+        for(int i=0;token.type==TOKEN_BRACKET1;i++){
+            if(i==0){
+                LIST_INIT(var.arrayCount,int);
+                var.isArray=true;
+            }
+            token=nextToken(parser);
+            if(token.type!=TOKEN_INTEGER){
+                reportError(parser,"expected integer when define array.");
+            }
+            token=nextToken(parser);
+            if(token.type!=TOKEN_BRACKET2){
+                reportError(parser,"expected \"]\" when define array.");
+            }
+            LIST_ADD(var.arrayCount,int,token.num);
+            token=nextToken(parser);
+        }
+        if(var.isArray){
+            LIST_ADD(var.arrayCount,int,parser->classList.vals[var.class].size);
+            for(int i=var.arrayCount.count-2;i>=0;i--){
+                var.arrayCount.vals[i]=var.arrayCount.vals[i+1]*var.arrayCount.vals[i];
+            }
+            parser->dataSize+=parser->classList.vals[var.class].size*var.arrayCount.vals[0];
+        }else{
+            parser->dataSize+=parser->classList.vals[var.class].size;
+        }
+        LIST_ADD((*vlist),Variable,var);
         if(token.type==TOKEN_EQUAL){
+            if(var.isArray){
+                if(getArray(parser,clist,&rclass,&var.arrayCount,envirn)){
+                    if((var.class==TYPE_FLOAT && rclass==TYPE_INTEGER) || (var.class==TYPE_INTEGER && rclass==TYPE_INTEGER) || (var.class==TYPE_FLOAT && rclass==TYPE_FLOAT)){
+                        for(int i=0;i<var.arrayCount.vals[0];i++){
+                            addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                            addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr+i,REG_AX);
+                        }
+                    }else if(var.class==TYPE_INTEGER && rclass==TYPE_FLOAT){
+                        for(int i=0;i<var.arrayCount.vals[0];i++){
+                            addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                            addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_AX,REG_AX);
+                            addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr+i,REG_AX);
+                        }
+                    }else{
+                        /*对象赋值，有待改进 */
+                        for(int i=0;i<var.arrayCount.vals[0];i++){
+                            addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+                            addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr+i,REG_AX);
+                        }
+                    }
+                }else if(getExpression(parser,clist,&rclass,envirn)){
+
+                }
+            }//else{
             if(!getExpression(parser,clist,&rclass,envirn)){
                 reportError(parser,"expected an expression when initializing variable");
             }
@@ -906,4 +963,76 @@ bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn){
         return false;
     }
     return true;
+}
+bool getArray(Parser*parser,CmdList*clist,int*rclass,intList*arrayCount,Environment envirn){
+    Token token;
+    int rptr,rline;
+    int class;
+    bool isStart,isArray;
+    int aptr;
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_BRACE1){
+        parser->line=rline;
+        parser->ptr=rptr;
+        return false;
+    }
+    isStart=true;
+    intList arrayCount2;
+    int eCount=0;
+    while(1){
+        eCount++;
+        LIST_INIT(arrayCount2,int);
+        if(getArray(parser,clist,&class,&arrayCount2,envirn)){
+            if(isStart){
+                isArray=true;
+                LIST_ADD((*arrayCount),int,0);
+                aptr=arrayCount->count-1;
+                for(int i=0;i<arrayCount2.count;i++){
+                    LIST_ADD((*arrayCount),int,arrayCount2.vals[i]);
+                }
+            }
+            if(!isArray){
+                reportError(parser,"expected an expression when define an array.");
+            }
+            /*检查数组 */
+            if(arrayCount2.count!=arrayCount->count){
+                reportError(parser,"the count of element must be the same.");
+            }
+            for(int i=0;i<arrayCount2.count;i++){
+                if(arrayCount->vals[aptr+i+1]!=arrayCount2.vals[i]){
+                    reportError(parser,"the count of sub element must be the same.");
+                }
+            }
+        }else if(getExpression(parser,clist,&class,envirn)){
+            if(isStart){
+                isArray=false;
+            }
+            if(isArray){
+                reportError(parser,"expected an array when define an array.");
+            }
+            LIST_ADD((*arrayCount),int,parser->classList.vals[class].size);
+        }else{
+            reportError(parser,"expected an expression or array when define an array.");
+        }
+        if(isStart){
+            isStart=false;
+            *rclass=class;
+        }else if((class==TYPE_FLOAT && *rclass==TYPE_INTEGER) || (class==TYPE_INTEGER && *rclass==TYPE_FLOAT)){
+            *rclass=TYPE_FLOAT;
+        }else if(*rclass!=class){
+            reportError(parser,"only one type is expected when define an array.");
+        }
+        LIST_DELETE(arrayCount2);
+        token=nextToken(parser);
+        if(token.type==TOKEN_COMMA){
+            continue;
+        }else if(token.type==TOKEN_BRACE2){
+            break;
+        }else{
+            reportError(parser,"expected \",\" or \"}\" in the defination of the array.");
+        }
+    }
+    arrayCount->vals[aptr]=eCount*arrayCount->vals[aptr+1];
 }

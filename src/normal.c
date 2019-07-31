@@ -265,6 +265,14 @@ void vlistToString(char*text,VariableList vlist){
         var=vlist.vals[i];
         sprintf(temp,"%d:name:%s,class:%d,ptr:%d\n",i,var.name,var.class,var.ptr);
         strcat(text,temp);
+        if(var.isArray){
+            strcat(text,"array:");
+            for(int i2=0;i2<var.arrayCount.count;i2++){
+                sprintf(temp,"%d ",var.arrayCount.vals[i2]);
+                strcat(text,temp);
+            }
+            strcat(text,"\n");
+        }
     }
     strcat(text,"\0");
 }
