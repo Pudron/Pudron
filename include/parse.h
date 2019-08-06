@@ -11,7 +11,7 @@ typedef struct{
 }Operat;
 LIST_DECLARE(Operat)
 Token nextToken(Parser*parser);
-bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn);
+bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envirn);
 bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
 bool getAssignment(Parser*parser,CmdList*clist,Environment envirn);/*赋值*/
 /*getVarRef():获取一个变量，将其地址存到AX中*/

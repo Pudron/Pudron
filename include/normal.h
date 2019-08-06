@@ -195,6 +195,10 @@ typedef struct{
     ClassTypeList classList;
     CmdList exeClist;/*用于直接执行的指令*/
 }Parser;
+typedef struct{
+    int class;
+    bool isVar;
+}ReturnType;
 void clistToString(char*text,CmdList clist,bool isNum);
 void vlistToString(char*text,VariableList vlist);
 void initParser(Parser*parser);
