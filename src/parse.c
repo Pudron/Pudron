@@ -270,7 +270,7 @@ HandleType handleFloat(HandleType ht){
     }
     return ht;
 }
-bool getExpression(Parser*parser,CmdList*clist,int*rclass,Environment envirn){
+bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envirn){
     Token token;
     OperatList olist;
     Operat operat;
