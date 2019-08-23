@@ -177,8 +177,11 @@ typedef struct{
     char name[WORD_MAX];
     int class;
     int ptr;
-    bool isArray;
-    intList arrayCount;/*第一项为数组的总大小,最后一项为数组的最小单位大小 */
+    int dim;/*维度,0为普通变量*/
+    int unitSize;
+    Variable*subVar;
+    //bool isArray;
+    //intList arrayCount;/*第一项为数组的总大小,最后一项为数组的最小单位大小 */
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{
@@ -199,6 +202,7 @@ typedef struct{
     int class;
     bool isVar;
 }ReturnType;
+LIST_DECLARE(ReturnType);
 void clistToString(char*text,CmdList clist,bool isNum);
 void vlistToString(char*text,VariableList vlist);
 void initParser(Parser*parser);
