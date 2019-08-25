@@ -10,7 +10,7 @@ typedef struct{
 }Operat;
 LIST_DECLARE(Operat)
 Token nextToken(Parser*parser);
-/*将结果储存到AX*/
+/*getExpression():将结果储存到AX*/
 bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envirn);
 bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment envirn);
 bool getAssignment(Parser*parser,CmdList*clist,Environment envirn);/*赋值*/
@@ -21,5 +21,6 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
 bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
 /*getInsideSub():获得内建方法*/
 bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn);
-bool getArray(Parser*parser,CmdList*clist,ReturnType*rtype,intList arrayCount,Environment envirn);
+/*getArray():先将要赋值的首地址存在AX中*/
+bool getArray(Parser*parser,CmdList*clist,ReturnType*rtype,int*totalSize,Environment envirn);
 #endif

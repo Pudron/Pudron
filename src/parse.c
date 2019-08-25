@@ -535,7 +535,7 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,Environment e
                 reportError(parser,msg);
             }
         }
-        var.Dim=0;
+        var.dim=0;
         var.unitSize=0;
         strcpy(var.name,token.word);
         var.ptr=parser->dataSize;
@@ -983,7 +983,7 @@ bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn){
     }
     return true;
 }
-bool getArray(Parser*parser,CmdList*clist,ReturnType*rtype,intList arrayCount,Environment envirn){
+bool getArray2(Parser*parser,CmdList*clist,ReturnType*rtype,int*unitSize,Environment envirn){
     Token token;
     int rptr,rline;
     int class;
@@ -999,7 +999,6 @@ bool getArray(Parser*parser,CmdList*clist,ReturnType*rtype,intList arrayCount,En
         return false;
     }
     isStart=true;
-    intList arrayCount2;
     int eCount=0;
     while(1){
         eCount++;
@@ -1055,4 +1054,63 @@ bool getArray(Parser*parser,CmdList*clist,ReturnType*rtype,intList arrayCount,En
         }
     }
     arrayCount->vals[aptr]=eCount*arrayCount->vals[aptr+1];
+}
+bool getArray(Parser*parser,CmdList*clist,ReturnType*rtype,int*totalSize,Environment envirn){
+    Token token;
+    int rptr,rline;
+    ReturnType rtype2;
+    int count=0,usize,susize;
+    bool isStart=true;
+    int class;
+    rptr=parser->ptr;
+    rline=parser->line;
+    token=nextToken(parser);
+    if(token.type!=TOKEN_BRACE1){
+        parser->line=rline;
+        parser->ptr=rptr;
+        return false;
+    }
+    addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
+    while(1){
+        if(getArray(parser,clist,&rtype2,&usize,envirn)){
+            if(isStart){
+                susize=usize;
+                class=rtype2.class;
+                isStart=false;
+            }else{
+                if(usize!=susize){
+                    reportError(parser,"expected the same array size.");
+                }
+            }
+            if(class==TYPE_INTEGER && rtype2.class==TYPE_FLOAT){
+                class=TYPE_FLOAT;
+            }else if(class!=rtype2.class && !(class==TYPE_FLOAT && rtype2.class==TYPE_INTEGER)){
+                reportWarning(parser,"the type of array is not same.");
+            }
+        }else if(getExpression(parser,clist,&rtype2,envirn)){
+            usize=parser->classList.vals[rtype2.class].size;
+            if(isStart){
+                susize=usize;
+                class=rtype2.class;
+                isStart=false;
+            }else{
+                if(usize!=susize){
+                    reportError(parser,"expected the same array size.");
+                }
+            }
+            if(class==TYPE_INTEGER && rtype2.class==TYPE_FLOAT){
+                class=TYPE_FLOAT;
+            }else if(class!=rtype2.class && !(class==TYPE_FLOAT && rtype2.class==TYPE_INTEGER)){
+                reportWarning(parser,"the type of array is not same.");
+            }
+            if(class==TYPE_FLOAT || class==TYPE_INTEGER){
+                addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_BX);
+                addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_BX,REG_AX);
+                addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_BX,1);
+                addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_BX);
+            }
+        }
+        count++;
+    }
+    *totalSize=count*susize;
 }
