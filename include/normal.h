@@ -201,6 +201,7 @@ typedef struct{
 typedef struct{
     int class;
     bool isVar;
+    int dim;
 }ReturnType;
 LIST_DECLARE(ReturnType);
 void clistToString(char*text,CmdList clist,bool isNum);
