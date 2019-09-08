@@ -14,6 +14,7 @@
 #define REG_DX 4
 #define REG_EX 5/*用于变量赋值*/
 #define REG_CF 6
+#define REG_SP 7/*局部变量储存栈指针*/
 
 /*Types*/
 #define TYPE_INTEGER 0
@@ -136,6 +137,10 @@ typedef enum{
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
     HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
+    HANDLE GSP,
+    HANDLE_POPS,
+    HAMDLE_PUSHS,
+    HANDLE_PUSHB,/*压多个值*/
     HANDLE_SFREE,/*释放栈中指定数量的元素*/
     HANDLE_CAND,/*条件与*/
     HANDLE_COR,/*条件或*/
@@ -173,19 +178,25 @@ typedef struct{
     int size;/*整数的数量*/
 }ClassType;
 LIST_DECLARE(ClassType)
-typedef struct{
+typedef struct Varb{
     char name[WORD_MAX];
     int class;
     int ptr;
     int dim;/*维度,0为普通变量*/
     int unitSize;
-    Variable*subVar;
+    struct Varb*subVar;
+    int arrayCount;
+    enum{
+       VAR_GLOBAL,
+       VAR_PART,
+       VAR_PARAC
+    }vtype;
     //bool isArray;
     //intList arrayCount;/*第一项为数组的总大小,最后一项为数组的最小单位大小 */
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{
-    VariableList*funcVarlist;
+    VariableList*pvlist;
     intList*breakList;
 }Environment;
 typedef struct{
@@ -202,8 +213,8 @@ typedef struct{
     int class;
     bool isVar;
     int dim;
+    bool isStack;
 }ReturnType;
-LIST_DECLARE(ReturnType);
 void clistToString(char*text,CmdList clist,bool isNum);
 void vlistToString(char*text,VariableList vlist);
 void initParser(Parser*parser);

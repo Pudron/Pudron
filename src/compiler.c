@@ -2,7 +2,7 @@
 void compile(Parser*parser){
     Token token;
     int rline,rptr;
-    int rclass;
+    ReturnType rtype;
     Environment envirn={NULL,NULL};
     while(1){
         rline=parser->line;
@@ -23,12 +23,12 @@ void compile(Parser*parser){
 
         }else if(getInsideSub(parser,&parser->exeClist,envirn)){
 
-        }else if(getExpression(parser,&parser->exeClist,&rclass,envirn)){
+        }else if(getExpression(parser,&parser->exeClist,&rtype,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){
                 reportError(parser,"expected \";\" after an expression");
             }
-            addCmd1(&parser->exeClist,HANDLE_SFREE,DATA_INTEGER,1);
+            //addCmd1(&parser->exeClist,HANDLE_SFREE,DATA_INTEGER,1);
         }else{
             reportError(parser,"unknown expression.");
         }

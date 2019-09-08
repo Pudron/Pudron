@@ -258,18 +258,20 @@ void clistToString(char*text,CmdList clist,bool isNum){
     strcat(text,"\0");
 }
 void vlistToString(char*text,VariableList vlist){
-    Variable var;
-    char temp[72];
+    Variable var,var2;
+    char temp[100];
     text[0]='\0';
     for(int i=0;i<vlist.count;i++){
         var=vlist.vals[i];
-        sprintf(temp,"%d:name:%s,class:%d,ptr:%d\n",i,var.name,var.class,var.ptr);
+        sprintf(temp,"%d:name:%s,class:%d,ptr:%d,dim:%d\n",i,var.name,var.class,var.ptr,var.dim);
         strcat(text,temp);
-        if(var.isArray){
+        if(var.dim){
             strcat(text,"array:");
-            for(int i2=0;i2<var.arrayCount.count;i2++){
-                sprintf(temp,"%d ",var.arrayCount.vals[i2]);
+            var2=var;
+            while(var2.dim){
+                sprintf(temp,"%d ",var2.arrayCount);
                 strcat(text,temp);
+                var2=*var2.subVar;
             }
             strcat(text,"\n");
         }
