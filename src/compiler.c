@@ -4,6 +4,7 @@ void compile(Parser*parser){
     int rline,rptr;
     ReturnType rtype;
     Environment envirn={NULL,NULL};
+    addCmd2(&parser->exeClist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_SP,0);
     while(1){
         rline=parser->line;
         rptr=parser->ptr;
@@ -15,11 +16,11 @@ void compile(Parser*parser){
         parser->line=rline;
         if(getAssignment(parser,&parser->exeClist,envirn)){
             
-        }else if(getVariableDef(parser,&parser->varlist,&parser->exeClist,envirn)){
+        }else if(getVariableDef(parser,&parser->varlist,&parser->exeClist,false,NULL,envirn)){
 
-        }else if(getConditionState(parser,&parser->exeClist,&parser->varlist,envirn)){
+        }else if(getConditionState(parser,&parser->exeClist,envirn)){
 
-        }else if(getWhileLoop(parser,&parser->exeClist,&parser->varlist,envirn)){
+        }else if(getWhileLoop(parser,&parser->exeClist,envirn)){
 
         }else if(getInsideSub(parser,&parser->exeClist,envirn)){
 
@@ -28,7 +29,6 @@ void compile(Parser*parser){
             if(token.type!=TOKEN_SEMI){
                 reportError(parser,"expected \";\" after an expression");
             }
-            //addCmd1(&parser->exeClist,HANDLE_SFREE,DATA_INTEGER,1);
         }else{
             reportError(parser,"unknown expression.");
         }

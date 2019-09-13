@@ -14,7 +14,7 @@
 #define REG_DX 4
 #define REG_EX 5/*用于变量赋值*/
 #define REG_CF 6
-#define REG_SP 7/*局部变量储存栈指针*/
+#define REG_SP 7/*局部变量储存栈指针,主要用于函数*/
 
 /*Types*/
 #define TYPE_INTEGER 0
@@ -59,10 +59,10 @@
     int licount=list1.count;\
     list1.count+=list2.count;\
     list1.vals=(type*)realloc(list1.vals,list1.count*sizeof(type));\
-    list1.size=list1.count/LIST_UNIT_SIZE+1;\
+    list1.size=list1.count;\
     for(int li=licount;li<list1.count;li++){\
         list1.vals[li]=list2.vals[li-licount];\
-    }
+    }\
     
 /*bool type*/
 typedef enum{
@@ -148,10 +148,8 @@ typedef enum{
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
     HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
-    HANDLE_GSP,
-    //HANDLE_POPS,
-    //HANDLE_PUSHS,
-    HANDLE_PUSHB,/*压多个值*/
+    HANDLE_GSP,/*获得当前栈的元素指针*/
+    HANDLE_PUSHB,/*压多个值 popb [变量],[数量]*/
     HANDLE_SFREE,/*释放栈中指定数量的元素*/
     HANDLE_CAND,/*条件与*/
     HANDLE_COR,/*条件或*/
@@ -202,8 +200,6 @@ typedef struct Varb{
        VAR_PART,
        VAR_PARAC
     }vtype;
-    //bool isArray;
-    //intList arrayCount;/*第一项为数组的总大小,最后一项为数组的最小单位大小 */
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct{

@@ -16,9 +16,9 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
 bool getAssignment(Parser*parser,CmdList*clist,Environment envirn);/*赋值*/
 /*getVarRef():获取一个变量，将其地址存到AX中*/
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment envirn);
-void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
-bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
-bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn);
+void getBlock(Parser*parser,CmdList*clist,Environment envirn);
+bool getConditionState(Parser*parser,CmdList*clist,Environment envirn);
+bool getWhileLoop(Parser*parser,CmdList*clist,Environment envirn);
 /*getInsideSub():获得内建方法*/
 bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn);
 /*getArray():先将要赋值的首地址存在AX中*/

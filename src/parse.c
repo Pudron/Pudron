@@ -308,7 +308,6 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 reportError(parser,"expected \")\".");
             }
         }else if(token.type==TOKEN_INTEGER || token.type==TOKEN_FLOAT){
-            //addCmd1(clist,HANDLE_PUSH,DATA_INTEGER,token.num);
             addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,token.num);
             operat.rtype.class=(token.type==TOKEN_INTEGER)?TYPE_INTEGER:TYPE_FLOAT;
         }else if(token.type==TOKEN_WORD){
@@ -415,7 +414,7 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 if(operat.rtype.isStack){
                     dt=DATA_REG_STACK;
                 }else{
-                    dt-DATA_REG_POINTER;
+                    dt=DATA_REG_POINTER;
                 }
             }else{
                 dt=DATA_REG;
@@ -443,11 +442,11 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 if(operat.power>opt.power && !isEnd){
                     break;
                 }
-                if(operat.rtype.isVar){
-                    if(operat.rtype.isStack){
+                if(opt.rtype.isVar){
+                    if(opt.rtype.isStack){
                         dt=DATA_REG_STACK;
                     }else{
-                        dt-DATA_REG_POINTER;
+                        dt=DATA_REG_POINTER;
                     }
                 }else{
                     dt=DATA_REG;
@@ -635,7 +634,6 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
                     reportError(parser,msg);
                 }else{
                     /*对象赋值，有待改进 */
-                    //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
                     addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
                 }
             }
@@ -828,17 +826,21 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment
     }
     return true;
 }
-void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
+void getBlock(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     int rptr,rline;
     ReturnType rtype;
-    VariableList vlist;
+    VariableList pvlist;
+    int partSize=0;/*局部变量大小*/
     token=nextToken(parser);
     if(token.type!=TOKEN_BRACE1){
         reportError(parser,"expected \"{\".");
     }
-    LIST_INIT(vlist,Variable);
-    
+    LIST_INIT(pvlist,Variable);
+    if(envirn.pvlist!=NULL){
+        LIST_CONNECT(pvlist,(*(envirn.pvlist)),Variable);
+    }
+    envirn.pvlist=&pvlist;
     while(1){
         rptr=parser->ptr;
         rline=parser->line;
@@ -862,28 +864,31 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
         }
         parser->ptr=rptr;
         parser->line=rline;
-        if(getVariableDef(parser,vlist,clist,true,envirn)){
+        if(getVariableDef(parser,&pvlist,clist,true,&partSize,envirn)){
 
         }else if(getAssignment(parser,clist,envirn)){
 
-        }else if(getConditionState(parser,clist,vlist,envirn)){
+        }else if(getConditionState(parser,clist,envirn)){
             
-        }else if(getWhileLoop(parser,clist,vlist,envirn)){
+        }else if(getWhileLoop(parser,clist,envirn)){
             
-        }else if(getInsideSub(parser,&parser->exeClist,envirn)){
+        }else if(getInsideSub(parser,clist,envirn)){
 
         }else if(getExpression(parser,clist,&rtype,envirn)){
             token=nextToken(parser);
             if(token.type!=TOKEN_SEMI){
                 reportError(parser,"expected \";\" after an expression");
             }
-            //addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,1);
         }else{
             reportError(parser,"unknown expression.");
         }
     }
+    if(partSize!=0){
+        addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,partSize);
+    }
+    LIST_DELETE(pvlist);
 }
-bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
+bool getConditionState(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     int rptr,rline;
     intList ilist;
@@ -909,11 +914,10 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     if(token.type!=TOKEN_PARE2){
         reportError(parser,"expected \")\" after \"if(expression...\".");
     }
-    //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
     addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
     addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
     jptr=clist->count-1;
-    getBlock(parser,clist,vlist,envirn);
+    getBlock(parser,clist,envirn);
     rptr=parser->ptr;
     rline=parser->line;
     token=nextToken(parser);
@@ -936,7 +940,7 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
         addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
         addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
         jptr=clist->count-1;
-        getBlock(parser,clist,vlist,envirn);
+        getBlock(parser,clist,envirn);
         rptr=parser->ptr;
         rline=parser->line;
         token=nextToken(parser);
@@ -944,7 +948,7 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     if(token.type==TOKEN_ELSE){
         addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
         LIST_ADD(ilist,int,clist->count-1);
-        getBlock(parser,clist,vlist,envirn);
+        getBlock(parser,clist,envirn);
     }else{
         parser->ptr=rptr;
         parser->line=rline;
@@ -956,7 +960,7 @@ bool getConditionState(Parser*parser,CmdList*clist,VariableList*vlist,Environmen
     LIST_DELETE(ilist)
     return true;
 }
-bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn){
+bool getWhileLoop(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
     int rptr,rline;
     int jptr,wptr;
@@ -994,7 +998,7 @@ bool getWhileLoop(Parser*parser,CmdList*clist,VariableList*vlist,Environment env
     if(token.type!=TOKEN_SEMI){
         parser->line=rline;
         parser->ptr=rptr;
-        getBlock(parser,clist,vlist,envirn);
+        getBlock(parser,clist,envirn);
     }
     addCmd1(clist,HANDLE_JMP,DATA_INTEGER,-(clist->count-wptr));
     clist->vals[jptr].a=clist->count-jptr;
@@ -1030,7 +1034,6 @@ bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn){
         if(rtype.class!=TYPE_INTEGER){
             reportError(parser,"putc only can output integer.");
         }
-        //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
         addCmd1(clist,HANDLE_PUTC,DATA_REG,REG_AX);
     }else{
         parser->ptr=rptr;
@@ -1076,7 +1079,7 @@ bool getArray(Parser*parser,CmdList*clist,Variable var,Environment envirn){
             if(var.class==TYPE_FLOAT || var.class==TYPE_INTEGER){
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
                 if(var.vtype==VAR_PART){
-                    addCmd2(clist,HANDLE_PUSHS,DATA_REG,DATA_REG,REG_BX,REG_AX);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG_STACK,DATA_REG,REG_BX,REG_AX);
                 }else{
                     addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_BX,REG_AX);
                 }

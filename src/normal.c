@@ -15,6 +15,40 @@ void initParser(Parser*parser){
     strcpy(classType.name,"float");
     LIST_ADD(parser->classList,ClassType,classType);
 }
+void catReg(char*text,int reg){
+    char temp[20];
+    switch (reg)
+    {
+    case REG_AX:
+        strcat(text,"ax");
+        break;
+    case REG_BX:
+        strcat(text,"bx");
+        break;
+    case REG_CX:
+        strcat(text,"cx");
+        break;
+    case REG_DX:
+        strcat(text,"dx");
+        break;
+    case REG_EX:
+        strcat(text,"ex");
+        break;
+    case REG_CF:
+        strcat(text,"cf");
+        break;
+    case REG_SP:
+        strcat(text,"sp");
+        break;
+    case REG_NULL:
+        strcat(text,"null");
+        break;
+    default:
+        sprintf(temp,"unknownReg(%d)",reg);
+        strcat(text,temp);
+        break;
+    }
+}
 void clistToString(char*text,CmdList clist,bool isNum){
     Cmd cmd;
     char paraCount=0;
@@ -159,6 +193,14 @@ void clistToString(char*text,CmdList clist,bool isNum){
                 strcat(text,"putc");
                 paraCount=1;
                 break;
+            case HANDLE_GSP:
+                strcat(text,"gsp");
+                paraCount=1;
+                break;
+            case HANDLE_PUSHB:
+                strcat(text,"pushb");
+                paraCount=2;
+                break;
             default:
                 sprintf(temp,"unknown:%d\n",cmd.handle);
                 strcat(text,temp);
@@ -173,38 +215,19 @@ void clistToString(char*text,CmdList clist,bool isNum){
             sprintf(temp," %d",cmd.a);
         }else if(cmd.ta==DATA_POINTER){
             sprintf(temp," [%d]",cmd.a);
+        }else if(cmd.ta==DATA_STACK){
+            sprintf(temp," s[%d]",cmd.a);
         }else if(cmd.ta==DATA_REG){
-            if(cmd.a==REG_AX){
-                strcpy(temp," ax");
-            }else if(cmd.a==REG_BX){
-                strcpy(temp," bx");
-            }else if(cmd.a==REG_CX){
-                strcpy(temp," cx");
-            }else if(cmd.a==REG_DX){
-                strcpy(temp," dx");
-            }else if(cmd.a==REG_CF){
-                strcpy(temp," cf");
-            }else if(cmd.a==REG_NULL){
-                strcpy(temp," null");
-            }else{
-                sprintf(temp," unknownReg(%d)",cmd.a);
-            }
+            strcpy(temp," ");
+            catReg(temp,cmd.a);
         }else if(cmd.ta==DATA_REG_POINTER){
-            if(cmd.a==REG_AX){
-                strcpy(temp," [ax]");
-            }else if(cmd.a==REG_BX){
-                strcpy(temp," [bx]");
-            }else if(cmd.a==REG_CX){
-                strcpy(temp," [cx]");
-            }else if(cmd.a==REG_DX){
-                strcpy(temp," [dx]");
-            }else if(cmd.a==REG_CF){
-                strcpy(temp," [cf]");
-            }else if(cmd.a==REG_NULL){
-                strcpy(temp," [null]");
-            }else{
-                sprintf(temp," unknownReg(%d)",cmd.a);
-            }
+            strcpy(temp," [");
+            catReg(temp,cmd.a);
+            strcat(temp,"]");
+        }else if(cmd.ta==DATA_REG_STACK){
+            strcpy(temp," s[");
+            catReg(temp,cmd.a);
+            strcat(temp,"]");
         }else{
             sprintf(temp," unknownType(%d)",cmd.ta);
         }
@@ -217,38 +240,19 @@ void clistToString(char*text,CmdList clist,bool isNum){
             sprintf(temp,",%d",cmd.b);
         }else if(cmd.tb==DATA_POINTER){
             sprintf(temp,",[%d]",cmd.b);
+        }else if(cmd.tb==DATA_STACK){
+            sprintf(temp,",s[%d]",cmd.b);
         }else if(cmd.tb==DATA_REG){
-            if(cmd.b==REG_AX){
-                strcpy(temp,",ax");
-            }else if(cmd.b==REG_BX){
-                strcpy(temp,",bx");
-            }else if(cmd.b==REG_CX){
-                strcpy(temp,",cx");
-            }else if(cmd.b==REG_DX){
-                strcpy(temp,",dx");
-            }else if(cmd.b==REG_CF){
-                strcpy(temp,",cf");
-            }else if(cmd.b==REG_NULL){
-                strcpy(temp,",null");
-            }else{
-                sprintf(temp,",unknownReg(%d)",cmd.b);
-            }
+            strcpy(temp,",");
+            catReg(temp,cmd.b);
         }else if(cmd.tb==DATA_REG_POINTER){
-            if(cmd.b==REG_AX){
-                strcpy(temp,",[ax]");
-            }else if(cmd.b==REG_BX){
-                strcpy(temp,",[bx]");
-            }else if(cmd.b==REG_CX){
-                strcpy(temp,",[cx]");
-            }else if(cmd.b==REG_DX){
-                strcpy(temp,",[dx]");
-            }else if(cmd.b==REG_CF){
-                strcpy(temp,",[cf]");
-            }else if(cmd.b==REG_NULL){
-                strcpy(temp,",[null]");
-            }else{
-                sprintf(temp,",unknownReg(%d)",cmd.b);
-            }
+            strcpy(temp,",[");
+            catReg(temp,cmd.b);
+            strcat(temp,"]");
+        }else if(cmd.tb==DATA_REG_STACK){
+            strcpy(temp,",s[");
+            catReg(temp,cmd.b);
+            strcat(temp,"]");
         }else{
             sprintf(temp,",unknownType(%d)",cmd.tb);
         }
