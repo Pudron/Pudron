@@ -55,6 +55,15 @@
         list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
     }
 
+#define LIST_CONNECT(list1,list2,type) \
+    int licount=list1.count;\
+    list1.count+=list2.count;\
+    list1.vals=(type*)realloc(list1.vals,list1.count*sizeof(type));\
+    list1.size=list1.count/LIST_UNIT_SIZE+1;\
+    for(int li=licount;li<list1.count;li++){\
+        list1.vals[li]=list2.vals[li-licount];\
+    }
+    
 /*bool type*/
 typedef enum{
     false=0,
@@ -118,6 +127,8 @@ typedef enum{
     DATA_POINTER,/*指针*/
     DATA_INTEGER,
     DATA_REG_POINTER,/*指向寄存器里的指针*/
+    DATA_STACK,
+    DATA_REG_STACK
 }DataType;
 typedef enum{
     HANDLE_NOP,
@@ -137,9 +148,9 @@ typedef enum{
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
     HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
-    HANDLE GSP,
-    HANDLE_POPS,
-    HAMDLE_PUSHS,
+    HANDLE_GSP,
+    //HANDLE_POPS,
+    //HANDLE_PUSHS,
     HANDLE_PUSHB,/*压多个值*/
     HANDLE_SFREE,/*释放栈中指定数量的元素*/
     HANDLE_CAND,/*条件与*/

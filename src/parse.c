@@ -278,6 +278,7 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
     Variable var;
     int rptr,rline;
     bool isEnd=false;
+    DataType dt;
     LIST_INIT(olist,Operat);
     while(1){
         rptr=parser->ptr;
@@ -320,15 +321,11 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 parser->line=rline;
                 return false;
             }
-            //addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
             operat.rtype.isVar=true;
             operat.rtype.class=var.class;
             operat.rtype.dim=var.dim;
             if(var.vtype==VAR_PART){
                 operat.rtype.isStack=true;
-            }else if(var.vtype==VAR_PARAC){
-                operat.rtype.isStack=false;
-                addCmd2(clist,HANDLE_POPS,DATA_REG,DATA_REG,REG_AX,REG_AX);
             }else{
                 operat.rtype.isStack=false;
             }
@@ -414,35 +411,31 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             isRight=true;
         }
         if(isRight){
-            //addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
-            addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
-            if(operat.handle_postfix==HANDLE_ADD){
-                if(operat.rtype.isVar){
-                    if(operat.rtype.class==TYPE_INTEGER){
-                        addCmd2(clist,HANDLE_ADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
-                    }else if(operat.rtype.class==TYPE_FLOAT){
-                        addCmd2(clist,HANDLE_FADD,DATA_REG_POINTER,DATA_INTEGER,REG_BX,1);
-                    }else{
-                        sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.rtype.class].name);
-                        reportWarning(parser,msg);
-                    }
+            if(operat.rtype.isVar){
+                if(operat.rtype.isStack){
+                    dt=DATA_REG_STACK;
                 }else{
-                    if(operat.rtype.class==TYPE_INTEGER){
-                        addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_BX,1);
-                    }else if(operat.rtype.class==TYPE_FLOAT){
-                        addCmd2(clist,HANDLE_FADD,DATA_REG,DATA_INTEGER,REG_BX,1);
-                    }else{
-                            reportError(parser,"unknown constant.");
-                    }
+                    dt-DATA_REG_POINTER;
+                }
+            }else{
+                dt=DATA_REG;
+            }
+            if(operat.handle_postfix==HANDLE_ADD){
+                if(operat.rtype.class==TYPE_INTEGER){
+                    addCmd2(clist,HANDLE_ADD,dt,DATA_INTEGER,REG_AX,1);
+                }else if(operat.rtype.class==TYPE_FLOAT){
+                    addCmd2(clist,HANDLE_FADD,dt,DATA_INTEGER,REG_AX,1);
+                }else{
+                        reportError(parser,"unknown constant.");
                 }
                 operat.handle_postfix=HANDLE_NOP;
             }
             if(operat.rtype.isVar && (operat.rtype.class==TYPE_FLOAT || operat.rtype.class==TYPE_INTEGER)){
-                addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_BX,REG_BX);
+                addCmd2(clist,HANDLE_MOV,DATA_REG,dt,REG_AX,REG_AX);
                 operat.rtype.isVar=false;
             }
             if(operat.handle_prefix!=HANDLE_NOP){
-                addCmd1(clist,operat.handle_prefix,DATA_REG,REG_BX);
+                addCmd1(clist,operat.handle_prefix,DATA_REG,REG_AX);
                 operat.handle_prefix=HANDLE_NOP;
             }
             while(olist.count>=1){
@@ -450,30 +443,30 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 if(operat.power>opt.power && !isEnd){
                     break;
                 }
+                if(operat.rtype.isVar){
+                    if(operat.rtype.isStack){
+                        dt=DATA_REG_STACK;
+                    }else{
+                        dt-DATA_REG_POINTER;
+                    }
+                }else{
+                    dt=DATA_REG;
+                }
+                addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
                 if(opt.handle_postfix==HANDLE_ADD){
-                    if(opt.rtype.isVar){
-                        if(opt.rtype.class==TYPE_INTEGER){
-                            addCmd2(clist,HANDLE_ADD,DATA_REG_POINTER,DATA_INTEGER,REG_AX,1);
-                        }else if(operat.rtype.class==TYPE_FLOAT){
-                            addCmd2(clist,HANDLE_FADD,DATA_REG_POINTER,DATA_INTEGER,REG_AX,1);
-                        }else{
-                            sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.rtype.class].name);
-                            reportWarning(parser,msg);
-                        }
+                    if(operat.rtype.class==TYPE_INTEGER){
+                        addCmd2(clist,HANDLE_ADD,dt,DATA_INTEGER,REG_AX,1);
+                    }else if(operat.rtype.class==TYPE_FLOAT){
+                        addCmd2(clist,HANDLE_FADD,dt,DATA_INTEGER,REG_AX,1);
                     }else{
-                        if(opt.rtype.class==TYPE_INTEGER){
-                            addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_AX,1);
-                        }else if(opt.rtype.class==TYPE_FLOAT){
-                            addCmd2(clist,HANDLE_FADD,DATA_REG,DATA_INTEGER,REG_AX,1);
-                        }else{
-                            reportError(parser,"unknown constant.");
-                        }
+                        sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.rtype.class].name);
+                        reportWarning(parser,msg);
                     }
                     opt.handle_postfix=HANDLE_NOP;
                 }
                 if(opt.rtype.isVar && (opt.rtype.class==TYPE_FLOAT || opt.rtype.class==TYPE_INTEGER)){
-                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_POINTER,REG_AX,REG_AX);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,dt,REG_AX,REG_AX);
                 }
                 if(opt.handle_prefix!=HANDLE_NOP){
                     addCmd1(clist,opt.handle_prefix,DATA_REG,REG_AX);
@@ -493,7 +486,7 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                     }
                 }
                 addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
-                addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
+                //addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
                 operat.rtype.class=opt.rtype.class;
                 LIST_SUB(olist,Operat);
             }
@@ -613,7 +606,7 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
         }
         LIST_ADD((*vlist),Variable,var);
         if(token.type==TOKEN_EQUAL){
-            if(var.dim){//will change by partVar
+            if(var.dim){
                 addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,var.ptr);
                 if(!getArray(parser,clist,var,envirn)){
                     reportError(parser,"expected an array when initializing variable.");
@@ -623,11 +616,9 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
                     reportError(parser,"expected an expression when initializing variable.");
                 }
                 if((var.class==TYPE_FLOAT && rtype.class==TYPE_INTEGER) || (var.class==TYPE_INTEGER && rtype.class==TYPE_INTEGER) || (var.class==TYPE_FLOAT && rtype.class==TYPE_FLOAT)){
-                    //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
                     if(isPart){
                         addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
-                    }
-                    else{
+                    }else{
                         addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
                     }
                 }else if(var.class==TYPE_INTEGER && rtype.class==TYPE_FLOAT){
@@ -647,14 +638,14 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
                     //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
                     addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
                 }
-            }else if(isPart){
-                if(var.dim){
-                    addCmd2(clist,HANDLE_PUSHB,DATA_INTEGER,DATA_INTEGER,0,var.arrayCount*unitSize);
-                }else{
-                    addCmd2(clist,HANDLE_PUSHB,DATA_INTEGER,DATA_INTEGER,0,parser->classList.vals[var.class].size);
-                }
             }
             token=nextToken(parser);
+        }else if(isPart){
+            if(var.dim){
+                addCmd2(clist,HANDLE_PUSHB,DATA_INTEGER,DATA_INTEGER,0,var.arrayCount*var.unitSize);
+            }else{
+                addCmd2(clist,HANDLE_PUSHB,DATA_INTEGER,DATA_INTEGER,0,parser->classList.vals[var.class].size);
+            }
         }
         if(token.type==TOKEN_COMMA){
             continue;
@@ -673,6 +664,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
     VariableList  varList;
     int rptr,rline;
     HandleType ht;
+    DataType dt;
     char msg[100];
     int stackPtr=-1;
     rptr=parser->ptr;
@@ -736,6 +728,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
             reportError(parser,"too many assignment.");
         }
         var=varList.vals[i];
+        dt=(var.vtype==VAR_PART)?DATA_REG_STACK:DATA_REG_POINTER;
         if(var.dim){
             addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
             if(!getArray(parser,clist,var,envirn)){
@@ -748,10 +741,10 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
             addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
             addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
             if((var.class==TYPE_FLOAT && rtype.class==TYPE_INTEGER) || (var.class==TYPE_INTEGER && rtype.class==TYPE_INTEGER) || (var.class==TYPE_FLOAT && rtype.class==TYPE_FLOAT)){
-                addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
             }else if(var.class==TYPE_INTEGER && rtype.class==TYPE_FLOAT){
                 addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_BX,REG_BX);
-                addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
             }else if(var.class!=rtype.class){
                 sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rtype.class].name);
                 reportError(parser,msg);
@@ -761,7 +754,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
                     sprintf(msg,"the type \"%s\" only support \"=\" to assign.",parser->classList.vals[var.class].name);
                     reportError(parser,msg);
                 }
-                addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
             }
         }
         stackPtr--;
@@ -772,15 +765,16 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }else if(token.type==TOKEN_SEMI){
             while(stackPtr>=0){
                 var=varList.vals[i];
+                dt=(var.vtype==VAR_PART)?DATA_REG_STACK:DATA_REG_POINTER;
                 if(var.dim){
                     reportError(parser,"too many array in assignment.");
                 }else{
                     addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_AX,stackPtr);
                     if((var.class==TYPE_FLOAT && rtype.class==TYPE_INTEGER) || (var.class==TYPE_INTEGER && rtype.class==TYPE_INTEGER) || (var.class==TYPE_FLOAT && rtype.class==TYPE_FLOAT)){
-                        addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                        addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
                     }else if(var.class==TYPE_INTEGER && rtype.class==TYPE_FLOAT){
                         addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_BX,REG_BX);
-                        addCmd2(clist,ht,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                        addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
                     }else if(var.class!=rtype.class){
                         sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rtype.class].name);
                         reportError(parser,msg);
@@ -790,7 +784,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
                             sprintf(msg,"the type \"%s\" only support \"=\" to assign.",parser->classList.vals[var.class].name);
                             reportError(parser,msg);
                         }
-                        addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_AX,REG_BX);
+                        addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
                     }
                 }
                 stackPtr--;
@@ -806,11 +800,15 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
 }
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment envirn){
     bool isFound=false;
-    if(envirn.pvList!=NULL){
+    if(envirn.pvlist!=NULL){
         for(int i=0;i<envirn.pvlist->count;i++){
             if(strcmp(varName,envirn.pvlist->vals[i].name)==0){
                 *var=envirn.pvlist->vals[i];
-                addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,envirn.pvlist->vals[i].ptr);
+                if(var->vtype==VAR_PARAC){
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_STACK,REG_AX,envirn.pvlist->vals[i].ptr);
+                }else{
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,envirn.pvlist->vals[i].ptr);
+                }
                 isFound=true;
                 break;
             }
@@ -834,10 +832,13 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
     Token token;
     int rptr,rline;
     ReturnType rtype;
+    VariableList vlist;
     token=nextToken(parser);
     if(token.type!=TOKEN_BRACE1){
         reportError(parser,"expected \"{\".");
     }
+    LIST_INIT(vlist,Variable);
+    
     while(1){
         rptr=parser->ptr;
         rline=parser->line;
@@ -861,7 +862,7 @@ void getBlock(Parser*parser,CmdList*clist,VariableList*vlist,Environment envirn)
         }
         parser->ptr=rptr;
         parser->line=rline;
-        if(getVariableDef(parser,vlist,clist,envirn)){
+        if(getVariableDef(parser,vlist,clist,true,envirn)){
 
         }else if(getAssignment(parser,clist,envirn)){
 
@@ -1074,7 +1075,11 @@ bool getArray(Parser*parser,CmdList*clist,Variable var,Environment envirn){
             }
             if(var.class==TYPE_FLOAT || var.class==TYPE_INTEGER){
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
-                addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_BX,REG_AX);
+                if(var.vtype==VAR_PART){
+                    addCmd2(clist,HANDLE_PUSHS,DATA_REG,DATA_REG,REG_BX,REG_AX);
+                }else{
+                    addCmd2(clist,HANDLE_MOV,DATA_REG_POINTER,DATA_REG,REG_BX,REG_AX);
+                }
                 addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_BX,1);
                 addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_BX);
             }else{
