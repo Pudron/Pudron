@@ -201,6 +201,10 @@ void clistToString(char*text,CmdList clist,bool isNum){
                 strcat(text,"pushb");
                 paraCount=2;
                 break;
+            case HANDLE_REM:
+                strcat(text,"rem");
+                paraCount=2;
+                break;
             default:
                 sprintf(temp,"unknown:%d\n",cmd.handle);
                 strcat(text,temp);

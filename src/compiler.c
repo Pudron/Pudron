@@ -3,7 +3,7 @@ void compile(Parser*parser){
     Token token;
     int rline,rptr;
     ReturnType rtype;
-    Environment envirn={NULL,NULL};
+    Environment envirn={NULL,NULL,0};
     addCmd2(&parser->exeClist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_SP,0);
     while(1){
         rline=parser->line;

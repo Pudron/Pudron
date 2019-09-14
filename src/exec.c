@@ -175,6 +175,9 @@ inline void eAnd(VM*vm,Cmd cmd){
 inline void eOr(VM*vm,Cmd cmd){
     *getCmdPtr(vm,cmd.ta,cmd.a)|=getCmdData(vm,cmd.tb,cmd.b);
 }
+inline void eRem(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)%=getCmdData(vm,cmd.tb,cmd.b);
+}
 inline void eInvert(VM*vm,Cmd cmd){
     int*a=getCmdPtr(vm,cmd.ta,cmd.a);
     *a=!(*a);
@@ -360,6 +363,9 @@ void execute(VM*vm){
                 break;
             case HANDLE_PUSHB:
                 ePushb(vm,cmd);
+                break;
+            case HANDLE_REM:
+                eRem(vm,cmd);
                 break;
             default:
                 sprintf(msg,"unknown command (%d)",cmd.handle);

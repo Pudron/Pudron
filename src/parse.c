@@ -112,6 +112,11 @@ Token nextToken(Parser*parser){
             parser->ptr+=2;
             return token;
         }
+        if(parser->code[parser->ptr+1]=='-'){
+            token.type=TOKEN_DOUBLE_SUB;
+            parser->ptr+=2;
+            return token;
+        }
         token.type=TOKEN_SUB;
         parser->ptr++;
         return token;
@@ -242,6 +247,15 @@ Token nextToken(Parser*parser){
         token.type=TOKEN_OR;
         parser->ptr++;
         return token;
+    }else if(c=='%'){
+        if(parser->code[parser->ptr+1]=='='){
+            token.type=TOKEN_PERCENT_EQUAL;
+            parser->ptr+=2;
+            return token;
+        }
+        token.type=TOKEN_PERCENT;
+        parser->ptr++;
+        return token;
     }else{
         sprintf(msgt,"unknown charactor \"%c\".",c);
         reportError(parser,msgt);
@@ -342,6 +356,11 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             rline=parser->line;
             operat.handle_postfix=HANDLE_ADD;
             token=nextToken(parser);
+        }else if(token.type==TOKEN_DOUBLE_SUB){
+            rptr=parser->ptr;
+            rline=parser->line;
+            operat.handle_postfix=HANDLE_SUB;
+            token=nextToken(parser);
         }else{
             operat.handle_postfix=HANDLE_NOP;
         }
@@ -357,6 +376,9 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             operat.power=80;
         }else if(token.type==TOKEN_DIV){
             operat.handle_infix=HANDLE_DIV;
+            operat.power=80;
+        }else if(token.type==TOKEN_PERCENT){
+            operat.handle_infix=HANDLE_REM;
             operat.power=80;
         }else if(token.type==TOKEN_EQUAL){
             operat.handle_infix=HANDLE_EQUAL;
@@ -419,11 +441,11 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             }else{
                 dt=DATA_REG;
             }
-            if(operat.handle_postfix==HANDLE_ADD){
+            if(operat.handle_postfix==HANDLE_ADD || operat.handle_postfix==HANDLE_SUB){
                 if(operat.rtype.class==TYPE_INTEGER){
-                    addCmd2(clist,HANDLE_ADD,dt,DATA_INTEGER,REG_AX,1);
+                    addCmd2(clist,operat.handle_postfix,dt,DATA_INTEGER,REG_AX,1);
                 }else if(operat.rtype.class==TYPE_FLOAT){
-                    addCmd2(clist,HANDLE_FADD,dt,DATA_INTEGER,REG_AX,1);
+                    addCmd2(clist,handleFloat(operat.handle_postfix),dt,DATA_INTEGER,REG_AX,1);
                 }else{
                         reportError(parser,"unknown constant.");
                 }
@@ -453,11 +475,11 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 }
                 addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
-                if(opt.handle_postfix==HANDLE_ADD){
+                if(opt.handle_postfix==HANDLE_ADD || opt.handle_postfix==HANDLE_SUB){
                     if(operat.rtype.class==TYPE_INTEGER){
-                        addCmd2(clist,HANDLE_ADD,dt,DATA_INTEGER,REG_AX,1);
+                        addCmd2(clist,opt.handle_postfix,dt,DATA_INTEGER,REG_AX,1);
                     }else if(operat.rtype.class==TYPE_FLOAT){
-                        addCmd2(clist,HANDLE_FADD,dt,DATA_INTEGER,REG_AX,1);
+                        addCmd2(clist,handleFloat(opt.handle_postfix),dt,DATA_INTEGER,REG_AX,1);
                     }else{
                         sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.rtype.class].name);
                         reportWarning(parser,msg);
@@ -538,6 +560,14 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
         token=nextToken(parser);
         if(token.type!=TOKEN_WORD){
             reportError(parser,"expected a variable name.");
+        }
+        if(envirn.pvlist!=NULL){
+            for(int i=0;i<envirn.pvlist->count;i++){
+                if(strcmp(token.word,envirn.pvlist->vals[i].name)==0){
+                    sprintf(msg,"the variable \"%s\" has already exist.",token.word);
+                    reportError(parser,msg);
+                }
+            }
         }
         for(int i=0;i<parser->varlist.count;i++){
             if(strcmp(token.word,parser->varlist.vals[i].name)==0){
@@ -713,6 +743,9 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
         }else if(token.type==TOKEN_RIGHT_EQUAL){
             ht=HANDLE_RIGHT;
             break;
+        }else if(token.type==TOKEN_PERCENT_EQUAL){
+            ht=HANDLE_REM;
+            break;
         }else{
             parser->ptr=rptr;
             parser->line=rline;
@@ -831,7 +864,7 @@ void getBlock(Parser*parser,CmdList*clist,Environment envirn){
     int rptr,rline;
     ReturnType rtype;
     VariableList pvlist;
-    int partSize=0;/*局部变量大小*/
+    int rSize=envirn.partSize;/*用于计算本层局部变量大小*/
     token=nextToken(parser);
     if(token.type!=TOKEN_BRACE1){
         reportError(parser,"expected \"{\".");
@@ -864,7 +897,7 @@ void getBlock(Parser*parser,CmdList*clist,Environment envirn){
         }
         parser->ptr=rptr;
         parser->line=rline;
-        if(getVariableDef(parser,&pvlist,clist,true,&partSize,envirn)){
+        if(getVariableDef(parser,&pvlist,clist,true,&envirn.partSize,envirn)){
 
         }else if(getAssignment(parser,clist,envirn)){
 
@@ -883,8 +916,8 @@ void getBlock(Parser*parser,CmdList*clist,Environment envirn){
             reportError(parser,"unknown expression.");
         }
     }
-    if(partSize!=0){
-        addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,partSize);
+    if(envirn.partSize!=0){
+        addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,envirn.partSize-rSize);
     }
     LIST_DELETE(pvlist);
 }

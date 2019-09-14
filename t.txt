@@ -1,11 +1,3 @@
 int n0=48;
-if(1){
-    int a=n0+2;
-    int b=3;
-    while(b){
-        b-=1;
-        int x=25;
-        putc(n0+x);
-    }
-    putc(n0+8);
-}
+n0%=46;
+putc(n0);

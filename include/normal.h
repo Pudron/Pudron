@@ -89,6 +89,7 @@ typedef enum{
     TOKEN_COR,
     TOKEN_ADD,
     TOKEN_DOUBLE_ADD,/*++*/
+    TOKEN_DOUBLE_SUB,/*--*/
     TOKEN_SUB,
     TOKEN_MUL,
     TOKEN_DIV,
@@ -110,6 +111,7 @@ typedef enum{
     TOKEN_LTHAN_EQUAL,/*<=*/
     TOKEN_AND,/*&*/
     TOKEN_OR,/*|*/
+    TOKEN_PERCENT,/*%*/
     TOKEN_LEFT,
     TOKEN_RIGHT,
     TOKEN_PUTC,
@@ -118,6 +120,7 @@ typedef enum{
     TOKEN_MUL_EQUAL,
     TOKEN_DIV_EQUAL,
     TOKEN_AND_EQUAL,
+    TOKEN_PERCENT_EQUAL,/*%=*/
     TOKEN_OR_EQUAL,
     TOKEN_LEFT_EQUAL,
     TOKEN_RIGHT_EQUAL
@@ -143,6 +146,7 @@ typedef enum{
     HANDLE_FMUL,
     HANDLE_FDIV,
     HANDLE_EQUAL,
+    HANDLE_REM,/*求余*/
     HANDLE_JMP,/*跳转*/
     HANDLE_JMPC,/*条件跳转，当CF为0时跳转*/
     HANDLE_PUSH,/*栈*/
@@ -205,6 +209,7 @@ LIST_DECLARE(Variable)
 typedef struct{
     VariableList*pvlist;
     intList*breakList;
+    int partSize;/*局部变量大小*/
 }Environment;
 typedef struct{
     char*fileName;
