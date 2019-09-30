@@ -23,4 +23,6 @@ bool getWhileLoop(Parser*parser,CmdList*clist,Environment envirn);
 bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn);
 /*getArray():先将要赋值的首地址存在AX中*/
 bool getArray(Parser*parser,CmdList*clist,Variable var,Environment envirn);
+/*getFunctionDef():返回值存在AX中*/
+bool getFunctionDef(Parser*parser,FunctionList*funcList);
 #endif

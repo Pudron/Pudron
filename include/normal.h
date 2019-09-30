@@ -5,6 +5,7 @@
 #include<string.h>
 
 #define WORD_MAX 20
+#define NULL_PTR -1
 /*Regs*/
 #define REG_COUNT 7
 #define REG_NULL 0
@@ -62,8 +63,21 @@
     list1.size=list1.count;\
     for(int li=licount;li<list1.count;li++){\
         list1.vals[li]=list2.vals[li-licount];\
-    }\
+    }
+
+/*Origin Operations*/
+#define ORI_DEF() \
+    int rline;\
+    int rptr;
     
+#define ORI_ASI() \
+    rline=parser->line;\
+    rptr=parser->ptr;
+    
+#define ORI_RET() \
+    parser->line=rline;\
+    parser->ptr=rptr;
+
 /*bool type*/
 typedef enum{
     false=0,
@@ -81,6 +95,7 @@ typedef enum{
     TOKEN_FUNC,
     TOKEN_WHILE,
     TOKEN_BREAK,
+    TOKEN_RETURN,
     TOKEN_IF,
     TOKEN_ELIF,/*else if*/
     TOKEN_ELSE,
@@ -123,7 +138,8 @@ typedef enum{
     TOKEN_PERCENT_EQUAL,/*%=*/
     TOKEN_OR_EQUAL,
     TOKEN_LEFT_EQUAL,
-    TOKEN_RIGHT_EQUAL
+    TOKEN_RIGHT_EQUAL,
+    TOKEN_NULL
 }TokenType;
 typedef enum{
     DATA_REG,
@@ -149,6 +165,7 @@ typedef enum{
     HANDLE_REM,/*求余*/
     HANDLE_JMP,/*跳转*/
     HANDLE_JMPC,/*条件跳转，当CF为0时跳转*/
+    HANDLE_JMPS,/*绝对跳转*/
     HANDLE_PUSH,/*栈*/
     HANDLE_POP,
     HANDLE_POPT,/*获得栈中指定的元素，0为栈顶,不会删除元素 popt [变量],[位置]*/
@@ -157,8 +174,6 @@ typedef enum{
     HANDLE_SFREE,/*释放栈中指定数量的元素*/
     HANDLE_CAND,/*条件与*/
     HANDLE_COR,/*条件或*/
-    HANDLE_CALL,
-    HANDLE_RET,
     HANDLE_AND,
     HANDLE_OR,
     HANDLE_INVERT,/*非*/
@@ -206,10 +221,20 @@ typedef struct Varb{
     }vtype;
 }Variable;
 LIST_DECLARE(Variable)
+typedef struct Func{
+    char name[WORD_MAX];
+    int ptr;
+    VariableList parac;
+    int class;
+    int partSize;
+    bool isDef;
+}Function;
+LIST_DECLARE(Function)
 typedef struct{
     VariableList*pvlist;
     intList*breakList;
     int partSize;/*局部变量大小*/
+    Function*func;
 }Environment;
 typedef struct{
     char*fileName;
@@ -218,8 +243,10 @@ typedef struct{
     int line;
     int dataSize;
     VariableList varlist;
+    FunctionList funcList;
     ClassTypeList classList;
     CmdList exeClist;/*用于直接执行的指令*/
+    CmdList funcClist;/*函数指令*/
 }Parser;
 typedef struct{
     int class;
@@ -229,6 +256,8 @@ typedef struct{
 }ReturnType;
 void clistToString(char*text,CmdList clist,bool isNum);
 void vlistToString(char*text,VariableList vlist);
+void getFuncName(Parser*parser,Function func,char*text);
+void flistToString(Parser*parser,char*text,FunctionList flist);
 void initParser(Parser*parser);
 void reportError(Parser*parser,char*msg);
 void reportWarning(Parser*parser,char*msg);

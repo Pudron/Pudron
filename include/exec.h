@@ -8,6 +8,7 @@ typedef struct{
     int dataSize;
     int ptr;/*执行指针*/
     CmdList exeClist;
+    int null;
 }VM;/*虚拟机*/
 void initVM(VM*vm,Parser parser);
 void execute(VM*vm);

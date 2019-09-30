@@ -8,6 +8,8 @@ void initParser(Parser*parser){
     LIST_INIT(parser->varlist,Variable);
     LIST_INIT(parser->classList,ClassType);
     LIST_INIT(parser->exeClist,Cmd);
+    LIST_INIT(parser->funcClist,Cmd);
+    LIST_INIT(parser->funcList,Function);
     ClassType classType;
     classType.size=1;
     strcpy(classType.name,"int");
@@ -95,6 +97,10 @@ void clistToString(char*text,CmdList clist,bool isNum){
                 break;
             case HANDLE_JMPC:
                 strcat(text,"jmpc");
+                paraCount=1;
+                break;
+            case HANDLE_JMPS:
+                strcat(text,"jmps");
                 paraCount=1;
                 break;
             case HANDLE_EQUAL:
@@ -285,6 +291,35 @@ void vlistToString(char*text,VariableList vlist){
         }
     }
     strcat(text,"\0");
+}
+void getFuncName(Parser*parser,Function func,char*text){
+    char msg[100];
+    Variable var;
+    text[0]='\0';
+    sprintf(text,"%s %s(",parser->classList.vals[func.class].name,func.name);
+    for(int i=0;i<func.parac.count;i++){
+        var=func.parac.vals[i];
+        sprintf(msg,"%s %s",parser->classList.vals[var.class].name,var.name);
+        strcat(text,msg);
+        for(int i2=0;i2<var.dim;i2++){
+            strcat(text,"[]");
+        }
+        if(i!=func.parac.count-1){
+            strcat(text,",");
+        }
+    }
+    strcat(text,")");
+}
+void flistToString(Parser*parser,char*text,FunctionList flist){
+    Function func;
+    char temp[100],temp2[50];
+    text[0]='\0';
+    for(int i=0;i<flist.count;i++){
+        func=flist.vals[i];
+        getFuncName(parser,func,temp2);
+        sprintf(temp,"%d:%s\n",i,temp2);
+        strcat(text,temp);
+    }
 }
 void reportError(Parser*parser,char*msg){
     printf("%s:%d:  error:%s\n",parser->fileName,parser->line,msg);

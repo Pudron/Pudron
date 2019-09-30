@@ -3,7 +3,7 @@ Token nextToken(Parser*parser){
     char msgt[50];
     Token token;
     char c=parser->code[parser->ptr];
-    while(c==' ' || c=='\n' || c=='\''){
+    while(c==' ' || c=='	' || c=='\n' || c=='\''){
         if(c=='\n'){
             parser->line++;
         }
@@ -88,6 +88,10 @@ Token nextToken(Parser*parser){
             token.type=TOKEN_BREAK;
         }else if(strcmp(token.word,"putc")==0){
             token.type=TOKEN_PUTC;
+        }else if(strcmp(token.word,"return")==0){
+            token.type=TOKEN_RETURN;
+        }else if(strcmp(token.word,"null")==0){
+            token.type=TOKEN_NULL;
         }else{
             token.type=TOKEN_WORD;
         }
@@ -284,19 +288,45 @@ HandleType handleFloat(HandleType ht){
     }
     return ht;
 }
+bool getClass(Parser*parser,int*class){
+    Token token;
+    ORI_DEF();
+    ORI_ASI();
+    token=nextToken(parser);
+    if(token.type==TOKEN_INT){
+        *class=TYPE_INTEGER;
+    }else if(token.type==TOKEN_FLOAT_CLASS){
+        *class=TYPE_FLOAT;
+    }else if(token.type==TOKEN_WORD){
+        bool isFound=false;
+        for(int i=2;i<parser->classList.count;i++){
+            if(strcmp(token.word,parser->classList.vals[i].name)==0){
+                *class=i;
+                isFound=true;
+            }
+        }
+        if(!isFound){
+            ORI_RET();
+            return false;  
+        }
+    }else{
+        ORI_RET();
+        return false;
+    }
+    return true;
+}
 bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envirn){
     Token token;
     OperatList olist;
     Operat operat;
     char msg[100];
     Variable var;
-    int rptr,rline;
+    ORI_DEF();
     bool isEnd=false;
     DataType dt;
     LIST_INIT(olist,Operat);
     while(1){
-        rptr=parser->ptr;
-        rline=parser->line;
+        ORI_ASI();
         token=nextToken(parser);
         /*处理前缀运算*/
         if(token.type==TOKEN_SUB){
@@ -313,6 +343,7 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
         }
         operat.rtype.isVar=false;
         operat.rtype.isStack=false;
+        operat.rtype.dim=0;
         if(token.type==TOKEN_PARE1){
             if(!getExpression(parser,clist,&operat.rtype,envirn)){
                 reportWarning(parser,"expected an expression in the \"( )\".");
@@ -329,11 +360,6 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 sprintf(msg,"unfound variable \"%s\".",token.word);
                 reportError(parser,msg);
             }
-            if(var.dim){
-                parser->ptr=rptr;
-                parser->line=rline;
-                return false;
-            }
             operat.rtype.isVar=true;
             operat.rtype.class=var.class;
             operat.rtype.dim=var.dim;
@@ -342,23 +368,22 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             }else{
                 operat.rtype.isStack=false;
             }
+        }else if(token.type==TOKEN_NULL){
+            addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,NULL_PTR);
+            operat.rtype.class=TYPE_INTEGER;
         }else{
-            parser->ptr=rptr;
-            parser->line=rline;
+            ORI_RET();
             return false;
         }
-        rptr=parser->ptr;
-        rline=parser->line;
+        ORI_ASI();
         token=nextToken(parser);
         /*处理后缀运算*/
         if(token.type==TOKEN_DOUBLE_ADD){
-            rptr=parser->ptr;
-            rline=parser->line;
+            ORI_ASI();
             operat.handle_postfix=HANDLE_ADD;
             token=nextToken(parser);
         }else if(token.type==TOKEN_DOUBLE_SUB){
-            rptr=parser->ptr;
-            rline=parser->line;
+            ORI_ASI();
             operat.handle_postfix=HANDLE_SUB;
             token=nextToken(parser);
         }else{
@@ -418,8 +443,7 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             operat.power=110;
         }else{
             /*表达式结束*/
-            parser->ptr=rptr;
-            parser->line=rline;
+            ORI_RET();
             isEnd=1;
         }
         bool isRight=false;
@@ -454,6 +478,7 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
             if(operat.rtype.isVar && (operat.rtype.class==TYPE_FLOAT || operat.rtype.class==TYPE_INTEGER)){
                 addCmd2(clist,HANDLE_MOV,DATA_REG,dt,REG_AX,REG_AX);
                 operat.rtype.isVar=false;
+                operat.rtype.dim=0;
             }
             if(operat.handle_prefix!=HANDLE_NOP){
                 addCmd1(clist,operat.handle_prefix,DATA_REG,REG_AX);
@@ -507,11 +532,9 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                     }
                 }
                 addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
-                //addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
                 operat.rtype.class=opt.rtype.class;
                 LIST_SUB(olist,Operat);
             }
-            //addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_BX);
         }
         if(isEnd){
             rtype->class=operat.rtype.class;
@@ -529,30 +552,8 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
     Variable var;
     char msg[100];
     intList arraySize;
-    int rptr=parser->ptr;
-    int rline=parser->line;
     ReturnType rtype;
-    token=nextToken(parser);
-    if(token.type==TOKEN_INT){
-        var.class=TYPE_INTEGER;
-    }else if(token.type==TOKEN_FLOAT_CLASS){
-        var.class=TYPE_FLOAT;
-    }else if(token.type==TOKEN_WORD){
-        bool isFound=false;
-        for(int i=2;i<parser->classList.count;i++){
-            if(strcmp(token.word,parser->classList.vals[i].name)==0){
-                var.class=i;
-                isFound=true;
-            }
-        }
-        if(!isFound){
-            parser->ptr=rptr;
-            parser->line=rline;
-            return false;  
-        }
-    }else{
-        parser->ptr=rptr;
-        parser->line=rline;
+    if(!getClass(parser,&var.class)){
         return false;
     }
     var.vtype=isPart?VAR_PART:VAR_GLOBAL;
@@ -690,24 +691,21 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
     ReturnType rtype;
     Variable var;
     VariableList  varList;
-    int rptr,rline;
+    ORI_DEF();
     HandleType ht;
     DataType dt;
     char msg[100];
     int stackPtr=-1;
-    rptr=parser->ptr;
-    rline=parser->line;
+    ORI_ASI();
     LIST_INIT(varList,Variable);
     while(1){
         token=nextToken(parser);
         if(token.type!=TOKEN_WORD){
-            parser->ptr=rptr;
-            parser->line=rline;
+            ORI_RET();
             return false;
         }
         if(!getVarRef(parser,token.word,clist,&var,envirn)){
-            parser->ptr=rptr;
-            parser->line=rline;
+            ORI_RET();
             return false;
         }
         addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
@@ -747,8 +745,7 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
             ht=HANDLE_REM;
             break;
         }else{
-            parser->ptr=rptr;
-            parser->line=rline;
+            ORI_RET();
             return false;
         }
     }
@@ -831,14 +828,20 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
 }
 bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment envirn){
     bool isFound=false;
+    Token token;
+    ReturnType rtype;
+    ORI_DEF();
+    ORI_ASI();
     if(envirn.pvlist!=NULL){
         for(int i=0;i<envirn.pvlist->count;i++){
             if(strcmp(varName,envirn.pvlist->vals[i].name)==0){
                 *var=envirn.pvlist->vals[i];
                 if(var->vtype==VAR_PARAC){
-                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_STACK,REG_AX,envirn.pvlist->vals[i].ptr);
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,envirn.pvlist->vals[i].ptr);
+                    addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_REG,REG_AX,REG_SP);
                 }else{
                     addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,envirn.pvlist->vals[i].ptr);
+                    addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_REG,REG_AX,REG_SP);
                 }
                 isFound=true;
                 break;
@@ -857,11 +860,53 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment
     if(!isFound){
         return false;
     }
+    token=nextToken(parser);
+    if(token.type==TOKEN_BRACKET1){
+        if(var->vtype==VAR_PARAC){
+            addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
+            addCmd1(clist,HANDLE_PUSH,DATA_REG_STACK,REG_AX);
+        }else{
+            addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
+        }
+        for(int i=0;token.type==TOKEN_BRACKET1;i++){
+            if(var->dim<=0){
+                reportError(parser,"too many index in the array.");
+            }
+            if(!getExpression(parser,clist,&rtype,envirn)){
+                reportError(parser,"expected an expression in the index of array.");
+            }
+            token=nextToken(parser);
+            if(token.type!=TOKEN_BRACKET2){
+                reportError(parser,"expected \"]\" in the index of array.");
+            }
+            if(var->vtype==VAR_PARAC){
+                addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_BX,1);
+                addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_BX,i);
+                addCmd2(clist,HANDLE_MUL,DATA_REG,DATA_REG_STACK,REG_AX,REG_BX);
+            }else{
+                addCmd2(clist,HANDLE_MUL,DATA_REG,DATA_INTEGER,REG_AX,var->unitSize);
+            }
+            addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
+            addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_REG,REG_BX,REG_AX);
+            addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_BX);
+            *var=*(var->subVar);
+            ORI_ASI();
+            token=nextToken(parser);
+        }
+        addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
+        if(var->vtype==VAR_PARAC){
+            addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,1);
+        }
+    }else if(var->vtype==VAR_PARAC){
+        addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_STACK,REG_AX,REG_AX);
+    }
+    ORI_RET();
     return true;
 }
 void getBlock(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
-    int rptr,rline;
+    ORI_DEF();
+    char msg[100],temp[50];
     ReturnType rtype;
     VariableList pvlist;
     int rSize=envirn.partSize;/*用于计算本层局部变量大小*/
@@ -875,8 +920,7 @@ void getBlock(Parser*parser,CmdList*clist,Environment envirn){
     }
     envirn.pvlist=&pvlist;
     while(1){
-        rptr=parser->ptr;
-        rline=parser->line;
+        ORI_ASI();
         token=nextToken(parser);
         if(token.type==TOKEN_BRACE2){
             break;
@@ -886,17 +930,37 @@ void getBlock(Parser*parser,CmdList*clist,Environment envirn){
                 reportError(parser,"expected \";\" after \"break\".");
             }
             if(envirn.breakList==NULL){
-                reportWarning(parser,"unuseful break.");
+                reportError(parser,"unuseful break.");
             }else{
                 addCmd1(clist,HANDLE_JMP,DATA_INTEGER,1);
                 LIST_ADD((*envirn.breakList),int,clist->count-1);
             }
             continue;
+        }else if(token.type==TOKEN_RETURN){
+            if(envirn.func==NULL){
+                reportError(parser,"unuseful return.");
+            }
+            if(!getExpression(parser,clist,&rtype,envirn)){
+                if(envirn.func->class!=TYPE_INTEGER){
+                    getFuncName(parser,*envirn.func,temp);
+                    sprintf(msg,"expected a return type in function \"%s\".",temp);
+                    reportError(parser,msg);
+                }
+            }
+            token=nextToken(parser);
+            if(token.type!=TOKEN_SEMI){
+                reportError(parser,"expected \";\" after \"return\".");
+            }
+            if(envirn.partSize-rSize+envirn.func->partSize!=0){
+                addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,envirn.partSize-rSize+envirn.func->partSize);
+            }
+            addCmd1(clist,HANDLE_POP,DATA_REG,REG_BX);
+            addCmd1(clist,HANDLE_JMPS,DATA_REG,REG_BX);
+            continue;
         }else if(token.type==TOKEN_END){
             reportError(parser,"expected \"}\".");
         }
-        parser->ptr=rptr;
-        parser->line=rline;
+        ORI_RET();
         if(getVariableDef(parser,&pvlist,clist,true,&envirn.partSize,envirn)){
 
         }else if(getAssignment(parser,clist,envirn)){
@@ -916,7 +980,7 @@ void getBlock(Parser*parser,CmdList*clist,Environment envirn){
             reportError(parser,"unknown expression.");
         }
     }
-    if(envirn.partSize!=0){
+    if(envirn.partSize-rSize!=0){
         addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,envirn.partSize-rSize);
     }
     LIST_DELETE(pvlist);
@@ -969,13 +1033,11 @@ bool getConditionState(Parser*parser,CmdList*clist,Environment envirn){
         if(token.type!=TOKEN_PARE2){
             reportError(parser,"expected \")\" after \"if\".");
         }
-        //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
         addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
         addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
         jptr=clist->count-1;
         getBlock(parser,clist,envirn);
-        rptr=parser->ptr;
-        rline=parser->line;
+        ORI_ASI();
         token=nextToken(parser);
     }
     if(token.type==TOKEN_ELSE){
@@ -983,8 +1045,7 @@ bool getConditionState(Parser*parser,CmdList*clist,Environment envirn){
         LIST_ADD(ilist,int,clist->count-1);
         getBlock(parser,clist,envirn);
     }else{
-        parser->ptr=rptr;
-        parser->line=rline;
+        ORI_RET();
     }
     clist->vals[jptr].a=clist->count-jptr;
     for(int i=0;i<ilist.count;i++){
@@ -995,15 +1056,13 @@ bool getConditionState(Parser*parser,CmdList*clist,Environment envirn){
 }
 bool getWhileLoop(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
-    int rptr,rline;
+    ORI_DEF();
     int jptr,wptr;
     ReturnType rtype;
-    rptr=parser->ptr;
-    rline=parser->line;
+    ORI_ASI();
     token=nextToken(parser);
     if(token.type!=TOKEN_WHILE){
-        parser->ptr=rptr;
-        parser->line=rline;
+        ORI_RET();
         return false;
     }
     token=nextToken(parser);
@@ -1021,16 +1080,13 @@ bool getWhileLoop(Parser*parser,CmdList*clist,Environment envirn){
     intList breakList;
     LIST_INIT(breakList,int);
     envirn.breakList=&breakList;
-    //addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
     addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_CF,REG_AX);
     addCmd1(clist,HANDLE_JMPC,DATA_INTEGER,1);
     jptr=clist->count-1;
-    rptr=parser->ptr;
-    rline=parser->line;
+    ORI_ASI();
     token=nextToken(parser);
     if(token.type!=TOKEN_SEMI){
-        parser->line=rline;
-        parser->ptr=rptr;
+        ORI_RET();
         getBlock(parser,clist,envirn);
     }
     addCmd1(clist,HANDLE_JMP,DATA_INTEGER,-(clist->count-wptr));
@@ -1043,10 +1099,9 @@ bool getWhileLoop(Parser*parser,CmdList*clist,Environment envirn){
 }
 bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn){
     Token token;
-    int rline,rptr;
+    ORI_DEF();
     ReturnType rtype;
-    rptr=parser->ptr;
-    rline=parser->line;
+    ORI_ASI();
     token=nextToken(parser);
     if(token.type==TOKEN_PUTC){
         token=nextToken(parser);
@@ -1069,24 +1124,21 @@ bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn){
         }
         addCmd1(clist,HANDLE_PUTC,DATA_REG,REG_AX);
     }else{
-        parser->ptr=rptr;
-        parser->line=rline;
+        ORI_RET();
         return false;
     }
     return true;
 }
 bool getArray(Parser*parser,CmdList*clist,Variable var,Environment envirn){
     Token token;
-    int rptr,rline;
+    ORI_DEF();
     ReturnType rtype;
     char msg[100];
     int count=0;
-    rptr=parser->ptr;
-    rline=parser->line;
+    ORI_ASI();
     token=nextToken(parser);
     if(token.type!=TOKEN_BRACE1){
-        parser->line=rline;
-        parser->ptr=rptr;
+        ORI_RET();
         return false;
     }
     while(1){
@@ -1135,5 +1187,139 @@ bool getArray(Parser*parser,CmdList*clist,Variable var,Environment envirn){
     if(count<var.arrayCount){
         reportError(parser,"too few arrays.");
     }
+    return true;
+}
+bool getFunctionDef(Parser*parser,FunctionList*funcList){
+    Token token;
+    Function func;
+    Variable var;
+    Variable*var2;
+    Environment envirn;
+    bool isEmpty;
+    char msg[100],temp[50];
+    ORI_DEF();
+    ORI_ASI();
+    if(!getClass(parser,&func.class)){
+        return false;
+    }
+    token=nextToken(parser);
+    if(token.type!=TOKEN_WORD){
+        ORI_RET();
+        return false;
+    }
+    strcpy(func.name,token.word);
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE1){
+        ORI_RET();
+        return false;
+    }
+    func.partSize=0;
+    func.ptr=parser->funcClist.count;
+    LIST_INIT(func.parac,Variable);
+    if(!getClass(parser,&var.class)){
+        isEmpty=true;
+        token=nextToken(parser);
+        if(token.type!=TOKEN_PARE2){
+            sprintf(msg,"expect \")\" in function \"%s()\".",func.name);//parac...
+            reportError(parser,msg);
+        }
+    }else{
+        isEmpty=false;
+    }
+    var.vtype=VAR_PARAC;
+    while(!isEmpty){
+        token=nextToken(parser);
+        if(token.type!=TOKEN_WORD){
+            sprintf(msg,"expect a parac name in function \"%s\".",func.name);//parac...
+            reportError(parser,msg);
+        }
+        strcpy(var.name,token.word);
+        /*检查参数名称重复*/
+        for(int i=0;i<func.parac.count;i++){
+            if(strcmp(var.name,func.parac.vals[i].name)==0){
+                sprintf(msg,"the parac \"%s\" has already existed in function \"%s()\".",var.name,func.name);//parac...
+                reportError(parser,msg);
+            }
+        }
+        var.dim=0;
+        token=nextToken(parser);
+        var2=&var;
+        while(token.type==TOKEN_BRACKET1){
+            token=nextToken(parser);
+            if(token.type!=TOKEN_BRACKET2){
+                sprintf(msg,"expect \"]\" while declaring the parac \"%s\" in function \"%s\".",var.name,func.name);//parac...
+                reportError(parser,msg);
+            }
+            var2->class=var.class;
+            var2->ptr=func.partSize;
+            var2->vtype=VAR_PARAC;
+            var2->subVar=(Variable*)malloc(sizeof(Variable));
+            var2=var2->subVar;
+            var.dim+=1;
+            token=nextToken(parser);
+        }
+        var2=var.subVar;
+        for(int i=0;i<var.dim;i++){
+            var2->dim=var.dim-i-1;
+            var2=var2->subVar;
+        }
+        func.partSize+=var.dim+1;
+        LIST_ADD(func.parac,Variable,var);
+        if(token.type==TOKEN_COMMA){
+            getClass(parser,&var.class);
+            continue;
+        }else if(token.type==TOKEN_PARE2){
+            break;
+        }else{
+            sprintf(msg,"expect \",\" or \")\" in function \"%s\".",func.name);//parac...
+            reportError(parser,msg);
+        }
+    }
+    /*检查重复或者未定义函数*/
+    int ind;
+    Function func2;
+    bool isFound=false;
+    bool isSame;
+    for(int i=0;i<funcList->count;i++){
+        func2=funcList->vals[i];
+        if(strcmp(func.name,func2.name)==0 && func.parac.count==func2.parac.count){
+            isSame=true;
+            for(int i2=0;i2<func.parac.count;i2++){
+                if(func.parac.vals[i2].class!=func2.parac.vals[i2].class || func.parac.vals[i2].dim!=func2.parac.vals[i2].dim){
+                    isSame=false;
+                }
+            }
+            if(isSame && !func2.isDef){
+                isFound=true;
+                ind=i;
+                break;
+                
+            }else if(isSame && func2.isDef){
+                getFuncName(parser,func2,temp);
+                sprintf(msg,"the function \"%s\" has already existed.",temp);//parac...
+                reportError(parser,msg);
+            }
+        }
+    }
+    if(isFound){
+        funcList->vals[ind].isDef=true;
+        funcList->vals[ind].ptr=func.ptr;
+    }else{
+        func.isDef=true;
+        LIST_ADD((*funcList),Function,func);
+        ind=funcList->count-1;
+    }
+    envirn.pvlist=&funcList->vals[ind].parac;
+    envirn.breakList=NULL;
+    envirn.partSize=funcList->vals[ind].partSize;
+    envirn.func=&funcList->vals[ind];
+    getBlock(parser,&parser->funcClist,envirn);
+    if(funcList->vals[ind].partSize!=0){
+        addCmd1(&parser->funcClist,HANDLE_SFREE,DATA_INTEGER,funcList->vals[ind].partSize);
+    }
+    /*返回*/
+    addCmd2(&parser->funcClist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,0);
+    addCmd1(&parser->funcClist,HANDLE_POP,DATA_REG,REG_BX);
+    addCmd1(&parser->funcClist,HANDLE_JMPS,DATA_REG,REG_BX);
     return true;
 }

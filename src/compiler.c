@@ -3,7 +3,7 @@ void compile(Parser*parser){
     Token token;
     int rline,rptr;
     ReturnType rtype;
-    Environment envirn={NULL,NULL,0};
+    Environment envirn={NULL,NULL,0,NULL};
     addCmd2(&parser->exeClist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_SP,0);
     while(1){
         rline=parser->line;
@@ -15,6 +15,8 @@ void compile(Parser*parser){
         parser->ptr=rptr;
         parser->line=rline;
         if(getAssignment(parser,&parser->exeClist,envirn)){
+            
+        }else if(getFunctionDef(parser,&parser->funcList)){
             
         }else if(getVariableDef(parser,&parser->varlist,&parser->exeClist,false,NULL,envirn)){
 
@@ -43,6 +45,10 @@ void test(Parser*parser){
     printf("Clist:\n%s\n",text);
     vlistToString(text,parser->varlist);
     printf("varlist:\n%s\n",text);
+    flistToString(parser,text,parser->funcList);
+    printf("funclist:\n%s\n",text);
+    clistToString(text,parser->funcClist,true);
+    printf("funcClist:\n%s\n",text);
     VM vm;
     initVM(&vm,*parser);
     puts("Output:\n");

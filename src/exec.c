@@ -121,6 +121,9 @@ inline void eEqual(VM*vm,Cmd cmd){
 inline void eJmp(VM*vm,Cmd cmd){
     vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a)-1;
 }
+inline void eJmps(VM*vm,Cmd cmd){
+    vm->ptr=getCmdData(vm,cmd.ta,cmd.a);
+}
 inline void eJmpc(VM*vm,Cmd cmd){
     if(vm->reg[REG_CF]==0){
         vm->ptr=vm->ptr+getCmdData(vm,cmd.ta,cmd.a)-1;
@@ -300,6 +303,9 @@ void execute(VM*vm){
                 break;
             case HANDLE_JMPC:
                 eJmpc(vm,cmd);
+                break;
+            case HANDLE_JMPS:
+                eJmps(vm,cmd);
                 break;
             case HANDLE_PUSH:
                 ePush(vm,cmd);
