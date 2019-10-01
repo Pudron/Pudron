@@ -5,7 +5,6 @@
 #include<string.h>
 
 #define WORD_MAX 20
-#define NULL_PTR -1
 /*Regs*/
 #define REG_COUNT 7
 #define REG_NULL 0
@@ -18,6 +17,7 @@
 #define REG_SP 7/*局部变量储存栈指针,主要用于函数*/
 
 /*Types*/
+#define TYPE_NULL -1
 #define TYPE_INTEGER 0
 #define TYPE_FLOAT 1
 
@@ -217,14 +217,14 @@ typedef struct Varb{
     enum{
        VAR_GLOBAL,
        VAR_PART,
-       VAR_PARAC
+       VAR_ARGUMENT
     }vtype;
 }Variable;
 LIST_DECLARE(Variable)
 typedef struct Func{
     char name[WORD_MAX];
     int ptr;
-    VariableList parac;
+    VariableList argument;/*参数*/
     int class;
     int partSize;
     bool isDef;

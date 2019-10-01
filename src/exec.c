@@ -10,14 +10,33 @@ int getCmdData(VM*vm,DataType dt,int val){
     case DATA_INTEGER:
         return val;
     case DATA_POINTER:
+        if(val==TYPE_NULL){
+            return 0;
+        }
         return vm->data[val];
     case DATA_REG:
+        if(val==TYPE_NULL){
+            return 0;
+        }
         return vm->reg[val];
     case DATA_REG_POINTER:
+        if(val==TYPE_NULL){
+            return 0;
+        }else if(vm->reg[val]==TYPE_NULL){
+            return 0;
+        }
         return vm->data[vm->reg[val]];
     case DATA_STACK:
+        if(val==TYPE_NULL){
+            return 0;
+        }
         return vm->stack.vals[val];
     case DATA_REG_STACK:
+        if(val==TYPE_NULL){
+            return 0;
+        }else if(vm->reg[val]==TYPE_NULL){
+            return 0;
+        }
         return vm->stack.vals[vm->reg[val]];
     default:
         sprintf(msg,"unsupport data type:%d.",val);
@@ -31,14 +50,33 @@ int*getCmdPtr(VM*vm,DataType dt,int val){
     switch (dt)
     {
     case DATA_POINTER:
+        if(val==TYPE_NULL){
+            return &vm->null;
+        }
         return &vm->data[val];
     case DATA_REG:
+        if(val==TYPE_NULL){
+            return &vm->null;
+        }
         return &vm->reg[val];
     case DATA_REG_POINTER:
+        if(val==TYPE_NULL){
+            return &vm->null;
+        }else if(vm->reg[val]==TYPE_NULL){
+            return &vm->null;
+        }
         return &vm->data[vm->reg[val]];
     case DATA_STACK:
+        if(val==TYPE_NULL){
+            return &vm->null;
+        }
         return &vm->stack.vals[val];
     case DATA_REG_STACK:
+        if(val==TYPE_NULL){
+            return &vm->null;
+        }else if(vm->reg[val]==TYPE_NULL){
+            return &vm->null;
+        }
         return &vm->stack.vals[vm->reg[val]];
     default:
         sprintf(msg,"unsupport data type:%d.",val);

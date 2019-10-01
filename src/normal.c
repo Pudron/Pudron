@@ -297,14 +297,14 @@ void getFuncName(Parser*parser,Function func,char*text){
     Variable var;
     text[0]='\0';
     sprintf(text,"%s %s(",parser->classList.vals[func.class].name,func.name);
-    for(int i=0;i<func.parac.count;i++){
-        var=func.parac.vals[i];
+    for(int i=0;i<func.argument.count;i++){
+        var=func.argument.vals[i];
         sprintf(msg,"%s %s",parser->classList.vals[var.class].name,var.name);
         strcat(text,msg);
         for(int i2=0;i2<var.dim;i2++){
             strcat(text,"[]");
         }
-        if(i!=func.parac.count-1){
+        if(i!=func.argument.count-1){
             strcat(text,",");
         }
     }

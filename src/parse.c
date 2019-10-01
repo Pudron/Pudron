@@ -369,8 +369,8 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 operat.rtype.isStack=false;
             }
         }else if(token.type==TOKEN_NULL){
-            addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,NULL_PTR);
-            operat.rtype.class=TYPE_INTEGER;
+            addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,TYPE_NULL);
+            operat.rtype.class=TYPE_NULL;
         }else{
             ORI_RET();
             return false;
@@ -470,8 +470,10 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                     addCmd2(clist,operat.handle_postfix,dt,DATA_INTEGER,REG_AX,1);
                 }else if(operat.rtype.class==TYPE_FLOAT){
                     addCmd2(clist,handleFloat(operat.handle_postfix),dt,DATA_INTEGER,REG_AX,1);
+                }else if(operat.rtype.class==TYPE_NULL){
+                    reportWarning(parser,"the null does not support postfix calculation.");
                 }else{
-                        reportError(parser,"unknown constant.");
+                    reportError(parser,"unknown constant.");
                 }
                 operat.handle_postfix=HANDLE_NOP;
             }
@@ -481,8 +483,12 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 operat.rtype.dim=0;
             }
             if(operat.handle_prefix!=HANDLE_NOP){
-                addCmd1(clist,operat.handle_prefix,DATA_REG,REG_AX);
-                operat.handle_prefix=HANDLE_NOP;
+                if(operat.rtype.class==TYPE_FLOAT || operat.rtype.class==TYPE_INTEGER){
+                    addCmd1(clist,operat.handle_prefix,DATA_REG,REG_AX);
+                    operat.handle_prefix=HANDLE_NOP;
+                }else{
+                    /*处理对象*/
+                }
             }
             while(olist.count>=1){
                 Operat opt=olist.vals[olist.count-1];
@@ -501,10 +507,12 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                 addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG,REG_BX,REG_AX);
                 addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
                 if(opt.handle_postfix==HANDLE_ADD || opt.handle_postfix==HANDLE_SUB){
-                    if(operat.rtype.class==TYPE_INTEGER){
+                    if(opt.rtype.class==TYPE_INTEGER){
                         addCmd2(clist,opt.handle_postfix,dt,DATA_INTEGER,REG_AX,1);
-                    }else if(operat.rtype.class==TYPE_FLOAT){
+                    }else if(opt.rtype.class==TYPE_FLOAT){
                         addCmd2(clist,handleFloat(opt.handle_postfix),dt,DATA_INTEGER,REG_AX,1);
+                    }else if(opt.rtype.class==TYPE_NULL){
+                        reportWarning(parser,"the null does not support postfix calculation.");
                     }else{
                         sprintf(msg,"the type \"%s\" does not support postfix calculation.",parser->classList.vals[operat.rtype.class].name);
                         reportWarning(parser,msg);
@@ -515,30 +523,35 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                     addCmd2(clist,HANDLE_MOV,DATA_REG,dt,REG_AX,REG_AX);
                 }
                 if(opt.handle_prefix!=HANDLE_NOP){
-                    addCmd1(clist,opt.handle_prefix,DATA_REG,REG_AX);
+                    if(opt.rtype.class==TYPE_FLOAT || opt.rtype.class==TYPE_INTEGER){
+                        addCmd1(clist,opt.handle_prefix,DATA_REG,REG_AX);
+                    }else{
+                        /*处理对象*/
+                    }
                 }
                 if(opt.rtype.class==TYPE_FLOAT){
-                    if(operat.rtype.class!=TYPE_FLOAT && operat.rtype.class!=TYPE_INTEGER){
+                    if(operat.rtype.class!=TYPE_FLOAT && operat.rtype.class!=TYPE_INTEGER && operat.rtype.class!=TYPE_NULL){
                         sprintf(msg,"can not cover type \"%s\" to \"%s\".",parser->classList.vals[TYPE_FLOAT].name,parser->classList.vals[operat.rtype.class].name);
                         reportError(parser,msg);
                     }
-                    opt.handle_infix=handleFloat(opt.handle_infix);
+                    addCmd2(clist,handleFloat(opt.handle_infix),DATA_REG,DATA_REG,REG_AX,REG_BX);
                 }else if(opt.rtype.class==TYPE_INTEGER){
                     if(operat.rtype.class==TYPE_FLOAT){
                         opt.handle_infix=handleFloat(opt.handle_infix);
-                    }else if(operat.rtype.class!=TYPE_INTEGER){
+                    }else if(operat.rtype.class!=TYPE_INTEGER && operat.rtype.class!=TYPE_NULL){
                         sprintf(msg,"can not cover type \"%s\" to \"%s\".",parser->classList.vals[TYPE_INTEGER].name,parser->classList.vals[operat.rtype.class].name);
                         reportError(parser,msg);
                     }
+                    addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                }else{
+                    /*处理对象*/
                 }
-                addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
                 operat.rtype.class=opt.rtype.class;
                 LIST_SUB(olist,Operat);
             }
         }
         if(isEnd){
-            rtype->class=operat.rtype.class;
-            rtype->isVar=operat.rtype.isVar;
+            *rtype=operat.rtype;
             break;
         }
         addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
@@ -656,12 +669,25 @@ bool getVariableDef(Parser*parser,VariableList*vlist,CmdList*clist,bool isPart,i
                     addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_AX,REG_AX);
                     if(isPart){
                         addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
-                    }
-                    else{
+                    }else{
                         addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_REG,var.ptr,REG_AX);
                     }
+                }else if(rtype.class==TYPE_NULL){
+                    if(var.class==TYPE_INTEGER || var.class==TYPE_FLOAT){
+                        if(isPart){
+                            addCmd1(clist,HANDLE_PUSH,DATA_INTEGER,0);
+                        }else{
+                            addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_INTEGER,var.ptr,0);
+                        }
+                    }else{
+                        if(isPart){
+                            addCmd1(clist,HANDLE_PUSH,DATA_INTEGER,TYPE_NULL);
+                        }else{
+                            addCmd2(clist,HANDLE_MOV,DATA_POINTER,DATA_INTEGER,var.ptr,TYPE_NULL);
+                        }
+                    }
                 }else if(var.class!=rtype.class){
-                    sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rtype.class].name);
+                    sprintf(msg,"incompatible types when initializing to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rtype.class].name);
                     reportError(parser,msg);
                 }else{
                     /*对象赋值，有待改进 */
@@ -773,6 +799,12 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
             }else if(var.class==TYPE_INTEGER && rtype.class==TYPE_FLOAT){
                 addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_BX,REG_BX);
                 addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
+            }else if((var.class==TYPE_FLOAT || var.class==TYPE_INTEGER) && rtype.class==TYPE_NULL){
+                addCmd2(clist,ht,dt,DATA_INTEGER,REG_AX,0);
+            }else if(rtype.class==TYPE_NULL){
+                if(ht==HANDLE_MOV){
+                    addCmd2(clist,HANDLE_MOV,dt,DATA_INTEGER,REG_AX,-1);
+                }
             }else if(var.class!=rtype.class){
                 sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rtype.class].name);
                 reportError(parser,msg);
@@ -803,6 +835,12 @@ bool getAssignment(Parser*parser,CmdList*clist,Environment envirn){
                     }else if(var.class==TYPE_INTEGER && rtype.class==TYPE_FLOAT){
                         addCmd2(clist,HANDLE_FTOI,DATA_REG,DATA_REG,REG_BX,REG_BX);
                         addCmd2(clist,ht,dt,DATA_REG,REG_AX,REG_BX);
+                    }else if((var.class==TYPE_FLOAT || var.class==TYPE_INTEGER) && rtype.class==TYPE_NULL){
+                        addCmd2(clist,ht,dt,DATA_INTEGER,REG_AX,0);
+                    }else if(rtype.class==TYPE_NULL){
+                        if(ht==HANDLE_MOV){
+                            addCmd2(clist,HANDLE_MOV,dt,DATA_INTEGER,REG_AX,-1);
+                        }
                     }else if(var.class!=rtype.class){
                         sprintf(msg,"incompatible types when assigning to type \"%s\" from type \"%s\".",parser->classList.vals[var.class].name,parser->classList.vals[rtype.class].name);
                         reportError(parser,msg);
@@ -836,7 +874,7 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment
         for(int i=0;i<envirn.pvlist->count;i++){
             if(strcmp(varName,envirn.pvlist->vals[i].name)==0){
                 *var=envirn.pvlist->vals[i];
-                if(var->vtype==VAR_PARAC){
+                if(var->vtype==VAR_ARGUMENT){
                     addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,envirn.pvlist->vals[i].ptr);
                     addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_REG,REG_AX,REG_SP);
                 }else{
@@ -862,7 +900,7 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment
     }
     token=nextToken(parser);
     if(token.type==TOKEN_BRACKET1){
-        if(var->vtype==VAR_PARAC){
+        if(var->vtype==VAR_ARGUMENT){
             addCmd1(clist,HANDLE_PUSH,DATA_REG,REG_AX);
             addCmd1(clist,HANDLE_PUSH,DATA_REG_STACK,REG_AX);
         }else{
@@ -879,7 +917,7 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment
             if(token.type!=TOKEN_BRACKET2){
                 reportError(parser,"expected \"]\" in the index of array.");
             }
-            if(var->vtype==VAR_PARAC){
+            if(var->vtype==VAR_ARGUMENT){
                 addCmd2(clist,HANDLE_POPT,DATA_REG,DATA_INTEGER,REG_BX,1);
                 addCmd2(clist,HANDLE_ADD,DATA_REG,DATA_INTEGER,REG_BX,i);
                 addCmd2(clist,HANDLE_MUL,DATA_REG,DATA_REG_STACK,REG_AX,REG_BX);
@@ -894,10 +932,10 @@ bool getVarRef(Parser*parser,char*varName,CmdList*clist,Variable*var,Environment
             token=nextToken(parser);
         }
         addCmd1(clist,HANDLE_POP,DATA_REG,REG_AX);
-        if(var->vtype==VAR_PARAC){
+        if(var->vtype==VAR_ARGUMENT){
             addCmd1(clist,HANDLE_SFREE,DATA_INTEGER,1);
         }
-    }else if(var->vtype==VAR_PARAC){
+    }else if(var->vtype==VAR_ARGUMENT){
         addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_REG_STACK,REG_AX,REG_AX);
     }
     ORI_RET();
@@ -1215,29 +1253,29 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
     }
     func.partSize=0;
     func.ptr=parser->funcClist.count;
-    LIST_INIT(func.parac,Variable);
+    LIST_INIT(func.argument,Variable);
     if(!getClass(parser,&var.class)){
         isEmpty=true;
         token=nextToken(parser);
         if(token.type!=TOKEN_PARE2){
-            sprintf(msg,"expect \")\" in function \"%s()\".",func.name);//parac...
+            sprintf(msg,"expect \")\" in function \"%s()\".",func.name);
             reportError(parser,msg);
         }
     }else{
         isEmpty=false;
     }
-    var.vtype=VAR_PARAC;
+    var.vtype=VAR_ARGUMENT;
     while(!isEmpty){
         token=nextToken(parser);
         if(token.type!=TOKEN_WORD){
-            sprintf(msg,"expect a parac name in function \"%s\".",func.name);//parac...
+            sprintf(msg,"expect a argument name in function \"%s\".",func.name);
             reportError(parser,msg);
         }
         strcpy(var.name,token.word);
         /*检查参数名称重复*/
-        for(int i=0;i<func.parac.count;i++){
-            if(strcmp(var.name,func.parac.vals[i].name)==0){
-                sprintf(msg,"the parac \"%s\" has already existed in function \"%s()\".",var.name,func.name);//parac...
+        for(int i=0;i<func.argument.count;i++){
+            if(strcmp(var.name,func.argument.vals[i].name)==0){
+                sprintf(msg,"the argument \"%s\" has already existed in function \"%s()\".",var.name,func.name);
                 reportError(parser,msg);
             }
         }
@@ -1247,12 +1285,12 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
         while(token.type==TOKEN_BRACKET1){
             token=nextToken(parser);
             if(token.type!=TOKEN_BRACKET2){
-                sprintf(msg,"expect \"]\" while declaring the parac \"%s\" in function \"%s\".",var.name,func.name);//parac...
+                sprintf(msg,"expect \"]\" while declaring the argument \"%s\" in function \"%s\".",var.name,func.name);
                 reportError(parser,msg);
             }
             var2->class=var.class;
             var2->ptr=func.partSize;
-            var2->vtype=VAR_PARAC;
+            var2->vtype=VAR_ARGUMENT;
             var2->subVar=(Variable*)malloc(sizeof(Variable));
             var2=var2->subVar;
             var.dim+=1;
@@ -1264,14 +1302,14 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
             var2=var2->subVar;
         }
         func.partSize+=var.dim+1;
-        LIST_ADD(func.parac,Variable,var);
+        LIST_ADD(func.argument,Variable,var);
         if(token.type==TOKEN_COMMA){
             getClass(parser,&var.class);
             continue;
         }else if(token.type==TOKEN_PARE2){
             break;
         }else{
-            sprintf(msg,"expect \",\" or \")\" in function \"%s\".",func.name);//parac...
+            sprintf(msg,"expect \",\" or \")\" in function \"%s\".",func.name);
             reportError(parser,msg);
         }
     }
@@ -1282,10 +1320,10 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
     bool isSame;
     for(int i=0;i<funcList->count;i++){
         func2=funcList->vals[i];
-        if(strcmp(func.name,func2.name)==0 && func.parac.count==func2.parac.count){
+        if(strcmp(func.name,func2.name)==0 && func.argument.count==func2.argument.count){
             isSame=true;
-            for(int i2=0;i2<func.parac.count;i2++){
-                if(func.parac.vals[i2].class!=func2.parac.vals[i2].class || func.parac.vals[i2].dim!=func2.parac.vals[i2].dim){
+            for(int i2=0;i2<func.argument.count;i2++){
+                if(func.argument.vals[i2].class!=func2.argument.vals[i2].class || func.argument.vals[i2].dim!=func2.argument.vals[i2].dim){
                     isSame=false;
                 }
             }
@@ -1296,7 +1334,7 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
                 
             }else if(isSame && func2.isDef){
                 getFuncName(parser,func2,temp);
-                sprintf(msg,"the function \"%s\" has already existed.",temp);//parac...
+                sprintf(msg,"the function \"%s\" has already existed.",temp);
                 reportError(parser,msg);
             }
         }
@@ -1309,7 +1347,7 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
         LIST_ADD((*funcList),Function,func);
         ind=funcList->count-1;
     }
-    envirn.pvlist=&funcList->vals[ind].parac;
+    envirn.pvlist=&funcList->vals[ind].argument;
     envirn.breakList=NULL;
     envirn.partSize=funcList->vals[ind].partSize;
     envirn.func=&funcList->vals[ind];
