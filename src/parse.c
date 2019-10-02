@@ -534,7 +534,9 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                         sprintf(msg,"can not cover type \"%s\" to \"%s\".",parser->classList.vals[TYPE_FLOAT].name,parser->classList.vals[operat.rtype.class].name);
                         reportError(parser,msg);
                     }
-                    addCmd2(clist,handleFloat(opt.handle_infix),DATA_REG,DATA_REG,REG_AX,REG_BX);
+                    if(operat.rtype.class!=TYPE_NULL){
+                        addCmd2(clist,handleFloat(opt.handle_infix),DATA_REG,DATA_REG,REG_AX,REG_BX);
+                    }
                 }else if(opt.rtype.class==TYPE_INTEGER){
                     if(operat.rtype.class==TYPE_FLOAT){
                         opt.handle_infix=handleFloat(opt.handle_infix);
@@ -542,6 +544,11 @@ bool getExpression(Parser*parser,CmdList*clist,ReturnType*rtype,Environment envi
                         sprintf(msg,"can not cover type \"%s\" to \"%s\".",parser->classList.vals[TYPE_INTEGER].name,parser->classList.vals[operat.rtype.class].name);
                         reportError(parser,msg);
                     }
+                    if(operat.rtype.class!=TYPE_NULL){
+                        addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
+                    }
+                }else if(opt.rtype.class==TYPE_NULL && (operat.rtype.class==TYPE_INTEGER || operat.rtype.class==TYPE_FLOAT)){
+                    addCmd2(clist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_AX,0);
                     addCmd2(clist,opt.handle_infix,DATA_REG,DATA_REG,REG_AX,REG_BX);
                 }else{
                     /*处理对象*/
