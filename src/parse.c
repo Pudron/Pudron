@@ -1368,3 +1368,25 @@ bool getFunctionDef(Parser*parser,FunctionList*funcList){
     addCmd1(&parser->funcClist,HANDLE_JMPS,DATA_REG,REG_BX);
     return true;
 }
+bool getFuncRef(Parser*parser,char*funcName,CmdList*clist,Environment envirn){
+    Token=token;
+    Function func;
+    Variable var;
+    ReturnType rtype;
+    char msg[100];
+    ORI_DEF();
+    ORI_ASI();
+    token=nextToken(parser);
+    if(token.type!=TOKEN_PARE1){
+        ORI_RET();
+        return false;
+    }
+    LIST_INIT(func.argument,Variable);
+    while(1){
+        if(!getExpression(parser,clist,&rtype,envirn)){
+            sprintf(msg,"expected an expression as an argument in the reference of function \"%s()\".",funcName);
+            reportError(parser,msg);
+        }
+    }
+    return true;
+}

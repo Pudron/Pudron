@@ -12,5 +12,5 @@ $(OBJS):%.o:%.c
 
 .PHONY:clean
 clean:
-#	-rm objs/*
-	-del /Q objs
+	-rm objs/*
+#	-del /Q objs

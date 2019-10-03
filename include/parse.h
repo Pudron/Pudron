@@ -25,4 +25,5 @@ bool getInsideSub(Parser*parser,CmdList*clist,Environment envirn);
 bool getArray(Parser*parser,CmdList*clist,Variable var,Environment envirn);
 /*getFunctionDef():返回值存在AX中*/
 bool getFunctionDef(Parser*parser,FunctionList*funcList);
+bool getFuncRef(Parser*parser,char*funcName,CmdList*clist,Environment envirn);
 #endif
