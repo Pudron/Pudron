@@ -284,6 +284,9 @@ inline void eFtoi(VM*vm,Cmd cmd){
     int dat=b>>29;
     *a=(b&0x1FFFFFFF)/myPow(10,dat);
 }
+inline void eGptr(VM*vm,Cmd cmd){
+    *getCmdPtr(vm,cmd.ta,cmd.a)=vm->ptr;
+}
 inline void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->stack,int);
     vm->dataSize=parser.dataSize;
@@ -410,6 +413,9 @@ void execute(VM*vm){
                 break;
             case HANDLE_REM:
                 eRem(vm,cmd);
+                break;
+            case HANDLE_GPTR:
+                eGptr(vm,cmd);
                 break;
             default:
                 sprintf(msg,"unknown command (%d)",cmd.handle);

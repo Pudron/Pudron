@@ -3,9 +3,9 @@ vpath %.c src
 vpath %.o objs
 CC=gcc
 CFLAGS=-Iinclude -Wall -O2 -g
-OBJS=main.o normal.o pio.o parse.o compiler.o exec.o
-pdc:$(OBJS)
-	$(CC) $(addprefix objs/,$(OBJS)) -o pdc
+OBJS=main.o common.o pio.o parser.o
+pd:$(OBJS)
+	$(CC) $(addprefix objs/,$(OBJS)) -o pd
 
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o objs/$@
