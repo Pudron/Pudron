@@ -29,7 +29,8 @@ int main(int argc,char**argv){
         return -1;
     }
     //testToken(&parser);
-    getExpression(&parser,&parser.clist,0);
+    Env env={NULL,false};
+    getBlock(&parser,&parser.clist,env);
     char text[1000];
     clistToString(parser,parser.clist,text);
     printf("clist(size:%d):\n%s\n",parser.clist.count,text);
