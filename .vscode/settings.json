@@ -1,3 +1,5 @@
 {
-    "editor.fontSize": 24
+    "editor.fontSize": 24,
+    "terminal.integrated.cursorBlinking": true,
+    "terminal.integrated.cursorStyle": "underline"
 }
