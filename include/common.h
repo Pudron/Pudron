@@ -78,8 +78,8 @@ typedef enum{
     TOKEN_CAND,
     TOKEN_COR,
     TOKEN_ADD,
-    TOKEN_DOUBLE_ADD,/*++*/
-    TOKEN_DOUBLE_SUB,/*--*/
+    //TOKEN_DOUBLE_ADD,/*++*/
+    //TOKEN_DOUBLE_SUB,/*--*/
     TOKEN_SUB,
     TOKEN_MUL,
     TOKEN_DIV,

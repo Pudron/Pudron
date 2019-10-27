@@ -29,6 +29,7 @@ typedef struct{
 typedef struct{
     Class*classDef;
     bool isClassVarDef;
+    intList*breakList;
 }Env;
 typedef struct{
     intList clist;
@@ -41,4 +42,6 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env);
 Operat getExpression(Parser*parser,intList*clist,int level,Env env);
 bool getAssignment(Parser*parser,intList*clist,Env env);
 void getBlock(Parser*parser,intList*clist,Env env);
+void getIfState(Parser*parser,intList*clist,Env env);
+void getWhileState(Parser*parser,intList*clist,Env env);
 #endif

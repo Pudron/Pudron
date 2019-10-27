@@ -1,12 +1,12 @@
 #include"parser.h"
-const int SYMBOL_COUNT=37;
+const int SYMBOL_COUNT=35;
 const int KEYWORD_COUNT=12;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
     {TOKEN_LEFT_EQUAL,"<<=",3},
     {TOKEN_RIGHT_EQUAL,">>=",3},
-    {TOKEN_DOUBLE_ADD,"++",2},
-    {TOKEN_DOUBLE_SUB,"--",2},
+    //{TOKEN_DOUBLE_ADD,"++",2},
+    //{TOKEN_DOUBLE_SUB,"--",2},
     {TOKEN_GTHAN_EQUAL,">=",2},
     {TOKEN_LTHAN_EQUAL,"<=",2},
     {TOKEN_NOT_EQUAL,"!=",2},
@@ -48,7 +48,7 @@ const Keyword keywordList[]={
     {TOKEN_RETURN,"return","返回"},
     {TOKEN_IF,"if","如果"},
     {TOKEN_ELIF,"elif","若"},
-    {TOKEN_ELSE,"felse","否则"},
+    {TOKEN_ELSE,"else","否则"},
     {TOKEN_CAND,"and","且"},
     {TOKEN_COR,"or","或"},
     {TOKEN_NULL,"null","无"},
@@ -358,7 +358,7 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
             cmds.count=1;
             acmds.code[0]=OPCODE_STORE_INDEX;
             acmds.count=1;
-        }else if(token.type==TOKEN_DOUBLE_ADD){
+        }/*else if(token.type==TOKEN_DOUBLE_ADD){
             if(canAssign){
                 if(cmds.code[0]==OPCODE_LOAD_INDEX){
                     addCmd1(parser,clist,OPCODE_STACK_COPY,1);
@@ -384,8 +384,7 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
                 }
             }
             break;
-            /*test ++,then add --*/
-        }else{
+        }*/else{
             ORI_RET()
             break;
         }
@@ -583,6 +582,10 @@ void getBlock(Parser*parser,intList*clist,Env env){
             reportError(parser,"expected \"}\" after a block.",msgStart);
         }else if(token.type==TOKEN_BRACE2){
             break;
+        }else if(token.type==TOKEN_IF){
+            getIfState(parser,clist,env);
+        }else if(token.type==TOKEN_WHILE){
+            getWhileState(parser,clist,env);
         }else{
             ORI_RET()
             if(!getAssignment(parser,clist,env)){
@@ -595,4 +598,64 @@ void getBlock(Parser*parser,intList*clist,Env env){
         LIST_ADD(parser->partList,PartMsg,part)
     }
     addCmd(parser,clist,OPCODE_FREE_VALS);
+}
+void getIfState(Parser*parser,intList*clist,Env env){
+    int msgStart=parser->ptr;
+    Token token;
+    int lastJump;
+    ORI_DEF()
+    intList endList;
+    LIST_INIT(endList,int)
+    matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
+    getExpression(parser,clist,0,env);
+    matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
+    lastJump=clist->count-1;
+    getBlock(parser,clist,env);
+    ORI_ASI()
+    msgStart=parser->ptr;
+    token=nextToken(parser);
+    while(token.type==TOKEN_ELIF){
+        addCmd1(parser,clist,OPCODE_JUMP,0);
+        LIST_ADD(endList,int,clist->count-1)
+        clist->vals[lastJump]=clist->count;
+        matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
+        getExpression(parser,clist,0,env);
+        matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+        addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
+        getBlock(parser,clist,env);
+        lastJump=clist->count-1;
+        ORI_ASI()
+        msgStart=parser->ptr;
+        token=nextToken(parser);
+    }
+    if(token.type==TOKEN_ELSE){
+        addCmd1(parser,clist,OPCODE_JUMP,0);
+        LIST_ADD(endList,int,clist->count-1)
+        clist->vals[lastJump]=clist->count;
+        getBlock(parser,clist,env);
+    }else{
+        clist->vals[lastJump]=clist->count;
+        ORI_RET()
+    }
+    for(int i=0;i<endList.count;i++){
+        clist->vals[endList.vals[i]]=clist->count;
+    }
+}
+void getWhileState(Parser*parser,intList*clist,Env env){
+    Token token;
+    int jump,jret;
+    int msgStart=parser->ptr;
+    intList breakList;
+    LIST_INIT(breakList,int)
+    
+    matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
+    jret=clist->count;
+    getExpression(parser,clist,0,env);
+    matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
+    jump=clist->count-1;
+    getBlock(parser,clist,env);
+    addCmd1(parser,clist,OPCODE_JUMP,jret);
+    clist->vals[jump]=clist->count;
 }

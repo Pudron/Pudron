@@ -1,5 +1,7 @@
 {
     "editor.fontSize": 18,
     "terminal.integrated.cursorStyle": "underline",
-    "terminal.integrated.cursorBlinking": true
+    "terminal.integrated.cursorBlinking": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 3000
 }
