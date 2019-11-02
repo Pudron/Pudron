@@ -6,8 +6,7 @@ void initParser(Parser*parser){
     parser->line=1;
     parser->column=1;
     parser->curPart=0;
-    LIST_INIT(parser->plist,int)
-    LIST_INIT(parser->partList,PartMsg)
+    LIST_INIT(parser->partList,Part)
     LIST_INIT(parser->clist,int)
     LIST_INIT(parser->classList,Class)
     LIST_INIT(parser->symList,Symbol)
@@ -19,9 +18,10 @@ void clistToString(Parser parser,intList clist,char*text){
     char temp[50];
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
-        cmd=clist.vals[i];
-        sprintf(temp,"%d:",i);
+        cmd=clist.vals[i++];
+        sprintf(temp,"%d(%d:%d):",i,parser.partList.vals[cmd].line,parser.partList.vals[cmd].column);
         strcat(text,temp);
+        cmd=clist.vals[i];
         switch(cmd){
             case OPCODE_NOP:
                 strcpy(temp,"NOP");
@@ -138,8 +138,8 @@ void clistToString(Parser parser,intList clist,char*text){
                 isArg=true;
                 isSymbol=true;
                 break;
-            case OPCODE_POP_VAL:
-                strcpy(temp,"POP_VAL");
+            case OPCODE_POP_VAR:
+                strcpy(temp,"POP_VAR");
                 isArg=true;
                 isSymbol=false;
                 break;
@@ -158,13 +158,45 @@ void clistToString(Parser parser,intList clist,char*text){
                 isArg=true;
                 isSymbol=false;
                 break;
-            case OPCODE_SET_VALS:
-                strcpy(temp,"SET_VALS");
+            case OPCODE_SET_FIELD:
+                strcpy(temp,"SET_FIELD");
                 isArg=false;
                 break;
-            case OPCODE_FREE_VALS:
-                strcpy(temp,"FREE_VALS");
+            case OPCODE_FREE_FIELD:
+                strcpy(temp,"FREE_FIELD");
                 isArg=false;
+                break;
+            case OPCODE_SET_WHILE:
+                strcpy(temp,"SET_WHILE");
+                isArg=false;
+                break;
+            case OPCODE_FREE_WHILE:
+                strcpy(temp,"FREE_WHILE");
+                isArg=false;
+                break;
+            case OPCODE_CALL_FUNCTION:
+                strcpy(temp,"CALL_FUNCTION");
+                isArg=true;
+                isSymbol=false;
+                break;
+            case OPCODE_CALL_METHOD:
+                strcpy(temp,"CALL_METHOD");
+                isArg=true;
+                isSymbol=false;
+                break;
+            case OPCODE_RETURN:
+                strcpy(temp,"RETURN");
+                isArg=false;
+                break;
+            case OPCODE_ENABLE_FUNCTION:
+                strcpy(temp,"ENABLE_FUNCTION");
+                isArg=true;
+                isSymbol=false;
+                break;
+            case OPCODE_MAKE_OBJECT:
+                strcpy(temp,"MAKE_OBJECT");
+                isArg=true;
+                isSymbol=false;
                 break;
             default:
                 sprintf(temp,"UNKNOWN(%d)",cmd);
@@ -241,19 +273,18 @@ void reportWarning(Parser*parser,char*text,int start){
     reportMsg(parser,msg);
 }
 void addCmd(Parser*parser,intList*clist,int opcode){
+    LIST_ADD((*clist),int,parser->curPart);
     LIST_ADD((*clist),int,opcode);
-    LIST_ADD(parser->plist,int,parser->curPart)
 }
 void addCmd1(Parser*parser,intList*clist,int opcode,int dat){
+    LIST_ADD((*clist),int,parser->curPart);
     LIST_ADD((*clist),int,opcode);
     LIST_ADD((*clist),int,dat);
-    LIST_ADD(parser->plist,int,parser->curPart)
-    LIST_ADD(parser->plist,int,parser->curPart)
 }
 void addCmds(Parser*parser,intList*clist,Command cmds){
+    LIST_ADD((*clist),int,parser->curPart);
     for(int i=0;i<cmds.count;i++){
         LIST_ADD((*clist),int,cmds.code[i])
-        LIST_ADD(parser->plist,int,parser->curPart)
     }
 }
 int addSymbol(Parser*parser,Symbol symbol){

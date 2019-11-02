@@ -258,16 +258,17 @@ Token matchToken(Parser*parser,TokenType et,char*str,int start){
     return token;
 }
 /*Token end*/
-bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
+bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
     Token token;
     Symbol symbol;
-    Command cmds,acmds;
+    Assign assign;
     bool canAssign;
     char msgText[50];
     ORI_DEF()
     ORI_ASI()
     int msgStart=parser->ptr;
     token=nextToken(parser);
+    assign.ncmds.count=0;
     if(token.type==TOKEN_INTEGER){
         symbol.type=SYM_INT;
         symbol.num=token.num;
@@ -284,11 +285,11 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
         canAssign=false;
     }else if(token.type==TOKEN_WORD){
         bool isFound=false;
-        if(env.classDef!=NULL){
-            for(int i=0;i<env.classDef->var.count;i++){
-                if(strcmp(token.word,env.classDef->var.vals[i])==0){
+        if(env.classDef>=0){
+            for(int i=0;i<parser->classList.vals[env.classDef].var.count;i++){
+                if(strcmp(token.word,parser->classList.vals[env.classDef].var.vals[i])==0){
                     if(env.isClassVarDef){
-                        sprintf(msgText,"the attr \"%s\" in the class \"%s\" has already existed.",token.word,env.classDef->name);
+                        sprintf(msgText,"the attr \"%s\" in the class \"%s\" has already existed.",token.word,parser->classList.vals[env.classDef].name);
                         reportError(parser,msgText,msgStart);
                     }
                     symbol.type=SYM_STRING;
@@ -296,26 +297,33 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
                     strcpy(symbol.str,"this");
                     addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
                     isFound=true;
+                    assign.ncmds.count=0;
                     break;
                 }
             }
         }
         if(!isFound && env.isClassVarDef){
-            LIST_ADD(env.classDef->var,Name,token.word)
+            LIST_ADD(parser->classList.vals[env.classDef].var,Name,token.word)
             symbol.type=SYM_STRING;
             symbol.str=(char*)malloc(5);
             strcpy(symbol.str,"this");
             addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
             isFound=true;
+            assign.ncmds.count=0;
         }
         symbol.type=SYM_STRING;
         symbol.str=token.word;
-        cmds.code[0]=isFound?OPCODE_LOAD_ATTR:OPCODE_LOAD_VAL;
-        cmds.code[1]=addSymbol(parser,symbol);
-        cmds.count=2;
-        acmds.code[0]=isFound?OPCODE_STORE_ATTR:OPCODE_STORE_VAL;
-        acmds.code[1]=cmds.code[1];
-        acmds.count=2;
+        assign.gcmds.code[0]=isFound?OPCODE_LOAD_ATTR:OPCODE_LOAD_VAL;
+        assign.gcmds.code[1]=addSymbol(parser,symbol);
+        assign.gcmds.count=2;
+        assign.acmds.code[0]=isFound?OPCODE_STORE_ATTR:OPCODE_STORE_VAL;
+        assign.acmds.code[1]=assign.gcmds.code[1];
+        assign.acmds.count=2;
+        if(!isFound){
+            assign.ncmds.count=2;
+            assign.ncmds.code[0]=OPCODE_PUSH_VAL;
+            assign.ncmds.code[1]=assign.gcmds.code[1];
+        }
         canAssign=true;
     }else{
         ORI_RET()
@@ -329,7 +337,7 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
                 reportError(parser,"uninitialized attr",msgStart);
             }
             if(canAssign){
-                addCmds(parser,clist,cmds);
+                addCmds(parser,clist,assign.gcmds);
             }
             token=nextToken(parser);
             if(token.type!=TOKEN_WORD){
@@ -337,27 +345,29 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
             }
             symbol.type=SYM_STRING;
             symbol.str=token.word;
-            cmds.code[0]=OPCODE_LOAD_ATTR;
-            cmds.code[1]=addSymbol(parser,symbol);
-            cmds.count=2;
-            acmds.code[0]=OPCODE_STORE_ATTR;
-            acmds.code[1]=cmds.code[1];
-            acmds.count=2;
+            assign.gcmds.code[0]=OPCODE_LOAD_ATTR;
+            assign.gcmds.code[1]=addSymbol(parser,symbol);
+            assign.gcmds.count=2;
+            assign.acmds.code[0]=OPCODE_STORE_ATTR;
+            assign.acmds.code[1]=assign.gcmds.code[1];
+            assign.acmds.count=2;
+            assign.ncmds.count=0;
             canAssign=true;
         }else if(token.type==TOKEN_BRACKET1){
             if(env.isClassVarDef){
                 reportError(parser,"uninitialized attr",msgStart);
             }
             if(canAssign){
-                addCmds(parser,clist,cmds);
+                addCmds(parser,clist,assign.gcmds);
             }
             canAssign=true;
             getExpression(parser,clist,0,env);
             matchToken(parser,TOKEN_BRACKET2,"\"]\"",msgStart);
-            cmds.code[0]=OPCODE_LOAD_INDEX;
-            cmds.count=1;
-            acmds.code[0]=OPCODE_STORE_INDEX;
-            acmds.count=1;
+            assign.gcmds.code[0]=OPCODE_LOAD_INDEX;
+            assign.gcmds.count=1;
+            assign.acmds.code[0]=OPCODE_STORE_INDEX;
+            assign.acmds.count=1;
+            assign.ncmds.count=0;
         }/*else if(token.type==TOKEN_DOUBLE_ADD){
             if(canAssign){
                 if(cmds.code[0]==OPCODE_LOAD_INDEX){
@@ -389,16 +399,15 @@ bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env){
             break;
         }
     }
-    if(!canAssign && asCmd!=NULL){
+    if(!canAssign && asi!=NULL){
         reportError(parser,"assignment unsupported.",msgStart);
     }
-    if(canAssign && asCmd!=NULL){
-        *asCmd=acmds;
-        if(gcmds!=NULL){
-            *gcmds=cmds;
-        }
+    if(canAssign && asi!=NULL){
+        asi->gcmds=assign.gcmds;
+        asi->acmds=assign.acmds;
+        asi->ncmds=assign.ncmds;
     }else if(canAssign){
-        addCmds(parser,clist,cmds);
+        addCmds(parser,clist,assign.gcmds);
     }
     return true;
 }
@@ -409,7 +418,7 @@ Operat getExpression(Parser*parser,intList*clist,int level,Env env){
     ORI_DEF()
     bool isFound=false;
     env.isClassVarDef=false;
-    bool isVal=getValue(parser,clist,NULL,NULL,env);
+    bool isVal=getValue(parser,clist,NULL,env);
     int msgStart=parser->ptr;
     ORI_ASI()
     token=nextToken(parser);
@@ -459,7 +468,7 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
     LIST_INIT(assignList,Assign)
     while(1){
         LIST_INIT(assign.clist,int)
-        if(!getValue(parser,&assign.clist,&assign.gcmds,&assign.acmds,env)){
+        if(!getValue(parser,&assign.clist,&assign,env)){
             if(!isAssign){
                 ORI_RET()
                 LIST_DELETE(assign.clist)
@@ -477,15 +486,20 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
         isAssign=true;
     }
     if(token.type==TOKEN_SEMI){
-        /*全部创建或初始化变量*/
+        if(env.isClassVarDef){
+            return true;
+        }
+        /*全部强制创建变量*/
         for(int i=0;i<assignList.count;i++){
             assign=assignList.vals[i];
             symbol.type=SYM_INT;
             symbol.num=0;
             addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
-            LIST_CONNECT((*clist),assign.clist,int)
             LIST_DELETE(assign.clist)
-            addCmds(parser,clist,assign.acmds);
+            if(assign.ncmds.count<=0){
+                reportError(parser,"can not create the variable.",msgStart);
+            }
+            addCmds(parser,clist,assign.ncmds);
         }
         return true;
     }else if(token.type==TOKEN_EQUAL){
@@ -567,10 +581,14 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
 void getBlock(Parser*parser,intList*clist,Env env){
     Token token;
     int msgStart=parser->ptr;
-    PartMsg part;
+    Part part;
+    bool isGlobal=env.isGlobal;
+    env.isGlobal=false;
     ORI_DEF()
-    matchToken(parser,TOKEN_BRACE1,"\"{\"",msgStart);
-    addCmd(parser,clist,OPCODE_SET_VALS);
+    if(!isGlobal){
+        matchToken(parser,TOKEN_BRACE1,"\"{\"",msgStart);
+    }
+    addCmd(parser,clist,OPCODE_SET_FIELD);
     while(1){
         part.line=parser->line;
         part.column=parser->column;
@@ -579,36 +597,67 @@ void getBlock(Parser*parser,intList*clist,Env env){
         ORI_ASI()
         token=nextToken(parser);
         if(token.type==TOKEN_END){
-            reportError(parser,"expected \"}\" after a block.",msgStart);
-        }else if(token.type==TOKEN_BRACE2){
+            if(isGlobal){
+                break;
+            }else{
+                reportError(parser,"expected \"}\" after a block.",msgStart);
+            }
+        }else if(token.type==TOKEN_BRACE2 && !isGlobal){
             break;
+        }else if(token.type==TOKEN_BREAK){
+            if(env.breakList==NULL){
+                reportError(parser,"useless break.",msgStart);
+            }
+            addCmd1(parser,clist,OPCODE_JUMP,0);
+            LIST_ADD((*env.breakList),int,clist->count-1)
+        }else if(token.type==TOKEN_RETURN){
+            if(!env.isFuncDef){
+                reportError(parser,"useless return.",msgStart);
+            }
+            parser->curPart=parser->partList.count;
+            getExpression(parser,clist,0,env);
+            addCmd(parser,clist,OPCODE_RETURN);
+            matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
+            part.end=parser->ptr;
+            LIST_ADD(parser->partList,Part,part)
         }else if(token.type==TOKEN_IF){
             getIfState(parser,clist,env);
+        }else if(token.type==TOKEN_FUNC){
+            getFunction(parser,clist,env);
         }else if(token.type==TOKEN_WHILE){
             getWhileState(parser,clist,env);
+        }else if(token.type==TOKEN_CLASS){
+            getClass(parser,clist,env);
         }else{
             ORI_RET()
+            parser->curPart=parser->partList.count;
             if(!getAssignment(parser,clist,env)){
                 getExpression(parser,clist,0,env);
                 matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
+                addCmd1(parser,clist,OPCODE_POP_STACK,1);
             }
+            part.end=parser->ptr;
+            LIST_ADD(parser->partList,Part,part)
         }
-        part.end=parser->ptr;
-        parser->curPart=parser->partList.count;
-        LIST_ADD(parser->partList,PartMsg,part)
     }
-    addCmd(parser,clist,OPCODE_FREE_VALS);
+    addCmd(parser,clist,OPCODE_FREE_FIELD);
 }
 void getIfState(Parser*parser,intList*clist,Env env){
     int msgStart=parser->ptr;
     Token token;
     int lastJump;
+    Part part;
     ORI_DEF()
     intList endList;
     LIST_INIT(endList,int)
+    part.line=parser->line;
+    part.column=parser->column;
+    part.start=parser->ptr;
     matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
     getExpression(parser,clist,0,env);
     matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    parser->curPart=parser->partList.count;
+    LIST_ADD(parser->partList,Part,part)
     addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
     lastJump=clist->count-1;
     getBlock(parser,clist,env);
@@ -619,9 +668,14 @@ void getIfState(Parser*parser,intList*clist,Env env){
         addCmd1(parser,clist,OPCODE_JUMP,0);
         LIST_ADD(endList,int,clist->count-1)
         clist->vals[lastJump]=clist->count;
+        part.line=parser->line;
+        part.column=parser->column;
+        part.start=parser->ptr;
         matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
         getExpression(parser,clist,0,env);
         matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+        parser->curPart=parser->partList.count;
+        LIST_ADD(parser->partList,Part,part)
         addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
         getBlock(parser,clist,env);
         lastJump=clist->count-1;
@@ -643,19 +697,191 @@ void getIfState(Parser*parser,intList*clist,Env env){
     }
 }
 void getWhileState(Parser*parser,intList*clist,Env env){
-    Token token;
     int jump,jret;
     int msgStart=parser->ptr;
     intList breakList;
+    Part part;
+    int pt;
+    part.line=parser->line;
+    part.column=parser->column;
+    part.start=parser->ptr;
     LIST_INIT(breakList,int)
-    
+    env.breakList=&breakList;
+    addCmd(parser,clist,OPCODE_SET_WHILE);/*用前面的part*/
     matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
     jret=clist->count;
     getExpression(parser,clist,0,env);
     matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    part.end=parser->ptr;
+    pt=parser->partList.count;
+    parser->curPart=pt;
+    LIST_ADD(parser->partList,Part,part)
     addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
     jump=clist->count-1;
     getBlock(parser,clist,env);
+    parser->curPart=pt;
     addCmd1(parser,clist,OPCODE_JUMP,jret);
     clist->vals[jump]=clist->count;
+    for(int i=0;i<breakList.count;i++){
+        clist->vals[breakList.vals[i]]=clist->count;
+    }
+    addCmd(parser,clist,OPCODE_FREE_WHILE);
+    LIST_DELETE(breakList)
+}
+void getFunction(Parser*parser,intList*clist,Env env){
+    Func func;
+    Symbol symbol;
+    Part part;
+    part.start=parser->start;
+    part.line=parser->line;
+    part.column=parser->column;
+    int msgStart=parser->ptr;
+    Token token=matchToken(parser,TOKEN_WORD,"a function name",msgStart);
+    func.name=token.word;
+    LIST_INIT(func.clist,int)
+    matchToken(parser,TOKEN_PARE1,"\"(\" when defining a function",msgStart);
+    token=nextToken(parser);
+    LIST_INIT(func.args,Name)
+    while(token.type!=TOKEN_PARE2){
+        if(token.type!=TOKEN_WORD){
+            reportError(parser,"expected an argument when defining a function.",msgStart);
+        }
+        LIST_ADD(func.args,Name,token.word)
+        token=nextToken(parser);
+        if(token.type==TOKEN_COMMA){
+            token=nextToken(parser);
+        }
+    }
+    part.end=parser->ptr;
+    env.isFuncDef=true;
+    getBlock(parser,&func.clist,env);
+    parser->curPart=parser->partList.count;
+    LIST_ADD(parser->partList,Part,part)
+    symbol.type=SYM_INT;
+    symbol.num=0;
+    addCmd1(parser,&func.clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
+    addCmd(parser,&func.clist,OPCODE_RETURN);
+    addCmd1(parser,clist,OPCODE_ENABLE_FUNCTION,parser->funcList.count);
+    LIST_ADD(parser->funcList,Func,func)
+}
+void getClass(Parser*parser,intList*clist,Env env){
+    Func initFunc,method;
+    intList initClist;
+    Token token;
+    Class classd;
+    int class;
+    Symbol symbol;
+    Part part;
+    bool isInitDef=false;
+    ORI_DEF()
+    int msgStart=parser->ptr;
+    part.start=parser->ptr;
+    part.line=parser->line;
+    part.column=parser->column;
+    token=matchToken(parser,TOKEN_WORD,"class name",msgStart);
+    classd.name=token.word;
+    LIST_INIT(classd.methods,Func)
+    LIST_INIT(initClist,int)
+    initFunc.name=class.name;
+    LIST_ADD(parser->classList,Class,classd)
+    class=parser->classList.count-1;
+    matchToken(parser,TOKEN_BRACE1,"\"{\"",msgStart);
+    part.end=parser->ptr;
+    parser->curPart=parser->partList.count;
+    LIST_ADD(parser->partList,int,part)
+    LIST_INIT(initFunc.clist,int)
+    LIST_INIT(initFunc.args,Name)
+    addCmd1(parser,&initFunc.clist,OPCODE_MAKE_OBJECT,classList.count-1);
+    symbol.type=SYM_STRING;
+    symbol.str=(char*)malloc(5);
+    strcpy(symbol.str,"this");
+    addCmd1(parser,&initFunc.clist,OPCODE_PUSH_VAL,addSymbol(parser,symbol));
+    env.classDef=class;
+    env.isGlobal=false;
+    bool isInit=false;
+    while(1){
+        ORI_ASI()
+        msgStart=parser->ptr;
+        token=nextToken(parser);
+        if(token.type!=TOKEN_BRACE2){
+            break;
+        }else if(token.type==TOKEN_END){
+            reportError(parser,"expected \"}\" after defining a class.",msgStart);
+        }else if(token.type==TOKEN_FUNC){
+            part.start=parser->ptr;
+            part.line=parser->line;
+            part.column=parser->column;
+            token=matchToken(parser,TOKEN_WORD,"a method name",msgStart);
+            if(strcmp(token.word,classd.name)==0){
+                if(isInitDef){
+                    reportError(parser,"the initize function has already existed.",msgStart);
+                }
+                isInit=true;
+                isInitDef=true;
+            }else{
+                isInit=false;
+                method.name=token.name;
+                LIST_INIT(method.args,Name)
+                LIST_INIT(method.clist,int)
+            }
+            matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
+            token=nextToken(parser);
+            while(token.type!=TOKEN_PARE2){
+                if(token.type!=TOKEN_WORD){
+                    reportError(parser,"expected an argument when defining a function.",msgStart);
+                }
+                if(isInit){
+                    LIST_ADD(initFunc.args,Name,token.word)
+                }else{
+                    LIST_ADD(method.args,Name,token.word)
+                }
+                token=nextToken(parser);
+                if(token.type==TOKEN_COMMA){
+                    token=nextToken(parser);
+                }
+            }
+            part.end=parser->ptr;
+            int pt=parser->partList.count;
+            LIST_ADD(parser->partList,Part,part)
+            if(isInit){
+                getBlock(parser,initClist,env);
+                parser->curPart=pt;
+                symbol.type=SYM_STRING;
+                symbol.str=(char*)malloc(5);
+                strcpy(symbol.str,"this");
+                addCmd1(parser,&initClist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
+                addCmd(parser,&initClist,OPCODE_RETURN);
+            }else{
+                getBolck(parser,method,env);
+                parser->curPart=pt;
+                symbol.type=SYM_INT;
+                symbol.num=0;
+                addCmd1(parser,&method.clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
+                addCmd(parser,&method.clist,OPCODE_RETURN);
+                LIST_ADD(parser->classList.vals[class].methods,Func,method)
+            }
+        }else{
+            ORI_RET()
+            env.isClassVarDef=true;
+            parser->curPart=parser->partList.count;
+            if(!getAssignment(parser,&initFunc.clist,env)){
+                reportError(parser,"unsupported expression in class.",msgStart);
+            }
+            part.end=parser->ptr;
+            LIST_ADD(parser->partList,Part,part)
+            env.isClassVarDef=false;
+        }
+    }
+    if(isInitDef){
+        LIST_CONNECT(initFunc.clist,initClist,int)
+    }else{
+        symbol.type=SYM_STRING;
+        symbol.str=(char*)malloc(5);
+        strcpy(symbol.str,"this");
+        addCmd1(parser,&initFunc.clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
+        addCmd(parser,&initFunc.clist,OPCODE_RETURN);
+    }
+    LIST_DELETE(initClist)
+    addCmd1(parser,clist,OPCODE_ENABLE_FUNCTION,parser->funcList.count);
+    LIST_ADD(parser->funcList,Func,initFunc)
 }

@@ -27,21 +27,25 @@ typedef struct{
     int level;
 }Operat;
 typedef struct{
-    Class*classDef;
+    int classDef;/*-1为无*/
     bool isClassVarDef;
     intList*breakList;
+    bool isGlobal;
+    bool isFuncDef;
 }Env;
 typedef struct{
     intList clist;
-    Command acmds,gcmds;
+    Command acmds,gcmds,ncmds;
 }Assign;
 LIST_DECLARE(Assign)
 Token nextToken(Parser*parser);
 Token matchToken(Parser*parser,TokenType et,char*str,int start);
-bool getValue(Parser*parser,intList*clist,Command*gcmds,Command*asCmd,Env env);
+bool getValue(Parser*parser,intList*clist,Assign*asi,Env env);
 Operat getExpression(Parser*parser,intList*clist,int level,Env env);
 bool getAssignment(Parser*parser,intList*clist,Env env);
 void getBlock(Parser*parser,intList*clist,Env env);
 void getIfState(Parser*parser,intList*clist,Env env);
 void getWhileState(Parser*parser,intList*clist,Env env);
+void getFunction(Parser*parser,intList*clist,Env env);
+void getClass(Parser*parser,intList*clist,Env env);
 #endif

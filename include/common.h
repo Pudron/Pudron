@@ -146,12 +146,21 @@ typedef enum{
     OPCODE_STORE_INDEX,
     OPCODE_PUSH_VAL,
     OPCODE_STACK_COPY,
-    OPCODE_POP_VAL,/*参数为数量*/
+    OPCODE_POP_VAR,/*参数为数量*/
     OPCODE_POP_STACK,/*参数为数量*/
     OPCODE_JUMP,
     OPCODE_JUMP_IF_FALSE,
-    OPCODE_SET_VALS,
-    OPCODE_FREE_VALS
+    OPCODE_SET_FIELD,
+    OPCODE_FREE_FIELD,
+    OPCODE_SET_WHILE,
+    OPCODE_FREE_WHILE,
+
+    OPCODE_CALL_FUNCTION,
+    OPCODE_CALL_METHOD,
+    OPCODE_RETURN,
+    OPCODE_ENABLE_FUNCTION,
+
+    OPCODE_MAKE_OBJECT
 }Opcode;
 LIST_DECLARE(int)
 typedef char* Name;
@@ -174,8 +183,8 @@ typedef struct{
 }Msg;
 typedef struct{
     int line,column,start,end;
-}PartMsg;
-LIST_DECLARE(PartMsg)
+}Part;
+LIST_DECLARE(Part)
 typedef struct ValueDef{
     int class;
     union{
@@ -183,6 +192,10 @@ typedef struct ValueDef{
         float numf;
         char*str;
         struct ValueDef*var;
+    };
+    union{
+        int refID;
+        int refCount;
     };
 }Value;
 LIST_DECLARE(Value)
@@ -205,7 +218,14 @@ typedef struct{
 }Command;
 typedef struct{
     char*name;
+    NameList args;
+    intList clist;
+}Func;
+LIST_DECLARE(Func)
+typedef struct{
+    char*name;
     NameList var;
+    FuncList methods;
 }Class;
 LIST_DECLARE(Class)
 typedef struct{
@@ -214,10 +234,10 @@ typedef struct{
     int ptr;
     int line,column;
     int curPart;
-    PartMsgList partList;
-    intList plist;
+    PartList partList;
     intList clist;
     SymbolList symList;
+    FuncList funcList;
     ClassList classList;
 }Parser;
 void initParser(Parser*parser);

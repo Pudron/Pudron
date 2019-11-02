@@ -17,6 +17,13 @@ void testToken(Parser*parser){
         token=nextToken(parser);
     }
 }
+void testCompile(Parser*parser){
+    Env env={-1,false,NULL,true,false,false};
+    getBlock(parser,&parser->clist,env);
+    char text[1000];
+    clistToString(*parser,parser->clist,text);
+    printf("clist(size:%d):\n%s\n",parser->clist.count,text);
+}
 int main(int argc,char**argv){
     Parser parser;
     if(argc==1){
@@ -29,10 +36,6 @@ int main(int argc,char**argv){
         return -1;
     }
     //testToken(&parser);
-    Env env={NULL,false};
-    getBlock(&parser,&parser.clist,env);
-    char text[1000];
-    clistToString(parser,parser.clist,text);
-    printf("clist(size:%d):\n%s\n",parser.clist.count,text);
+    testCompile(&parser);
     return 0;
 }

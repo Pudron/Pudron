@@ -10,5 +10,7 @@ typedef struct{
 	Parser parser;
 	ValueList stack;
 	VarList var;
+	intList enableClass;
+	intList enableFunc;
 }VM;
 #endif
