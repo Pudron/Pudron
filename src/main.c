@@ -18,9 +18,13 @@ void testToken(Parser*parser){
     }
 }
 void testCompile(Parser*parser){
-    Env env={-1,false,NULL,true,false,false};
+    Env env={-1,false,NULL,true,false};
     getBlock(parser,&parser->clist,env);
     char text[1000];
+    classToString(*parser,text);
+    printf("%s",text);
+    funcToString(*parser,parser->funcList,text);
+    printf("%s",text);
     clistToString(*parser,parser->clist,text);
     printf("clist(size:%d):\n%s\n",parser->clist.count,text);
 }

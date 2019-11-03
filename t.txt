@@ -1,3 +1,11 @@
-func asd(){
+class a{
+    x,y,z;
+    asd=10;
+    func a(){
+        c=12345;
+    }
+    func ddd(c,x){
+        aasdd=2;
+    }
     
 }

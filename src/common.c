@@ -9,6 +9,7 @@ void initParser(Parser*parser){
     LIST_INIT(parser->partList,Part)
     LIST_INIT(parser->clist,int)
     LIST_INIT(parser->classList,Class)
+    LIST_INIT(parser->funcList,Func)
     LIST_INIT(parser->symList,Symbol)
 }
 void clistToString(Parser parser,intList clist,char*text){
@@ -228,6 +229,47 @@ void clistToString(Parser parser,intList clist,char*text){
             }
         }
         strcat(text,"\n");
+    }
+}
+void funcToString(Parser parser,FuncList funcList,char*text){
+    text[0]='\0';
+    Func func;
+    char temp[500];
+    for(int i=0;i<funcList.count;i++){
+        func=funcList.vals[i];
+        sprintf(temp,"Function %s(",func.name);
+        strcat(text,temp);
+        for(int i2=0;i2<func.args.count;i2++){
+            strcat(text,func.args.vals[i2]);
+            if(i2!=func.args.count-1){
+                strcat(text,",");
+            }
+        }
+        strcat(text,"):\n");
+        clistToString(parser,func.clist,temp);
+        strcat(text,temp);
+        strcat(text,"Function End\n\n");
+    }
+}
+void classToString(Parser parser,char*text){
+    text[0]='\0';
+    Class class;
+    char temp[500];
+    for(int i=0;i<parser.classList.count;i++){
+        class=parser.classList.vals[i];
+        sprintf(temp,"Class %s:\n",class.name);
+        strcat(text,temp);
+        for(int i2=0;i2<class.var.count;i2++){
+            strcat(text,class.var.vals[i2]);
+            if(i2!=class.var.count-1){
+                strcat(text,",");
+            }else{
+                strcat(text,";\n");
+            }
+        }
+        funcToString(parser,class.methods,temp);
+        strcat(text,temp);
+        strcat(text,"Class End\n\n");
     }
 }
 void reportMsg(Parser*parser,Msg msg){

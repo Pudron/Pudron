@@ -51,7 +51,7 @@ const Keyword keywordList[]={
     {TOKEN_ELSE,"else","否则"},
     {TOKEN_CAND,"and","且"},
     {TOKEN_COR,"or","或"},
-    {TOKEN_NULL,"null","无"},
+    {TOKEN_CLASS,"class","类"},
     {TOKEN_CAND,"and","且"},
     {TOKEN_COR,"or","或"}
 };
@@ -732,7 +732,7 @@ void getFunction(Parser*parser,intList*clist,Env env){
     Func func;
     Symbol symbol;
     Part part;
-    part.start=parser->start;
+    part.start=parser->ptr;
     part.line=parser->line;
     part.column=parser->column;
     int msgStart=parser->ptr;
@@ -742,7 +742,8 @@ void getFunction(Parser*parser,intList*clist,Env env){
     matchToken(parser,TOKEN_PARE1,"\"(\" when defining a function",msgStart);
     token=nextToken(parser);
     LIST_INIT(func.args,Name)
-    while(token.type!=TOKEN_PARE2){
+    bool needArg=false;
+    while(token.type!=TOKEN_PARE2 || needArg){
         if(token.type!=TOKEN_WORD){
             reportError(parser,"expected an argument when defining a function.",msgStart);
         }
@@ -750,6 +751,9 @@ void getFunction(Parser*parser,intList*clist,Env env){
         token=nextToken(parser);
         if(token.type==TOKEN_COMMA){
             token=nextToken(parser);
+            needArg=true;
+        }else{
+            needArg=false;
         }
     }
     part.end=parser->ptr;
@@ -781,17 +785,18 @@ void getClass(Parser*parser,intList*clist,Env env){
     token=matchToken(parser,TOKEN_WORD,"class name",msgStart);
     classd.name=token.word;
     LIST_INIT(classd.methods,Func)
+    LIST_INIT(classd.var,Name)
     LIST_INIT(initClist,int)
-    initFunc.name=class.name;
+    initFunc.name=classd.name;
     LIST_ADD(parser->classList,Class,classd)
     class=parser->classList.count-1;
     matchToken(parser,TOKEN_BRACE1,"\"{\"",msgStart);
     part.end=parser->ptr;
     parser->curPart=parser->partList.count;
-    LIST_ADD(parser->partList,int,part)
+    LIST_ADD(parser->partList,Part,part)
     LIST_INIT(initFunc.clist,int)
     LIST_INIT(initFunc.args,Name)
-    addCmd1(parser,&initFunc.clist,OPCODE_MAKE_OBJECT,classList.count-1);
+    addCmd1(parser,&initFunc.clist,OPCODE_MAKE_OBJECT,parser->classList.count-1);
     symbol.type=SYM_STRING;
     symbol.str=(char*)malloc(5);
     strcpy(symbol.str,"this");
@@ -803,7 +808,7 @@ void getClass(Parser*parser,intList*clist,Env env){
         ORI_ASI()
         msgStart=parser->ptr;
         token=nextToken(parser);
-        if(token.type!=TOKEN_BRACE2){
+        if(token.type==TOKEN_BRACE2){
             break;
         }else if(token.type==TOKEN_END){
             reportError(parser,"expected \"}\" after defining a class.",msgStart);
@@ -814,19 +819,25 @@ void getClass(Parser*parser,intList*clist,Env env){
             token=matchToken(parser,TOKEN_WORD,"a method name",msgStart);
             if(strcmp(token.word,classd.name)==0){
                 if(isInitDef){
-                    reportError(parser,"the initize function has already existed.",msgStart);
+                    reportError(parser,"the initialize function has already existed.",msgStart);
                 }
                 isInit=true;
                 isInitDef=true;
             }else{
+                for(int i=0;i<parser->classList.vals[class].methods.count;i++){
+                    if(strcmp(token.word,parser->classList.vals[class].methods.vals[i].name)==0){
+                        reportError(parser,"the method has already existed.",msgStart);
+                    }
+                }
                 isInit=false;
-                method.name=token.name;
+                method.name=token.word;
                 LIST_INIT(method.args,Name)
                 LIST_INIT(method.clist,int)
             }
             matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
             token=nextToken(parser);
-            while(token.type!=TOKEN_PARE2){
+            bool needArg=false;
+            while(token.type!=TOKEN_PARE2 || needArg){
                 if(token.type!=TOKEN_WORD){
                     reportError(parser,"expected an argument when defining a function.",msgStart);
                 }
@@ -838,13 +849,16 @@ void getClass(Parser*parser,intList*clist,Env env){
                 token=nextToken(parser);
                 if(token.type==TOKEN_COMMA){
                     token=nextToken(parser);
+                    needArg=true;
+                }else{
+                    needArg=false;
                 }
             }
             part.end=parser->ptr;
             int pt=parser->partList.count;
             LIST_ADD(parser->partList,Part,part)
             if(isInit){
-                getBlock(parser,initClist,env);
+                getBlock(parser,&initClist,env);
                 parser->curPart=pt;
                 symbol.type=SYM_STRING;
                 symbol.str=(char*)malloc(5);
@@ -852,7 +866,7 @@ void getClass(Parser*parser,intList*clist,Env env){
                 addCmd1(parser,&initClist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
                 addCmd(parser,&initClist,OPCODE_RETURN);
             }else{
-                getBolck(parser,method,env);
+                getBlock(parser,&method.clist,env);
                 parser->curPart=pt;
                 symbol.type=SYM_INT;
                 symbol.num=0;

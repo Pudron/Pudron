@@ -114,7 +114,7 @@ typedef enum{
     TOKEN_OR_EQUAL,
     TOKEN_LEFT_EQUAL,
     TOKEN_RIGHT_EQUAL,
-    TOKEN_NULL
+    TOKEN_CLASS
 }TokenType;
 typedef enum{
     OPCODE_NOP,
@@ -249,4 +249,6 @@ void addCmd1(Parser*parser,intList*clist,int opcode,int dat);
 void addCmds(Parser*parser,intList*clist,Command cmds);
 int addSymbol(Parser*parser,Symbol symbol);
 void clistToString(Parser parser,intList clist,char*text);
+void funcToString(Parser parser,FuncList funcList,char*text);
+void classToString(Parser parser,char*text);
 #endif
