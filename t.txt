@@ -1,11 +1,9 @@
-class a{
-    x,y,z;
-    asd=10;
-    func a(){
-        c=12345;
+class A{
+    x=123;
+    func initA(){
+        x+=1;
     }
-    func ddd(c,x){
-        aasdd=2;
+    +(a){
+        
     }
-    
 }

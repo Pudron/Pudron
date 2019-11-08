@@ -199,6 +199,21 @@ void clistToString(Parser parser,intList clist,char*text){
                 isArg=true;
                 isSymbol=false;
                 break;
+            case OPCODE_EXTEND_CLASS:
+                strcpy(temp,"EXTEND_CLASS");
+                isArg=true;
+                isSymbol=false;
+                break;
+            case OPCODE_LOAD_CLASS:
+                strcpy(temp,"LOAD_CLASS");
+                isArg=true;
+                isSymbol=false;
+                break;
+            case OPCODE_LOAD_FUNCTION:
+                strcpy(temp,"LOAD_FUNCTION");
+                isArg=true;
+                isSymbol=false;
+                break;
             default:
                 sprintf(temp,"UNKNOWN(%d)",cmd);
                 isArg=false;
@@ -260,6 +275,7 @@ void classToString(Parser parser,char*text){
         sprintf(temp,"Class %s:\n",class.name);
         strcat(text,temp);
         for(int i2=0;i2<class.var.count;i2++){
+            printf("asdssds%d:%s\n",class.var.count,class.var.vals[i2]);
             strcat(text,class.var.vals[i2]);
             if(i2!=class.var.count-1){
                 strcat(text,",");

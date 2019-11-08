@@ -56,7 +56,8 @@ typedef enum{
     true
 }bool;
 enum{
-    CLASS_POINTER,
+    CLASS_INDEX,
+    CLASS_FUNCTION,
     CLASS_INT,
     CLASS_FLOAT,
     CLASS_STRING
@@ -102,6 +103,7 @@ typedef enum{
     TOKEN_AND,/*&*/
     TOKEN_OR,/*|*/
     TOKEN_PERCENT,/*%*/
+    TOKEN_COLON,/*:*/
     TOKEN_LEFT,
     TOKEN_RIGHT,
     TOKEN_PUTC,
@@ -160,7 +162,11 @@ typedef enum{
     OPCODE_RETURN,
     OPCODE_ENABLE_FUNCTION,
 
-    OPCODE_MAKE_OBJECT
+    OPCODE_MAKE_OBJECT,
+    OPCODE_EXTEND_CLASS,
+
+    OPCODE_LOAD_CLASS,
+    OPCODE_LOAD_FUNCTION
 }Opcode;
 LIST_DECLARE(int)
 typedef char* Name;
@@ -191,8 +197,8 @@ typedef struct ValueDef{
         int num;
         float numf;
         char*str;
-        struct ValueDef*var;
     };
+    struct ValueDef*var;
     union{
         int refID;
         int refCount;
@@ -226,6 +232,7 @@ typedef struct{
     char*name;
     NameList var;
     FuncList methods;
+    Func addMethod,subMethod,mulMethod,divMethod,leftMethod,rightMethod,equalMethod;
 }Class;
 LIST_DECLARE(Class)
 typedef struct{
