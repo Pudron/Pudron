@@ -1,4 +1,32 @@
 #include"common.h"
+void initClass(Parser*parser){
+    Class class;
+    for(int i=0;i<OPT_METHOD_COUNT;i++){
+        class.optMethod[i].clist.count=0;
+    }
+    LIST_INIT(class.methods,Func)
+    LIST_INIT(class.var,Name)
+
+    class.name=(char*)malloc(6);
+    strcpy(class.name,"class");
+    LIST_ADD(parser->classList,Class,class)
+
+    class.name=(char*)malloc(9);
+    strcpy(class.name,"function");
+    LIST_ADD(parser->classList,Class,class)
+
+    class.name=(char*)malloc(4);
+    strcpy(class.name,"int");
+    LIST_ADD(parser->classList,Class,class)
+
+    class.name=(char*)malloc(6);
+    strcpy(class.name,"float");
+    LIST_ADD(parser->classList,Class,class)
+
+    class.name=(char*)malloc(7);
+    strcpy(class.name,"string");
+    LIST_ADD(parser->classList,Class,class)
+}
 void initParser(Parser*parser){
     parser->code=NULL;
     parser->fileName=NULL;
@@ -11,6 +39,7 @@ void initParser(Parser*parser){
     LIST_INIT(parser->classList,Class)
     LIST_INIT(parser->funcList,Func)
     LIST_INIT(parser->symList,Symbol)
+    initClass(parser);
 }
 void clistToString(Parser parser,intList clist,char*text){
     int cmd;

@@ -118,6 +118,7 @@ typedef enum{
     TOKEN_RIGHT_EQUAL,
     TOKEN_CLASS
 }TokenType;
+#define OPT_METHOD_COUNT 15
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -134,9 +135,10 @@ typedef enum{
     OPCODE_NOT_EQUAL,
     OPCODE_GTHAN_EQUAL,
     OPCODE_LTHAN_EQUAL,
+    OPCODE_REM,
+
     OPCODE_INVERT,
     OPCODE_NOT,
-    OPCODE_REM,
     OPCODE_SUBS,
     
     OPCODE_LOAD_CONST,
@@ -232,7 +234,7 @@ typedef struct{
     char*name;
     NameList var;
     FuncList methods;
-    Func addMethod,subMethod,mulMethod,divMethod,leftMethod,rightMethod,equalMethod;
+    Func optMethod[OPT_METHOD_COUNT];
 }Class;
 LIST_DECLARE(Class)
 typedef struct{

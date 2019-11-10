@@ -14,7 +14,8 @@ LIST_DECLARE(Field)
 typedef struct{
 	Parser parser;
 	ValueList stack;
-	VarList var;
+	VarList vars;
+	ValueList memList;
 	intList enableFunc;
 	FieldList fields;
 	intList retList;/*记录当前field,返回时逐个释放到此*/
