@@ -1,6 +1,5 @@
 #include"common.h"
-#include"pio.h"
-#include"parser.h"
+#include"compiler.h"
 void testToken(Parser*parser){
     Token token;
     token=nextToken(parser);
@@ -17,29 +16,11 @@ void testToken(Parser*parser){
         token=nextToken(parser);
     }
 }
-void testCompile(Parser*parser){
-    Env env={-1,false,NULL,true,false};
-    getBlock(parser,&parser->clist,env);
-    char text[1000];
-    classToString(*parser,text);
-    printf("%s",text);
-    funcToString(*parser,parser->funcList,text);
-    printf("%s",text);
-    clistToString(*parser,parser->clist,text);
-    printf("clist(size:%d):\n%s\n",parser->clist.count,text);
-}
 int main(int argc,char**argv){
-    Parser parser;
     if(argc==1){
-        puts("Welcome to use Pudron Program Language\nusage:pdc [file name]\n");
+        puts("Welcome to use Pudron Program Language\nusage:pd [file name]\n");
         return 0;
     }
-    initParser(&parser);
-    parser.fileName=argv[1];
-    if(!readTextFile(&parser.code,argv[1])){
-        return -1;
-    }
-    //testToken(&parser);
-    testCompile(&parser);
+    test(argv[1]);
     return 0;
 }

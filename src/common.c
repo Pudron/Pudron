@@ -1,260 +1,99 @@
 #include"common.h"
-void initClass(Parser*parser){
-    Class class;
-    for(int i=0;i<OPT_METHOD_COUNT;i++){
-        class.optMethod[i].clist.count=0;
-    }
-    LIST_INIT(class.methods,Func)
-    LIST_INIT(class.var,Name)
-
-    class.name=(char*)malloc(6);
-    strcpy(class.name,"class");
-    LIST_ADD(parser->classList,Class,class)
-
-    class.name=(char*)malloc(9);
-    strcpy(class.name,"function");
-    LIST_ADD(parser->classList,Class,class)
-
-    class.name=(char*)malloc(4);
-    strcpy(class.name,"int");
-    LIST_ADD(parser->classList,Class,class)
-
-    class.name=(char*)malloc(6);
-    strcpy(class.name,"float");
-    LIST_ADD(parser->classList,Class,class)
-
-    class.name=(char*)malloc(7);
-    strcpy(class.name,"string");
-    LIST_ADD(parser->classList,Class,class)
-}
-void initParser(Parser*parser){
+/*严格按照索引顺序排列*/
+const OpcodeMsg opcodeList[]={
+    {OPCODE_NOP,"NOP",false,false},
+    {OPCODE_ADD,"ADD",false,false},
+    {OPCODE_SUB,"SUB",false,false},
+    {OPCODE_MUL,"MUL",false,false},
+    {OPCODE_DIV,"DIV",false,false},
+    {OPCODE_AND,"AND",false,false},
+    {OPCODE_OR,"OR",false,false},
+    {OPCODE_CAND,"CAND",false,false},
+    {OPCODE_COR,"COR",false,false},
+    {OPCODE_LEFT,"LEFT",false,false},
+    {OPCODE_RIGHT,"RIGHT",false,false},
+    {OPCODE_EQUAL,"EQUAL",false,false},
+    {OPCODE_GTHAN,"GTHAN",false,false},
+    {OPCODE_LTHAN,"LTHAN",false,false},
+    {OPCODE_NOT_EQUAL,"NOT_EQUAL",false,false},
+    {OPCODE_GTHAN_EQUAL,"GTHAN_EQUAL",false,false},
+    {OPCODE_LTHAN_EQUAL,"LTHAN_EQUAL",false,false},
+    {OPCODE_REM,"REM",false,false},
+    {OPCODE_INVERT,"INVERT",false,false},
+    {OPCODE_NOT,"NOT",false,false},
+    {OPCODE_SUBS,"SUBS",false,false},
+    {OPCODE_LOAD_CONST,"LOAD_CONST",true,true},
+    {OPCODE_LOAD_VAL,"LOAD_VAL",true,true},
+    {OPCODE_LOAD_ATTR,"LOAD_ATTR",true,true},
+    {OPCODE_LOAD_INDEX,"LOAD_INDEX",false,false},
+    {OPCODE_STORE_VAL,"STORE_VAL",true,true},
+    {OPCODE_STORE_ATTR,"STORE_ATTR",true,true},
+    {OPCODE_STORE_INDEX,"STORE_INDEX",false,false},
+    {OPCODE_PUSH_VAL,"PUSH_VAL",true,true},
+    {OPCODE_STACK_COPY,"STACK_COPY",true,false},
+    {OPCODE_POP_VAR,"POP_VAR",true,false},
+    {OPCODE_POP_STACK,"POP_STACK",true,false},
+    {OPCODE_JUMP,"JUMP",true,false},
+    {OPCODE_JUMP_IF_FALSE,"JUMP_IF_FALSE",true,false},
+    {OPCODE_SET_FIELD,"SET_FIELD",false,false},
+    {OPCODE_FREE_FIELD,"FREE_FIELD",false,false},
+    {OPCODE_SET_LOOP,"SET_LOOP",false,false},
+    {OPCODE_FREE_LOOP,"FREE_LOOP",false,false},
+    {OPCODE_CALL_FUNCTION,"CALL_FUNCTION",true,false},
+    {OPCODE_CALL_METHOD,"CALL_METHOD",true,false},
+    {OPCODE_RETURN,"RETURN",false,false},
+    {OPCODE_ENABLE_FUNCTION,"ENABLE_FUNCTION",true,false},
+    {OPCODE_MAKE_OBJECT,"MAKE_OBJECT",true,false},
+    {OPCODE_EXTEND_CLASS,"EXTEND_CLASS",true,false},
+    {OPCODE_ENABLE_CLASS,"ENABLE_CLASS",true,false},
+    {OPCODE_SET_MODULE,"SET_MODULE",true,true},
+    {OPCODE_RETURN_MODULE,"RETURN_MODULE",false,false},
+    {OPCODE_PRINT_STACK,"PRINT_STACK",false,false},
+    {OPCODE_PRINT_VAR,"PRINT_VAR",false,false}
+};
+void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
     parser->fileName=NULL;
     parser->ptr=0;
     parser->line=1;
     parser->column=1;
     parser->curPart=0;
-    LIST_INIT(parser->partList,Part)
-    LIST_INIT(parser->clist,int)
-    LIST_INIT(parser->classList,Class)
-    LIST_INIT(parser->funcList,Func)
-    LIST_INIT(parser->symList,Symbol)
-    initClass(parser);
+    if(isRoot){
+        LIST_INIT(parser->partList,Part)
+        LIST_INIT(parser->clist,int)
+        LIST_INIT(parser->classList,Class)
+        LIST_INIT(parser->funcList,Func)
+        LIST_INIT(parser->symList,Symbol)
+        LIST_INIT(parser->moduleList,Module)
+    }
 }
-void clistToString(Parser parser,intList clist,char*text){
+void extend(Class*class,Class eclass){
+    LIST_CONNECT(class->var,eclass.var,Name,0)
+    class->varBase=eclass.varBase;
+    LIST_CONNECT(class->methods,eclass.methods,Func,1)
+    for(int i=0;i<OPT_METHOD_COUNT;i++){
+        class->optMethod[i]=eclass.optMethod[i];
+    }
+}
+void clistToString(Parser parser,intList clist,char*text,Module module){
     int cmd;
-    bool isArg,isSymbol;
     Symbol symbol;
     char temp[50];
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
         cmd=clist.vals[i++];
-        sprintf(temp,"%d(%d:%d):",i,parser.partList.vals[cmd].line,parser.partList.vals[cmd].column);
+        sprintf(temp,"%d(%d:%d):",i,parser.partList.vals[cmd+module.partBase].line,parser.partList.vals[cmd+module.partBase].column);
         strcat(text,temp);
         cmd=clist.vals[i];
-        switch(cmd){
-            case OPCODE_NOP:
-                strcpy(temp,"NOP");
-                isArg=false;
-                break;
-            case OPCODE_LOAD_CONST:
-                strcpy(temp,"LOAD_CONST");
-                isArg=true;
-                isSymbol=true;
-                break;
-            case OPCODE_ADD:
-                strcpy(temp,"ADD");
-                isArg=false;
-                break;
-            case OPCODE_SUB:
-                strcpy(temp,"SUB");
-                isArg=false;
-                break;
-            case OPCODE_MUL:
-                strcpy(temp,"MUL");
-                isArg=false;
-                break;
-            case OPCODE_DIV:
-                strcpy(temp,"DIV");
-                isArg=false;
-                break;
-            case OPCODE_AND:
-                strcpy(temp,"AND");
-                isArg=false;
-                break;
-            case OPCODE_OR:
-                strcpy(temp,"OR");
-                isArg=false;
-                break;
-            case OPCODE_LEFT:
-                strcpy(temp,"LEFT");
-                isArg=false;
-                break;
-            case OPCODE_RIGHT:
-                strcpy(temp,"RIGHT");
-                isArg=false;
-                break;
-            case OPCODE_GTHAN:
-                strcpy(temp,"GTHAN");
-                isArg=false;
-                break;
-            case OPCODE_LTHAN:
-                strcpy(temp,"LTHAN");
-                isArg=false;
-                break;
-            case OPCODE_NOT_EQUAL:
-                strcpy(temp,"NOT_EQUAL");
-                isArg=false;
-                break;
-            case OPCODE_GTHAN_EQUAL:
-                strcpy(temp,"GTHAN_EQUAL");
-                isArg=false;
-                break;
-            case OPCODE_LTHAN_EQUAL:
-                strcpy(temp,"LTHAN_EQUAL");
-                isArg=false;
-                break;
-            case OPCODE_INVERT:
-                strcpy(temp,"INVERT");
-                isArg=false;
-                break;
-            case OPCODE_NOT:
-                strcpy(temp,"NOT");
-                isArg=false;
-                break;
-            case OPCODE_REM:
-                strcpy(temp,"REM");
-                isArg=false;
-                break;
-            case OPCODE_SUBS:
-                strcpy(temp,"SUBS");
-                isArg=false;
-                break;
-            case OPCODE_LOAD_ATTR:
-                strcpy(temp,"LOAD_ATTR");
-                isArg=true;
-                isSymbol=true;
-                break;
-            case OPCODE_LOAD_INDEX:
-                strcpy(temp,"LOAD_INDEX");
-                isArg=false;
-                break;
-            case OPCODE_LOAD_VAL:
-                strcpy(temp,"LOAD_VAL");
-                isArg=true;
-                isSymbol=true;
-                break;
-            case OPCODE_STORE_VAL:
-                strcpy(temp,"STORE_VAL");
-                isArg=true;
-                isSymbol=true;
-                break;
-            case OPCODE_STORE_ATTR:
-                strcpy(temp,"STORE_ATTR");
-                isArg=true;
-                isSymbol=true;
-                break;
-            case OPCODE_STORE_INDEX:
-                strcpy(temp,"STORE_INDEX");
-                isArg=false;
-                break;
-            case OPCODE_STACK_COPY:
-                strcpy(temp,"STACK_COPY");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_PUSH_VAL:
-                strcpy(temp,"PUSH_VAL");
-                isArg=true;
-                isSymbol=true;
-                break;
-            case OPCODE_POP_VAR:
-                strcpy(temp,"POP_VAR");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_POP_STACK:
-                strcpy(temp,"POP_STACK");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_JUMP:
-                strcpy(temp,"JUMP");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_JUMP_IF_FALSE:
-                strcpy(temp,"JUMP_IF_FALSE");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_SET_FIELD:
-                strcpy(temp,"SET_FIELD");
-                isArg=false;
-                break;
-            case OPCODE_FREE_FIELD:
-                strcpy(temp,"FREE_FIELD");
-                isArg=false;
-                break;
-            case OPCODE_SET_WHILE:
-                strcpy(temp,"SET_WHILE");
-                isArg=false;
-                break;
-            case OPCODE_FREE_WHILE:
-                strcpy(temp,"FREE_WHILE");
-                isArg=false;
-                break;
-            case OPCODE_CALL_FUNCTION:
-                strcpy(temp,"CALL_FUNCTION");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_CALL_METHOD:
-                strcpy(temp,"CALL_METHOD");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_RETURN:
-                strcpy(temp,"RETURN");
-                isArg=false;
-                break;
-            case OPCODE_ENABLE_FUNCTION:
-                strcpy(temp,"ENABLE_FUNCTION");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_MAKE_OBJECT:
-                strcpy(temp,"MAKE_OBJECT");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_EXTEND_CLASS:
-                strcpy(temp,"EXTEND_CLASS");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_LOAD_CLASS:
-                strcpy(temp,"LOAD_CLASS");
-                isArg=true;
-                isSymbol=false;
-                break;
-            case OPCODE_LOAD_FUNCTION:
-                strcpy(temp,"LOAD_FUNCTION");
-                isArg=true;
-                isSymbol=false;
-                break;
-            default:
-                sprintf(temp,"UNKNOWN(%d)",cmd);
-                isArg=false;
-                break;
-        }
-        strcat(text,temp);
-        if(isArg){
+        OpcodeMsg opcode=opcodeList[cmd];
+        strcat(text,opcode.name);
+        strcat(text," ");
+        if(opcode.isArg){
             cmd=clist.vals[++i];
             sprintf(temp," %d",cmd);
             strcat(text,temp);
-            if(isSymbol){
-                symbol=parser.symList.vals[cmd];
+            if(opcode.isSymbol){
+                symbol=parser.symList.vals[cmd+module.symBase];
                 switch(symbol.type){
                     case SYM_INT:
                         sprintf(temp,"(%d)",symbol.num);
@@ -290,7 +129,7 @@ void funcToString(Parser parser,FuncList funcList,char*text){
             }
         }
         strcat(text,"):\n");
-        clistToString(parser,func.clist,temp);
+        clistToString(parser,func.clist,temp,parser.moduleList.vals[func.moduleID]);
         strcat(text,temp);
         strcat(text,"Function End\n\n");
     }
@@ -304,7 +143,6 @@ void classToString(Parser parser,char*text){
         sprintf(temp,"Class %s:\n",class.name);
         strcat(text,temp);
         for(int i2=0;i2<class.var.count;i2++){
-            printf("asdssds%d:%s\n",class.var.count,class.var.vals[i2]);
             strcat(text,class.var.vals[i2]);
             if(i2!=class.var.count-1){
                 strcat(text,",");
@@ -317,23 +155,32 @@ void classToString(Parser parser,char*text){
         strcat(text,"Class End\n\n");
     }
 }
-void reportMsg(Parser*parser,Msg msg){
+char*cutText(char*text,int start,int end){
+    char*str;
+    int len=end-start;
+    if(len<=0){
+        return NULL;
+    }
+    str=(char*)malloc(len+1);
+    for(int i=0;i<len;i++){
+        str[i]=text[i+start];
+    }
+    str[len]='\0';
+    return str;
+}
+void reportMsg(Msg msg){
     char*text,temp[10];
-    int len=msg.end-msg.start;
+    text=cutText(msg.code,msg.start,msg.end);
     if(msg.type==MSG_ERROR){
         strcpy(temp,"error");
     }else{
         strcpy(temp,"warning");
     }
-    if(len>0){
-        text=(char*)malloc(len+1);
-        for(int i=0;i<len;i++){
-            text[i]=parser->code[i+msg.start];
-        }
-        text[len]='\0';
-        printf("%s:%d:%d:  %s:\n     %s\n%s\n",parser->fileName,msg.line,msg.column,temp,text,msg.text);
+    if(text!=NULL){
+        printf("%s:%d:%d:  %s:\n     %s\n%s\n",msg.fileName,msg.line,msg.column,temp,text,msg.text);
+        free(text);
     }else{
-        printf("%s:%d:%d:  %s:%s\n",parser->fileName,msg.line,msg.column,temp,msg.text);
+        printf("%s:%d:%d:  %s:%s\n",msg.fileName,msg.line,msg.column,temp,msg.text);
     }
     if(msg.type==MSG_ERROR){
         exit(1);
@@ -341,23 +188,27 @@ void reportMsg(Parser*parser,Msg msg){
 }
 void reportError(Parser*parser,char*text,int start){
     Msg msg;
+    msg.code=parser->code;
+    msg.fileName=parser->fileName;
     msg.type=MSG_ERROR;
     msg.line=parser->line;
     msg.column=parser->column;
     strcpy(msg.text,text);
     msg.start=start;
     msg.end=parser->ptr;
-    reportMsg(parser,msg);
+    reportMsg(msg);
 }
 void reportWarning(Parser*parser,char*text,int start){
     Msg msg;
+    msg.code=parser->code;
+    msg.fileName=parser->fileName;
     msg.type=MSG_WARNING;
     msg.line=parser->line;
     msg.column=parser->column;
     strcpy(msg.text,text);
     msg.start=start;
     msg.end=parser->ptr;
-    reportMsg(parser,msg);
+    reportMsg(msg);
 }
 void addCmd(Parser*parser,intList*clist,int opcode){
     LIST_ADD((*clist),int,parser->curPart);

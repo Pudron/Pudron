@@ -1,9 +1,10 @@
 #ifndef _PD_COMPILER_H_
 #define _PD_COMPILER_H_
-#include"parse.h"
-#include"exec.h"
-void compile(Parser*parser);
+#include"parser.h"
+#include"vm.h"
+#include"pio.h"
+Parser compile(Parser*parent,char*fileName,bool isLib);
 #ifndef RELEASE
-void test(Parser*parser);
+void test(char*fileName);
 #endif
 #endif

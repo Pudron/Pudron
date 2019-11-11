@@ -1,6 +1,6 @@
 #include"parser.h"
 const int SYMBOL_COUNT=36;
-const int KEYWORD_COUNT=12;
+const int KEYWORD_COUNT=14;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
     {TOKEN_LEFT_EQUAL,"<<=",3},
@@ -54,7 +54,9 @@ const Keyword keywordList[]={
     {TOKEN_COR,"or","或"},
     {TOKEN_CLASS,"class","类"},
     {TOKEN_CAND,"and","且"},
-    {TOKEN_COR,"or","或"}
+    {TOKEN_COR,"or","或"},
+    {TOKEN_IMPORT,"import","引用"},
+    {TOKEN_INCLUDE,"include","包括"}
 };
 const int OPERAT_PREFIX_COUNT=3;
 const Operat operatPrefix[]={
@@ -62,12 +64,14 @@ const Operat operatPrefix[]={
     {TOKEN_INVERT,OPCODE_INVERT,180},
     {TOKEN_SUB,OPCODE_SUBS,100}
 };
-const int OPERAT_INFIX_COUNT=15;
+const int OPERAT_INFIX_COUNT=17;
 const Operat operatInfix[]={
     {TOKEN_ADD,OPCODE_ADD,100},
     {TOKEN_SUB,OPCODE_SUB,100},
     {TOKEN_MUL,OPCODE_MUL,120},
     {TOKEN_DIV,OPCODE_DIV,120},
+    {TOKEN_CAND,OPCODE_CAND,30},
+    {TOKEN_COR,OPCODE_COR,30},
     {TOKEN_AND,OPCODE_AND,150},
     {TOKEN_OR,OPCODE_OR,150},
     {TOKEN_EQUAL,OPCODE_EQUAL,50},
@@ -80,12 +84,15 @@ const Operat operatInfix[]={
     {TOKEN_GTHAN_EQUAL,OPCODE_GTHAN_EQUAL,50},
     {TOKEN_LTHAN_EQUAL,OPCODE_LTHAN_EQUAL,50}
 };
+extern OpcodeMsg opcodeList[];
 /*Token*/
 Token nextToken(Parser*parser){
     char word[1024];
     Msg msg;
     Token token;
     bool isFound;
+    msg.fileName=parser->fileName;
+    msg.code=parser->code;
     char c=parser->code[parser->ptr];
     while(c==' ' || c=='	' || c=='\n' || c=='#'){
         parser->column++;
@@ -108,7 +115,7 @@ Token nextToken(Parser*parser){
                         msg.end=msg.start+20;
                     }
                     strcpy(msg.text,"unterminated comment.");
-                    reportMsg(parser,msg);
+                    reportMsg(msg);
                 }
                 parser->column++;
                 if(c=='\n'){
@@ -164,7 +171,7 @@ Token nextToken(Parser*parser){
                 msg.type=MSG_ERROR;
                 msg.end=msg.start+99;
                 strcpy(msg.text,"too long word.");
-                reportMsg(parser,msg);
+                reportMsg(msg);
             }
             word[i]=c;
             parser->column++;
@@ -186,12 +193,12 @@ Token nextToken(Parser*parser){
             if(c=='\0'){
                 msg.end=parser->ptr;
                 strcpy(msg.text,"expected \' after the name.");
-                reportMsg(parser,msg);
+                reportMsg(msg);
             }
             if(i>=1023){
                 msg.end=parser->ptr;
                 strcpy(msg.text,"the name is too long.");
-                reportMsg(parser,msg);
+                reportMsg(msg);
             }
             if(c=='\n'){
                 parser->line++;
@@ -248,13 +255,15 @@ Token matchToken(Parser*parser,TokenType et,char*str,int start){
     Token token=nextToken(parser);
     Msg msg;
     if(token.type!=et){
+        msg.fileName=parser->fileName;
+        msg.code=parser->code;
         msg.type=MSG_ERROR;
         msg.line=parser->line;
         msg.column=parser->column;
         msg.start=start;
         msg.end=parser->ptr;
         sprintf(msg.text,"expected %s.",str);
-        reportMsg(parser,msg);
+        reportMsg(msg);
     }
     return token;
 }
@@ -264,7 +273,7 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
     Symbol symbol;
     Assign assign;
     bool canAssign=false;
-    char msgText[50];
+    char msgText[100];
     ORI_DEF()
     ORI_ASI()
     int msgStart=parser->ptr;
@@ -615,31 +624,43 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
                 reportError(parser,"expected \",\" or \";\" in assignment.",msgStart);
             }
         }
-        LIST_CONNECT((*clist),assign.clist,int)
-        LIST_DELETE(assign.clist);
+        int offset=0;
+        LIST_CONNECT((*clist),assign.clist,int,0)
         if(opcode!=OPCODE_NOP){
-            if(assign.acmds.code[0]==OPCODE_STORE_INDEX){
-                addCmd1(parser,clist,OPCODE_STACK_COPY,1);
-                addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+            if(assign.clist.count>0){
+                if(assign.acmds.code[0]==OPCODE_STORE_INDEX){
+                    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+                    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+                    offset=3;
+                }else{
+                    addCmd1(parser,clist,OPCODE_STACK_COPY,0);
+                    offset=2;
+                }
             }else{
-                addCmd1(parser,clist,OPCODE_STACK_COPY,0);
+                offset=1;
             }
             addCmds(parser,clist,assign.gcmds);
-            addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+            addCmd1(parser,clist,OPCODE_STACK_COPY,offset);
             addCmd(parser,clist,opcode);
-            if(assign.acmds.code[0]==OPCODE_STORE_INDEX){
-                addCmd1(parser,clist,OPCODE_STACK_COPY,2);
-                addCmd1(parser,clist,OPCODE_STACK_COPY,2);
-                addCmds(parser,clist,assign.acmds);
-                addCmd1(parser,clist,OPCODE_POP_STACK,3);
+            if(assign.clist.count>0){
+                if(assign.acmds.code[0]==OPCODE_STORE_INDEX){
+                    addCmd1(parser,clist,OPCODE_STACK_COPY,2);
+                    addCmd1(parser,clist,OPCODE_STACK_COPY,2);
+                    addCmds(parser,clist,assign.acmds);
+                    addCmd1(parser,clist,OPCODE_POP_STACK,3);
+                }else{
+                    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+                    addCmds(parser,clist,assign.acmds);
+                    addCmd1(parser,clist,OPCODE_POP_STACK,2);
+                }
             }else{
-                addCmd1(parser,clist,OPCODE_STACK_COPY,1);
                 addCmds(parser,clist,assign.acmds);
-                addCmd1(parser,clist,OPCODE_POP_STACK,2);
+                addCmd1(parser,clist,OPCODE_POP_STACK,1);
             }
         }else{
             addCmds(parser,clist,assign.acmds);
         }
+        LIST_DELETE(assign.clist);
     }
     if(token.type==TOKEN_COMMA){
         reportError(parser,"too many assignments.",msgStart);
@@ -647,17 +668,28 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
     LIST_DELETE(assignList)
     return true;
 }
+bool checkFile(Parser*parser,char*fileName){
+    for(int i=0;i<parser->moduleList.count;i++){
+        if(strcmp(fileName,parser->moduleList.vals[i].name)==0){
+            return true;
+        }
+    }
+    return false;
+}
 void getBlock(Parser*parser,intList*clist,Env env){
     Token token;
     int msgStart=parser->ptr;
     Part part;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
     bool isGlobal=env.isGlobal;
     env.isGlobal=false;
+    char temp[50];
     ORI_DEF()
     if(!isGlobal){
         matchToken(parser,TOKEN_BRACE1,"\"{\"",msgStart);
+        addCmd(parser,clist,OPCODE_SET_FIELD);
     }
-    addCmd(parser,clist,OPCODE_SET_FIELD);
     while(1){
         part.line=parser->line;
         part.column=parser->column;
@@ -697,6 +729,40 @@ void getBlock(Parser*parser,intList*clist,Env env){
             getWhileState(parser,clist,env);
         }else if(token.type==TOKEN_CLASS){
             getClass(parser,clist,env);
+        }else if(token.type==TOKEN_INCLUDE){
+            token=matchToken(parser,TOKEN_WORD,"code file name",msgStart);
+            char fileName[MAX_WORD_LENGTH];
+            strcpy(fileName,token.word);
+            if(!checkFile(parser,fileName)){
+                strcat(fileName,FILE_POSTFIX);
+                compile(parser,fileName,parser->isLib);
+            }
+            matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
+        }else if(token.type==TOKEN_RIGHT){
+            token=matchToken(parser,TOKEN_WORD,"a operation code",msgStart);
+            OpcodeMsg opcode=opcodeList[0];
+            bool isFound=false;
+            for(int i=0;i<OPCODE_COUNT;i++){
+                if(strcmp(token.word,opcodeList[i].name)==0){
+                    opcode=opcodeList[i];
+                    isFound=true;
+                    break;
+                }
+            }
+            if(!isFound){
+                sprintf(temp,"operation code \"%s\" not found.",token.word);
+                reportError(parser,temp,msgStart);
+            }
+            parser->curPart=parser->partList.count;
+            if(opcode.isArg){
+                token=matchToken(parser,TOKEN_INTEGER,"operation number",msgStart);
+                addCmd1(parser,clist,opcode.opcode,token.num);
+            }else{
+                addCmd(parser,clist,opcode.opcode);
+            }
+            matchToken(parser,TOKEN_SEMI,"\";\" after operation code",msgStart);
+            part.end=parser->ptr;
+            LIST_ADD(parser->partList,Part,part)
         }else{
             ORI_RET()
             parser->curPart=parser->partList.count;
@@ -711,13 +777,19 @@ void getBlock(Parser*parser,intList*clist,Env env){
             LIST_ADD(parser->partList,Part,part)
         }
     }
-    addCmd(parser,clist,OPCODE_FREE_FIELD);
+    if(!isGlobal){
+        addCmd(parser,clist,OPCODE_FREE_FIELD);
+    }else{
+        addCmd(parser,clist,OPCODE_NOP);
+    }
 }
 void getIfState(Parser*parser,intList*clist,Env env){
     int msgStart=parser->ptr;
     Token token;
     int lastJump;
     Part part;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
     ORI_DEF()
     intList endList;
     LIST_INIT(endList,int)
@@ -748,8 +820,8 @@ void getIfState(Parser*parser,intList*clist,Env env){
         parser->curPart=parser->partList.count;
         LIST_ADD(parser->partList,Part,part)
         addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
-        getBlock(parser,clist,env);
         lastJump=clist->count-1;
+        getBlock(parser,clist,env);
         ORI_ASI()
         msgStart=parser->ptr;
         token=nextToken(parser);
@@ -772,13 +844,15 @@ void getWhileState(Parser*parser,intList*clist,Env env){
     int msgStart=parser->ptr;
     intList breakList;
     Part part;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
     int pt;
     part.line=parser->line;
     part.column=parser->column;
     part.start=parser->ptr;
     LIST_INIT(breakList,int)
     env.breakList=&breakList;
-    addCmd(parser,clist,OPCODE_SET_WHILE);/*用前面的part*/
+    addCmd(parser,clist,OPCODE_SET_LOOP);/*用前面的part*/
     matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
     jret=clist->count;
     getExpression(parser,clist,0,env);
@@ -796,13 +870,15 @@ void getWhileState(Parser*parser,intList*clist,Env env){
     for(int i=0;i<breakList.count;i++){
         clist->vals[breakList.vals[i]]=clist->count;
     }
-    addCmd(parser,clist,OPCODE_FREE_WHILE);
+    addCmd(parser,clist,OPCODE_FREE_LOOP);
     LIST_DELETE(breakList)
 }
 void getFunction(Parser*parser,intList*clist,Env env){
     Func func;
     Symbol symbol;
     Part part;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
     part.start=parser->ptr;
     part.line=parser->line;
     part.column=parser->column;
@@ -829,6 +905,7 @@ void getFunction(Parser*parser,intList*clist,Env env){
     }
     part.end=parser->ptr;
     env.isFuncDef=true;
+    env.breakList=NULL;
     getBlock(parser,&func.clist,env);
     parser->curPart=parser->partList.count;
     LIST_ADD(parser->partList,Part,part)
@@ -836,12 +913,8 @@ void getFunction(Parser*parser,intList*clist,Env env){
     symbol.num=0;
     addCmd1(parser,&func.clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
     addCmd(parser,&func.clist,OPCODE_RETURN);
-    addCmd1(parser,clist,OPCODE_LOAD_FUNCTION,parser->funcList.count);
-    symbol.type=SYM_STRING;
-    symbol.str=(char*)malloc(strlen(func.name));
-    strcpy(symbol.str,func.name);
-    addCmd1(parser,clist,OPCODE_PUSH_VAL,addSymbol(parser,symbol));
     addCmd1(parser,clist,OPCODE_ENABLE_FUNCTION,parser->funcList.count);
+    func.moduleID=0;
     LIST_ADD(parser->funcList,Func,func)
 }
 void getClass(Parser*parser,intList*clist,Env env){
@@ -851,6 +924,8 @@ void getClass(Parser*parser,intList*clist,Env env){
     int class;
     Symbol symbol;
     Part part;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
     int tpt;
     Func initFunc;
     ORI_DEF()
@@ -860,11 +935,15 @@ void getClass(Parser*parser,intList*clist,Env env){
     part.column=parser->column;
     token=matchToken(parser,TOKEN_WORD,"class name",msgStart);
     classd.name=token.word;
-    for(int i=0;i<=OPT_METHOD_COUNT;i++){
+    char*optNmae=(char*)malloc(4);
+    strcpy(optName,"opt");
+    for(int i=0;i<OPT_METHOD_COUNT;i++){
         classd.optMethod[i].clist.count=0;
+        classd.optMethod[i].name=optNmae;
     }
     LIST_INIT(classd.methods,Func)
     LIST_INIT(classd.var,Name)
+    initFunc.moduleID=0;
     initFunc.name=(char*)malloc(strlen(classd.name)+5);
     sprintf(initFunc.name,"init%s",classd.name);
     LIST_INIT(initFunc.clist,int)
@@ -874,7 +953,7 @@ void getClass(Parser*parser,intList*clist,Env env){
         while(1){
             token=matchToken(parser,TOKEN_WORD,"a class to extend",msgStart);
             symbol.str=token.word;
-            addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
+            addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
             addCmd1(parser,clist,OPCODE_EXTEND_CLASS,parser->classList.count);
             token=nextToken(parser);
             if(token.type==TOKEN_BRACE1){
@@ -894,6 +973,7 @@ void getClass(Parser*parser,intList*clist,Env env){
     LIST_ADD(parser->partList,Part,part)
     env.classDef=class;
     env.isGlobal=false;
+    env.breakList=NULL;
     while(1){
         ORI_ASI()
         msgStart=parser->ptr;
@@ -940,6 +1020,7 @@ void getClass(Parser*parser,intList*clist,Env env){
             symbol.num=0;
             addCmd1(parser,&method.clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
             addCmd(parser,&method.clist,OPCODE_RETURN);
+            method.moduleID=0;
             LIST_ADD(parser->classList.vals[class].methods,Func,method)
         }else{
             bool isFound=false;
@@ -988,7 +1069,7 @@ void getClass(Parser*parser,intList*clist,Env env){
         if(strcmp(initFunc.name,classd.methods.vals[i].name)==0){
             isFound=true;
             initFunc.args=classd.methods.vals[i].args;
-            LIST_CONNECT(initFunc.clist,parser->classList.vals[class].methods.vals[i].clist,int)
+            LIST_CONNECT(initFunc.clist,parser->classList.vals[class].methods.vals[i].clist,int,0)
             LIST_DELETE(parser->classList.vals[class].methods.vals[i].clist)
             parser->classList.vals[class].methods.vals[i]=initFunc;
             break;
@@ -1013,14 +1094,10 @@ void getClass(Parser*parser,intList*clist,Env env){
         addCmd1(parser,&initFunc.clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
     }*/
     addCmd1(parser,&initFunc.clist,OPCODE_CALL_METHOD,0);
+    addCmd1(parser,&initFunc.clist,OPCODE_POP_STACK,1);
     addCmd(parser,&initFunc.clist,OPCODE_RETURN);
-    addCmd1(parser,clist,OPCODE_LOAD_CLASS,class);
-    symbol.type=SYM_STRING;
-    symbol.str=(char*)malloc(strlen(classd.name));
-    strcpy(symbol.str,classd.name);
-    addCmd1(parser,clist,OPCODE_PUSH_VAL,addSymbol(parser,symbol));
+    addCmd1(parser,clist,OPCODE_ENABLE_CLASS,class);
     addCmd1(parser,clist,OPCODE_ENABLE_FUNCTION,parser->funcList.count);
     initFunc.name=classd.name;
     LIST_ADD(parser->funcList,Func,initFunc)
-    #undef OPERATOR_METHOD
 }

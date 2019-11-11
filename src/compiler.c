@@ -1,61 +1,48 @@
 #include"compiler.h"
-void compile(Parser*parser){
-    Token token;
-    int rline,rptr;
-    ReturnType rtype;
-    Environment envirn={NULL,NULL,0,NULL};
-    addCmd2(&parser->exeClist,HANDLE_MOV,DATA_REG,DATA_INTEGER,REG_SP,0);
-    while(1){
-        rline=parser->line;
-        rptr=parser->ptr;
-        token=nextToken(parser);
-        if(token.type==TOKEN_END){
-            break;
-        }
-        parser->ptr=rptr;
-        parser->line=rline;
-        if(getAssignment(parser,&parser->exeClist,envirn)){
-            
-        }else if(getFunctionDef(parser,&parser->funcList)){
-            
-        }else if(getVariableDef(parser,&parser->varlist,&parser->exeClist,false,NULL,envirn)){
-
-        }else if(getConditionState(parser,&parser->exeClist,envirn)){
-
-        }else if(getWhileLoop(parser,&parser->exeClist,envirn)){
-
-        }else if(getInsideSub(parser,&parser->exeClist,envirn)){
-
-        }else if(getExpression(parser,&parser->exeClist,&rtype,envirn)){
-            token=nextToken(parser);
-            if(token.type!=TOKEN_SEMI){
-                reportError(parser,"expected \";\" after an expression");
-            }
-        }else{
-            reportError(parser,"unknown expression.");
-        }
+Parser compile(Parser*parent,char*fileName,bool isLib){
+    Parser parser;
+    initParser(&parser,(parent==NULL)?true:false);
+    if(!readTextFile(&parser.code,fileName)){
+        exit(-1);
     }
-    addCmd1(&parser->exeClist,HANDLE_NOP,DATA_INTEGER,0);
+    parser.fileName=fileName;
+    parser.isLib=isLib;
+    if(parent!=NULL){
+        parser.partList=parent->partList;
+        parser.clist=parent->clist;
+        parser.symList=parent->symList;
+        parser.funcList=parent->funcList;
+        parser.classList=parent->classList;
+        parser.moduleList=parent->moduleList;
+    }
+    Module module={fileName,0,0,0,3,0};//change 1 to 0
+    if(!isLib){
+        module.classBase=STD_CLASS_COUNT;
+    }
+    LIST_ADD(parser.moduleList,Module,module)
+    Env env={-1,false,NULL,true,false};
+    getBlock(&parser,&parser.clist,env);
+    if(parent!=NULL){
+        parent->partList=parser.partList;
+        parent->clist=parser.clist;
+        parent->symList=parser.symList;
+        parent->funcList=parser.funcList;
+        parent->classList=parser.classList;
+    }
+    return parser;
 }
 #ifndef RELEASE
-void test(Parser*parser){
-    compile(parser);
-    char text[1000];/*随时注意这里的大小*/
-    clistToString(text,parser->exeClist,true);
-    printf("Clist:\n%s\n",text);
-    vlistToString(text,parser->varlist);
-    printf("varlist:\n%s\n",text);
-    flistToString(parser,text,parser->funcList);
-    printf("funclist:\n%s\n",text);
-    clistToString(text,parser->funcClist,true);
-    printf("funcClist:\n%s\n",text);
+void test(char*fileName){
+    Parser parser=compile(NULL,fileName,true);
+    char text[1000];
+    classToString(parser,text);
+    printf("%s",text);
+    funcToString(parser,parser.funcList,text);
+    printf("%s",text);
+    clistToString(parser,parser.clist,text,parser.moduleList.vals[0]);
+    printf("clist(size:%d):\n%s\n",parser.clist.count,text);
     VM vm;
-    initVM(&vm,*parser);
-    puts("Output:\n");
-    execute(&vm);
-    printf("\ndataSize:%d\n",vm.dataSize);
-    dataToString(text,vm);
-    printf("data:\n%s\n",text);
-    puts("Test OK\n");
+    initVM(&vm,parser);
+    execute(&vm,vm.clist);
 }
 #endif

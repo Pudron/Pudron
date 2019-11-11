@@ -7,19 +7,39 @@ typedef struct{
 }Var;
 LIST_DECLARE(Var)
 typedef struct{
-	int FuncIndex;
+	int funcIndex;
 	int varIndex;
 }Field;
 LIST_DECLARE(Field)
 typedef struct{
-	Parser parser;
+	Value*var;
+    int varCount;
+    int varBase;
+	int refCount;
+}Ref;
+LIST_DECLARE(Ref)
+typedef struct{
+	PartList partList;
+    intList clist;
+    SymbolList symList;
+    FuncList funcList;
+    ClassList classList;
+	ModuleList moduleList;
+	
 	ValueList stack;
-	VarList vars;
-	ValueList memList;
+	VarList varList;
+	RefList refList;
 	intList enableFunc;
 	FieldList fields;
-	intList retList;/*记录当前field,返回时逐个释放到此*/
+	intList loopList;
+	intList retFieldList;/*记录当前field,返回时逐个释放到此*/
+	intList retLoopList;
+	Module curModule;
+	ModuleList mlist;
+	intList funcPartList;
+	int ptr;
 }VM;
 void initVM(VM*vm,Parser parser);
 void reportVMError(VM*vm,char*text,int curPart);
+void execute(VM*vm,intList clist);
 #endif

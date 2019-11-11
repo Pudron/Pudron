@@ -1,6 +1,7 @@
 #ifndef _PD_PARSER_H_
 #define _PD_PARSER_H_
 #include"common.h"
+#include"compiler.h"
 #define ORI_DEF() int rline,rcolumn,rptr;
 #define ORI_ASI() \
     rline=parser->line;\

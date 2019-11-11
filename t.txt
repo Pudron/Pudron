@@ -1,9 +1,7 @@
 class A{
-    x=123;
-    func initA(){
-        x+=1;
-    }
-    +(a){
-        
-    }
+    x=10;
 }
+a=A();
+b=a.x;
+>>PRINT_STACK;
+>>PRINT_VAR;

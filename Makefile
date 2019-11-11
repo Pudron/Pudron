@@ -3,7 +3,7 @@ vpath %.c src
 vpath %.o objs
 CC=gcc
 CFLAGS=-Iinclude -Wall -O2 -g
-OBJS=main.o common.o pio.o parser.o vm.o
+OBJS=main.o common.o pio.o parser.o vm.o compiler.o
 pd:$(OBJS)
 	$(CC) $(addprefix objs/,$(OBJS)) -o pd
 
@@ -12,5 +12,5 @@ $(OBJS):%.o:%.c
 
 .PHONY:clean
 clean:
-#	-rm objs/*
-	-del /Q objs
+	-rm objs/*
+#	-del /Q objs

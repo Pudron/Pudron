@@ -5,7 +5,8 @@
 #include<string.h>
 
 #define MAX_WORD_LENGTH 20
-
+#define FILE_POSTFIX ".pd"
+#define FILE_LIB_POSTFIX ".pdl"
 /*List Operations*/
 #define LIST_UNIT_SIZE 10
 #define LIST_DECLARE(type) \
@@ -40,14 +41,20 @@
         list.size-=LIST_UNIT_SIZE;\
         list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
     }
+#define LIST_REDUCE(list,type,mcount) \
+    list.count-=mcount;\
+    if(list.count<=(list.size-LIST_UNIT_SIZE)){\
+        list.size-=mcount;\
+        list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+    }
 
-#define LIST_CONNECT(list1,list2,type) \
-    int licount=list1.count;\
+#define LIST_CONNECT(list1,list2,type,id) \
+    int licount##id=list1.count;\
     list1.count+=list2.count;\
     list1.vals=(type*)realloc(list1.vals,list1.count*sizeof(type));\
     list1.size=list1.count;\
-    for(int li=licount;li<list1.count;li++){\
-        list1.vals[li]=list2.vals[li-licount];\
+    for(int li=licount##id;li<list1.count;li++){\
+        list1.vals[li]=list2.vals[li-licount##id];\
     }
 
 /*bool type*/
@@ -55,13 +62,14 @@ typedef enum{
     false=0,
     true
 }bool;
-enum{
-    CLASS_INDEX,
-    CLASS_FUNCTION,
-    CLASS_INT,
-    CLASS_FLOAT,
-    CLASS_STRING
-};
+
+#define STD_CLASS_COUNT 5
+#define CLASS_INT -1
+#define CLASS_CLASS -2
+#define CLASS_FUNCTION -3
+#define CLASS_FLOAT -4
+#define CLASS_STRING -5
+
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,
@@ -116,9 +124,12 @@ typedef enum{
     TOKEN_OR_EQUAL,
     TOKEN_LEFT_EQUAL,
     TOKEN_RIGHT_EQUAL,
-    TOKEN_CLASS
+    TOKEN_CLASS,
+    TOKEN_IMPORT,
+    TOKEN_INCLUDE
 }TokenType;
-#define OPT_METHOD_COUNT 15
+#define OPT_METHOD_COUNT 17
+#define OPCODE_COUNT 51
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -127,6 +138,8 @@ typedef enum{
     OPCODE_DIV,
     OPCODE_AND,
     OPCODE_OR,
+    OPCODE_CAND,
+    OPCODE_COR,
     OPCODE_LEFT,
     OPCODE_RIGHT,
     OPCODE_EQUAL,
@@ -156,21 +169,26 @@ typedef enum{
     OPCODE_JUMP_IF_FALSE,
     OPCODE_SET_FIELD,
     OPCODE_FREE_FIELD,
-    OPCODE_SET_WHILE,
-    OPCODE_FREE_WHILE,
+    OPCODE_SET_LOOP,
+    OPCODE_FREE_LOOP,
 
     OPCODE_CALL_FUNCTION,
     OPCODE_CALL_METHOD,
     OPCODE_RETURN,
-    OPCODE_ENABLE_FUNCTION,
+    OPCODE_ENABLE_FUNCTION,/*顺便把函数变量入栈*/
 
     OPCODE_MAKE_OBJECT,
     OPCODE_EXTEND_CLASS,
+    OPCODE_ENABLE_CLASS,
 
-    OPCODE_LOAD_CLASS,
-    OPCODE_LOAD_FUNCTION
+    OPCODE_SET_MODULE,/*参数为模块名*/
+    OPCODE_RETURN_MODULE,
+
+    OPCODE_PRINT_STACK,
+    OPCODE_PRINT_VAR
 }Opcode;
 LIST_DECLARE(int)
+LIST_DECLARE(char)
 typedef char* Name;
 LIST_DECLARE(Name);
 typedef struct{
@@ -186,25 +204,24 @@ typedef struct{
         MSG_ERROR,
         MSG_WARNING
     }type;
+    char*code;
+    char*fileName;
     char text[100];
     int line,column,start,end;
 }Msg;
 typedef struct{
+    char*code,*fileName;
     int line,column,start,end;
 }Part;
 LIST_DECLARE(Part)
-typedef struct ValueDef{
+typedef struct{
     int class;
     union{
         int num;
         float numf;
         char*str;
     };
-    struct ValueDef*var;
-    union{
-        int refID;
-        int refCount;
-    };
+    int refID;
 }Value;
 LIST_DECLARE(Value)
 typedef struct{
@@ -226,13 +243,24 @@ typedef struct{
 }Command;
 typedef struct{
     char*name;
+    int funcBase;
+    int cmdBase;
+    int symBase;
+    int classBase;
+    int partBase;
+}Module;
+LIST_DECLARE(Module)
+typedef struct{
+    char*name;
     NameList args;
     intList clist;
+    int moduleID;
 }Func;
 LIST_DECLARE(Func)
 typedef struct{
     char*name;
     NameList var;
+    int varBase;
     FuncList methods;
     Func optMethod[OPT_METHOD_COUNT];
 }Class;
@@ -243,21 +271,31 @@ typedef struct{
     int ptr;
     int line,column;
     int curPart;
+    bool isLib;
+    ModuleList moduleList;
     PartList partList;
     intList clist;
     SymbolList symList;
     FuncList funcList;
     ClassList classList;
 }Parser;
-void initParser(Parser*parser);
-void reportMsg(Parser*parser,Msg msg);
+typedef struct{
+    Opcode opcode;
+    char*name;
+    bool isArg;
+    bool isSymbol;
+}OpcodeMsg;
+void initParser(Parser*parser,bool isRoot);
+void extend(Class*class,Class eclass);
+char*cutText(char*text,int start,int end);
+void reportMsg(Msg msg);
 void reportError(Parser*parser,char*text,int start);
 void reportWarning(Parser*parser,char*text,int start);
 void addCmd(Parser*parser,intList*clist,int opcode);
 void addCmd1(Parser*parser,intList*clist,int opcode,int dat);
 void addCmds(Parser*parser,intList*clist,Command cmds);
 int addSymbol(Parser*parser,Symbol symbol);
-void clistToString(Parser parser,intList clist,char*text);
+void clistToString(Parser parser,intList clist,char*text,Module module);
 void funcToString(Parser parser,FuncList funcList,char*text);
 void classToString(Parser parser,char*text);
 #endif
