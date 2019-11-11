@@ -1,6 +1,7 @@
 #ifndef _PD_VM_H_
 #define _PD_VM_H_
 #include"common.h"
+#include"pio.h"
 typedef struct{
 	char*name;
 	Value val;

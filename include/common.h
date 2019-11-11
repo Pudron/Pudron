@@ -63,12 +63,13 @@ typedef enum{
     true
 }bool;
 
-#define STD_CLASS_COUNT 5
+#define STD_CLASS_COUNT 6
 #define CLASS_INT -1
 #define CLASS_CLASS -2
 #define CLASS_FUNCTION -3
-#define CLASS_FLOAT -4
-#define CLASS_STRING -5
+#define CLASS_META -4
+#define CLASS_FLOAT -5
+#define CLASS_STRING -6
 
 typedef enum{
     TOKEN_END,
@@ -272,6 +273,7 @@ typedef struct{
     int line,column;
     int curPart;
     bool isLib;
+    Class meta;
     ModuleList moduleList;
     PartList partList;
     intList clist;
@@ -286,6 +288,7 @@ typedef struct{
     bool isSymbol;
 }OpcodeMsg;
 void initParser(Parser*parser,bool isRoot);
+void freeParser(Parser*parser);
 void extend(Class*class,Class eclass);
 char*cutText(char*text,int start,int end);
 void reportMsg(Msg msg);

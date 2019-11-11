@@ -1,5 +1,5 @@
-import t2;
-x;
-test(x);
+class A{
+    a,b,c;
+}
 >>PRINT_STACK;
 >>PRINT_VAR;

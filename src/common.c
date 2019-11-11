@@ -67,6 +67,20 @@ void initParser(Parser*parser,bool isRoot){
         LIST_INIT(parser->moduleList,Module)
     }
 }
+void freeParser(Parser*parser){
+    parser->code=NULL;
+    parser->fileName=NULL;
+    parser->ptr=0;
+    parser->line=1;
+    parser->column=1;
+    parser->curPart=0;
+    LIST_DELETE(parser->partList)
+    LIST_DELETE(parser->moduleList)
+    LIST_DELETE(parser->funcList)
+    LIST_DELETE(parser->classList)
+    LIST_DELETE(parser->symList)
+    LIST_DELETE(parser->clist)
+}
 void extend(Class*class,Class eclass){
     LIST_CONNECT(class->var,eclass.var,Name,0)
     class->varBase=eclass.varBase;

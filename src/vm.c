@@ -1,5 +1,5 @@
 #include"vm.h"
-void initStd(VM*vm){
+void initStd(VM*vm,Class meta){
     Class class;
     class.varBase=0;
     class.var.count=0;
@@ -16,6 +16,15 @@ void initStd(VM*vm){
     class.name=(char*)malloc(8);
     strcpy(class.name,"function");
     LIST_ADD(vm->classList,Class,class)
+    LIST_ADD(vm->classList,Class,meta)
+    Parser parser;
+    initParser(&parser,true);
+    import(&parser,"lib/float.pdl");
+    extend(&parser.classList.vals[0],meta);
+    import(&parser,"lib/string.pdl");
+    extend(&parser.classList.vals[1],meta);
+    LIST_CONNECT(vm->classList,parser.classList,Class,0)
+    freeParser(&parser);
 }
 void initVM(VM*vm,Parser parser){
     vm->partList=parser.partList;
@@ -25,7 +34,7 @@ void initVM(VM*vm,Parser parser){
     vm->moduleList=parser.moduleList;
     vm->curModule=vm->moduleList.vals[0];
     LIST_INIT(vm->classList,Class)
-    initStd(vm);
+    initStd(vm,parser.meta);
     LIST_CONNECT(vm->classList,parser.classList,Class,0)
     LIST_INIT(vm->stack,Value)
     LIST_INIT(vm->refList,Ref)
@@ -595,7 +604,7 @@ static void exeOpt(VM*vm,int ind,int curPart){
     LIST_SUB(vm->retFieldList,int)
 }
 #define CINT 0
-#define CFLOAT 3
+#define CFLOAT 4
 #define CCLASS 2
 #define EXE_OPT(opt,ind) \
     checkStack(vm,2,curPart);\

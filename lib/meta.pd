@@ -1,0 +1,9 @@
+class meta{
+    varCount;
+    func initmeta(){
+        
+    }
+    func expand(size){
+        
+    }
+}

@@ -967,6 +967,7 @@ void getClass(Parser*parser,intList*clist,Env env){
     initFunc.name=(char*)malloc(strlen(classd.name)+5);
     sprintf(initFunc.name,"init%s",classd.name);
     LIST_INIT(initFunc.clist,int)
+    extend(&classd,parser->meta);
     token=nextToken(parser);
     if(token.type==TOKEN_COLON){
         symbol.type=SYM_STRING;
