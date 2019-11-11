@@ -21,6 +21,21 @@ int main(int argc,char**argv){
         puts("Welcome to use Pudron Program Language\nusage:pd [file name]\n");
         return 0;
     }
-    test(argv[1]);
+    bool isLib=false;
+    char*fileName=NULL;
+    for(int i=1;i<argc;i++){
+        if(argv[i][0]=='-'){
+            if(argv[i][1]=='l'){
+                isLib=true;
+            }
+        }else{
+            if(fileName!=NULL){
+                printf("error:can only compile one file.");
+                return -1;
+            }
+            fileName=argv[i];
+        }
+    }
+    test(fileName,isLib);
     return 0;
 }

@@ -678,6 +678,7 @@ bool checkFile(Parser*parser,char*fileName){
 }
 void getBlock(Parser*parser,intList*clist,Env env){
     Token token;
+    Symbol symbol;
     int msgStart=parser->ptr;
     Part part;
     part.code=parser->code;
@@ -733,9 +734,25 @@ void getBlock(Parser*parser,intList*clist,Env env){
             token=matchToken(parser,TOKEN_WORD,"code file name",msgStart);
             char fileName[MAX_WORD_LENGTH];
             strcpy(fileName,token.word);
+            free(token.word);
             if(!checkFile(parser,fileName)){
                 strcat(fileName,FILE_POSTFIX);
                 compile(parser,fileName,parser->isLib);
+            }
+            matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
+        }else if(token.type==TOKEN_IMPORT){
+            token=matchToken(parser,TOKEN_WORD,"library file name",msgStart);
+            char fileName[MAX_WORD_LENGTH];
+            strcpy(fileName,token.word);
+            if(!checkFile(parser,fileName)){
+                symbol.type=SYM_STRING;
+                symbol.str=token.word;
+                addCmd1(parser,clist,OPCODE_SET_MODULE,addSymbol(parser,symbol));
+                strcat(fileName,FILE_LIB_POSTFIX);
+                import(parser,fileName);
+                addCmd(parser,clist,OPCODE_RETURN_MODULE);
+            }else{
+                free(token.word);
             }
             matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
         }else if(token.type==TOKEN_RIGHT){
@@ -746,6 +763,7 @@ void getBlock(Parser*parser,intList*clist,Env env){
                 if(strcmp(token.word,opcodeList[i].name)==0){
                     opcode=opcodeList[i];
                     isFound=true;
+                    free(token.word);
                     break;
                 }
             }
@@ -935,11 +953,13 @@ void getClass(Parser*parser,intList*clist,Env env){
     part.column=parser->column;
     token=matchToken(parser,TOKEN_WORD,"class name",msgStart);
     classd.name=token.word;
-    char*optNmae=(char*)malloc(4);
+    char*optName=(char*)malloc(4);
     strcpy(optName,"opt");
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         classd.optMethod[i].clist.count=0;
-        classd.optMethod[i].name=optNmae;
+        classd.optMethod[i].name=optName;
+        classd.optMethod[i].moduleID=0;
+        classd.optMethod[i].args.count=0;
     }
     LIST_INIT(classd.methods,Func)
     LIST_INIT(classd.var,Name)

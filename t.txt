@@ -1,7 +1,0 @@
-class A{
-    x=10;
-}
-a=A();
-b=a.x;
->>PRINT_STACK;
->>PRINT_VAR;

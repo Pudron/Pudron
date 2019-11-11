@@ -1,0 +1,5 @@
+import t2;
+x;
+test(x);
+>>PRINT_STACK;
+>>PRINT_VAR;
