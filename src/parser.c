@@ -215,6 +215,50 @@ Token nextToken(Parser*parser){
         token.word=(char*)malloc(i+1);
         strcpy(token.word,word);
         token.type=TOKEN_WORD;
+    }else if(c=='\"'){
+        int i=0;
+        msg.line=parser->line;
+        msg.column=parser->column;
+        msg.start=parser->ptr;
+        msg.type=MSG_ERROR;
+        c=parser->code[++parser->ptr];
+        for(i=0;c!='\"';i++){
+            if(c=='\0'){
+                msg.end=parser->ptr;
+                strcpy(msg.text,"expected \" after the string.");
+                reportMsg(msg);
+            }
+            if(i>=1023){
+                msg.end=parser->ptr;
+                strcpy(msg.text,"the string is too long.");
+                reportMsg(msg);
+            }
+            if(c=='\n'){
+                parser->line++;
+                parser->column=1;
+                i--;
+                c=parser->code[++parser->ptr];
+                continue;
+            }
+            if(c=='\\'){
+                switch(parser->code[parser->ptr+1]){
+                    case 'n':
+                        c='\n';
+                        parser->ptr++;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            word[i]=c;
+            c=parser->code[++parser->ptr];
+            parser->column++;
+        }
+        word[i]='\0';
+        token.word=(char*)malloc(i+1);
+        strcpy(token.word,word);
+        token.type=TOKEN_STRING;
+        return token;
     }else{
         TokenSymbol symbol;
         for(int i=0;i<SYMBOL_COUNT;i++){
@@ -299,12 +343,6 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
         token=nextToken(parser);
         if(token.type==TOKEN_PARE1){
             ORI_ASI()
-            if(env.classDef>=0){
-                symbol.type=SYM_STRING;
-                symbol.str=(char*)malloc(5);
-                strcpy(symbol.str,"this");
-                addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
-            }
             symbol.type=SYM_STRING;
             symbol.str=word;
             addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
@@ -325,11 +363,7 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
                     needArg=false;
                 }
             }
-            if(env.classDef>=0){
-                addCmd1(parser,clist,OPCODE_CALL_METHOD,count);
-            }else{
-                addCmd1(parser,clist,OPCODE_CALL_FUNCTION,count);
-            }
+            addCmd1(parser,clist,OPCODE_CALL_FUNCTION,count);
             canAssign=false;
         }else{
             ORI_RET()
@@ -341,31 +375,22 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
                             sprintf(msgText,"the member \"%s\" in the class \"%s\" has already existed.",token.word,parser->classList.vals[env.classDef].name);
                             reportError(parser,msgText,msgStart);
                         }
-                        symbol.type=SYM_STRING;
-                        symbol.str=(char*)malloc(5);
-                        strcpy(symbol.str,"this");
-                        addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
                         isFound=true;
-                        assign.ncmds.count=0;
                         break;
                     }
                 }
             }
             if(!isFound && env.isClassVarDef){
                 LIST_ADD(parser->classList.vals[env.classDef].var,Name,word)
-                symbol.type=SYM_STRING;
-                symbol.str=(char*)malloc(5);
-                strcpy(symbol.str,"this");
-                addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
                 isFound=true;
                 assign.ncmds.count=0;
             }
             symbol.type=SYM_STRING;
             symbol.str=word;
-            assign.gcmds.code[0]=isFound?OPCODE_LOAD_ATTR:OPCODE_LOAD_VAL;
+            assign.gcmds.code[0]=OPCODE_LOAD_VAL;
             assign.gcmds.code[1]=addSymbol(parser,symbol);
             assign.gcmds.count=2;
-            assign.acmds.code[0]=isFound?OPCODE_STORE_ATTR:OPCODE_STORE_VAL;
+            assign.acmds.code[0]=OPCODE_STORE_VAL;
             assign.acmds.code[1]=assign.gcmds.code[1];
             assign.acmds.count=2;
             if(!isFound){
@@ -375,6 +400,27 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
             }
             canAssign=true;
         }
+    }else if(token.type==TOKEN_BRACE1){
+        int count=0;
+        bool needExp=false;
+        ORI_ASI()
+        token=nextToken(parser);
+        while(token.type!=TOKEN_BRACE2 || needExp){
+            ORI_RET()
+            getExpression(parser,clist,0,env);
+            count++;
+            ORI_ASI()
+            token=nextToken(parser);
+            if(token.type==TOKEN_COMMA){
+                ORI_ASI()
+                token=nextToken(parser);
+                needExp=true;
+            }else{
+                needExp=false;
+            }
+        }
+        addCmd1(parser,clist,OPCODE_MAKE_ARRAY,count);
+        canAssign=false;
     }else{
         ORI_RET()
         return false;
@@ -731,28 +777,52 @@ void getBlock(Parser*parser,intList*clist,Env env){
         }else if(token.type==TOKEN_CLASS){
             getClass(parser,clist,env);
         }else if(token.type==TOKEN_INCLUDE){
-            token=matchToken(parser,TOKEN_WORD,"code file name",msgStart);
             char fileName[MAX_WORD_LENGTH];
-            strcpy(fileName,token.word);
-            free(token.word);
-            if(!checkFile(parser,fileName)){
-                strcat(fileName,FILE_POSTFIX);
-                compile(parser,fileName,parser->isLib);
+            char*t;
+            token=nextToken(parser);
+            if(token.type==TOKEN_WORD){
+                strcpy(fileName,token.word);
+                free(token.word);
+                if(!checkFile(parser,fileName)){
+                    strcat(fileName,FILE_POSTFIX);
+                    compile(parser,fileName,parser->isLib);
+                }
+            }else if(token.type==TOKEN_STRING){
+                t=cutPostfix(token.word);
+                if(!checkFile(parser,t)){
+                    compile(parser,token.word,parser->isLib);
+                }else{
+                    free(token.word);
+                }
+                free(t);
+            }else{
+                reportError(parser,"expected a code file name",msgStart);
             }
             matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
         }else if(token.type==TOKEN_IMPORT){
-            token=matchToken(parser,TOKEN_WORD,"library file name",msgStart);
-            char fileName[MAX_WORD_LENGTH];
-            strcpy(fileName,token.word);
+            char*fileName=NULL,*holeName=NULL;
+            token=nextToken(parser);
+            if(token.type==TOKEN_WORD){
+                fileName=token.word;
+                holeName=(char*)malloc(strlen(fileName)+strlen(FILE_LIB_POSTFIX)+1);
+                strcpy(holeName,fileName);
+                strcat(holeName,FILE_LIB_POSTFIX);
+            }else if(token.type==TOKEN_STRING){
+                holeName=token.word;
+                fileName=cutPostfix(holeName);
+            }else{
+                reportError(parser,"expected a library file name",msgStart);
+            }
             if(!checkFile(parser,fileName)){
                 symbol.type=SYM_STRING;
                 symbol.str=token.word;
                 addCmd1(parser,clist,OPCODE_SET_MODULE,addSymbol(parser,symbol));
-                strcat(fileName,FILE_LIB_POSTFIX);
-                import(parser,fileName);
+                import(parser,holeName);
                 addCmd(parser,clist,OPCODE_RETURN_MODULE);
+                free(holeName);
             }else{
-                free(token.word);
+                free(holeName);
+                free(fileName);
             }
             matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
         }else if(token.type==TOKEN_RIGHT){
@@ -773,8 +843,31 @@ void getBlock(Parser*parser,intList*clist,Env env){
             }
             parser->curPart=parser->partList.count;
             if(opcode.isArg){
-                token=matchToken(parser,TOKEN_INTEGER,"operation number",msgStart);
-                addCmd1(parser,clist,opcode.opcode,token.num);
+                if(opcode.isSymbol){
+                    token=nextToken(parser);
+                    switch(token.type){
+                        case TOKEN_INTEGER:
+                            symbol.type=SYM_INT;
+                            symbol.num=token.num;
+                            break;
+                        case TOKEN_FLOAT:
+                            symbol.type=SYM_FLOAT;
+                            symbol.numf=token.numf;
+                            break;
+                        case TOKEN_STRING:
+                        case TOKEN_WORD:
+                            symbol.type=SYM_STRING;
+                            symbol.str=token.word;
+                            break;
+                        default:
+                            reportError(parser,"unsupported symbol for operation number.",msgStart);
+                            break;
+                    }
+                    addCmd1(parser,clist,opcode.opcode,addSymbol(parser,symbol));
+                }else{
+                    token=matchToken(parser,TOKEN_INTEGER,"operation number",msgStart);
+                    addCmd1(parser,clist,opcode.opcode,token.num);
+                }
             }else{
                 addCmd(parser,clist,opcode.opcode);
             }
@@ -967,7 +1060,10 @@ void getClass(Parser*parser,intList*clist,Env env){
     initFunc.name=(char*)malloc(strlen(classd.name)+5);
     sprintf(initFunc.name,"init%s",classd.name);
     LIST_INIT(initFunc.clist,int)
-    extend(&classd,parser->meta);
+    LIST_INIT(classd.parentList,int);
+    if(strcmp(classd.name,"meta")!=0){
+        LIST_ADD(classd.parentList,int,-CLASS_META+1)
+    }
     token=nextToken(parser);
     if(token.type==TOKEN_COLON){
         symbol.type=SYM_STRING;
@@ -1121,4 +1217,5 @@ void getClass(Parser*parser,intList*clist,Env env){
     addCmd1(parser,clist,OPCODE_ENABLE_FUNCTION,parser->funcList.count);
     initFunc.name=classd.name;
     LIST_ADD(parser->funcList,Func,initFunc)
+    parser->classList.vals[class].varBase=classd.var.count;
 }

@@ -49,7 +49,10 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_SET_MODULE,"SET_MODULE",true,true},
     {OPCODE_RETURN_MODULE,"RETURN_MODULE",false,false},
     {OPCODE_PRINT_STACK,"PRINT_STACK",false,false},
-    {OPCODE_PRINT_VAR,"PRINT_VAR",false,false}
+    {OPCODE_PRINT_VAR,"PRINT_VAR",false,false},
+    {OPCODE_GET_VARCOUNT,"GET_VARCOUNT",false,false},
+    {OPCODE_RESIZE_VAR,"RESIZE_VAR",false,false},
+    {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",true,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
@@ -81,14 +84,14 @@ void freeParser(Parser*parser){
     LIST_DELETE(parser->symList)
     LIST_DELETE(parser->clist)
 }
-void extend(Class*class,Class eclass){
+/*void extend(Class*class,Class eclass){
     LIST_CONNECT(class->var,eclass.var,Name,0)
     class->varBase=eclass.varBase;
     LIST_CONNECT(class->methods,eclass.methods,Func,1)
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         class->optMethod[i]=eclass.optMethod[i];
     }
-}
+}*/
 void clistToString(Parser parser,intList clist,char*text,Module module){
     int cmd;
     Symbol symbol;
@@ -180,6 +183,20 @@ char*cutText(char*text,int start,int end){
         str[i]=text[i+start];
     }
     str[len]='\0';
+    return str;
+}
+char*cutPostfix(char*text){
+    char t[MAX_WORD_LENGTH];
+    int len=strlen(text);
+    for(int i=0;i<len;i++){
+        if(text[i]=='.'){
+            t[i]='\0';
+            break;
+        }
+        t[i]=text[i];
+    }
+    char*str=(char*)malloc(strlen(t)+1);
+    strcpy(str,t);
     return str;
 }
 void reportMsg(Msg msg){

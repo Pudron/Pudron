@@ -4,6 +4,7 @@
 #include"vm.h"
 #include"pio.h"
 Parser compile(Parser*parent,char*fileName,bool isLib);
+void run(char*fileName,bool isLib);
 #ifndef RELEASE
 void test(char*fileName,bool isLib);
 #endif

@@ -77,6 +77,7 @@ typedef enum{
     TOKEN_INTEGER,
     TOKEN_FLOAT,
     TOKEN_WORD,
+    TOKEN_STRING,
     TOKEN_FUNC,
     TOKEN_WHILE,
     TOKEN_BREAK,
@@ -115,7 +116,6 @@ typedef enum{
     TOKEN_COLON,/*:*/
     TOKEN_LEFT,
     TOKEN_RIGHT,
-    TOKEN_PUTC,
     TOKEN_ADD_EQUAL,
     TOKEN_SUB_EQUAL,
     TOKEN_MUL_EQUAL,
@@ -129,7 +129,7 @@ typedef enum{
     TOKEN_IMPORT,
     TOKEN_INCLUDE
 }TokenType;
-#define OPT_METHOD_COUNT 17
+#define OPT_METHOD_COUNT 18
 #define OPCODE_COUNT 51
 typedef enum{
     OPCODE_NOP,
@@ -186,7 +186,11 @@ typedef enum{
     OPCODE_RETURN_MODULE,
 
     OPCODE_PRINT_STACK,
-    OPCODE_PRINT_VAR
+    OPCODE_PRINT_VAR,
+
+    OPCODE_GET_VARCOUNT,
+    OPCODE_RESIZE_VAR,
+    OPCODE_MAKE_ARRAY
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
@@ -220,7 +224,6 @@ typedef struct{
     union{
         int num;
         float numf;
-        char*str;
     };
     int refID;
 }Value;
@@ -264,6 +267,7 @@ typedef struct{
     int varBase;
     FuncList methods;
     Func optMethod[OPT_METHOD_COUNT];
+    intList parentList;
 }Class;
 LIST_DECLARE(Class)
 typedef struct{
@@ -273,7 +277,6 @@ typedef struct{
     int line,column;
     int curPart;
     bool isLib;
-    Class meta;
     ModuleList moduleList;
     PartList partList;
     intList clist;
@@ -289,8 +292,9 @@ typedef struct{
 }OpcodeMsg;
 void initParser(Parser*parser,bool isRoot);
 void freeParser(Parser*parser);
-void extend(Class*class,Class eclass);
+//void extend(Class*class,Class eclass);
 char*cutText(char*text,int start,int end);
+char*cutPostfix(char*text);
 void reportMsg(Msg msg);
 void reportError(Parser*parser,char*text,int start);
 void reportWarning(Parser*parser,char*text,int start);

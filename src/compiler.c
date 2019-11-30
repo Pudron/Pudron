@@ -8,19 +8,12 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
     parser.fileName=fileName;
     parser.isLib=isLib;
     if(parent!=NULL){
-        parser.meta=parent->meta;
         parser.partList=parent->partList;
         parser.clist=parent->clist;
         parser.symList=parent->symList;
         parser.funcList=parent->funcList;
         parser.classList=parent->classList;
         parser.moduleList=parent->moduleList;
-    }else{
-        Parser tp;
-        initParser(&tp,true);
-        import(&tp,"lib/meta.pdl");
-        parser.meta=tp.classList.vals[0];
-        freeParser(&tp);
     }
     int len=strlen(fileName);
     char c;
@@ -48,6 +41,17 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
         parent->classList=parser.classList;
     }
     return parser;
+}
+void run(char*fileName,bool isLib){
+    Parser parser=compile(NULL,fileName,isLib);
+    if(isLib){
+        export(parser);
+        puts("done\n");
+    }else{
+        VM vm;
+        initVM(&vm,parser);
+        execute(&vm,vm.clist);
+    }
 }
 #ifndef RELEASE
 void test(char*fileName,bool isLib){

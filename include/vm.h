@@ -17,6 +17,8 @@ typedef struct{
     int varCount;
     int varBase;
 	int refCount;
+	bool isUsed;
+	char*str;
 }Ref;
 LIST_DECLARE(Ref)
 typedef struct{
@@ -39,6 +41,8 @@ typedef struct{
 	ModuleList mlist;
 	intList funcPartList;
 	int ptr;
+	int curVar;
+	intList vlist;
 }VM;
 void initVM(VM*vm,Parser parser);
 void reportVMError(VM*vm,char*text,int curPart);

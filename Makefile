@@ -10,6 +10,12 @@ pd:$(OBJS)
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o objs/$@
 
+.PHONY:lib
+lib:lib/float.pd lib/meta.pd lib/string.pd
+	./pd -l lib/meta.pd
+	./pd -l lib/float.pd
+	./pd -l lib/string.pd
+
 .PHONY:clean
 clean:
 	-rm objs/*

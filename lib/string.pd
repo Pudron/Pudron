@@ -1,3 +1,9 @@
 class string{
     length;
+    func copy(){
+
+    }
+    func delete(){
+        
+    }
 }

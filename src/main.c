@@ -4,7 +4,7 @@ void testToken(Parser*parser){
     Token token;
     token=nextToken(parser);
     while(token.type!=TOKEN_END){
-        if(token.type==TOKEN_WORD){
+        if(token.type==TOKEN_WORD || token.type==TOKEN_STRING){
             printf("%d:%s\n",token.type,token.word);
         }else if(token.type==TOKEN_INTEGER){
             printf("%d:%d\n",token.type,token.num);
@@ -36,6 +36,6 @@ int main(int argc,char**argv){
             fileName=argv[i];
         }
     }
-    test(fileName,isLib);
+    run(fileName,isLib);
     return 0;
 }

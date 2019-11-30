@@ -1,9 +1,15 @@
 class meta{
-    varCount;
-    func initmeta(){
-        
+    #没有类变量#
+    func resizeVar(size){
+        >>LOAD_VAL this;
+        >>LOAD_VAL size;
+        >>RESIZE_VAR;
     }
-    func expand(size){
-        
+    func getVarCount(){
+        count;
+        >>LOAD_VAL this;
+        >>GET_VARCOUNT;
+        >>STORE_VAL count;
+        return count;
     }
 }
