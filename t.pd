@@ -1,5 +1,7 @@
-class A{
-    a,b,c;
+a={123,456,789,123456};
+b;
+for(i,a){
+    b=i;
 }
 >>PRINT_STACK;
 >>PRINT_VAR;

@@ -167,6 +167,7 @@ void writeClass(charList*dat,Class class){
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         writeFunc(dat,class.optMethod[i]);
     }
+    WRITE_LIST(dat,class.parentList,Int)
 }
 Class readClass(Bin*bin){
     Class class;
@@ -180,6 +181,8 @@ Class readClass(Bin*bin){
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         class.optMethod[i]=readFunc(bin);
     }
+    LIST_INIT(class.parentList,int)
+    READ_LIST(bin,class.parentList,int,Int)
     return class;
 }
 void export(Parser parser){

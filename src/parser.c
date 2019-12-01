@@ -45,6 +45,7 @@ const TokenSymbol symbolList[]={
 const Keyword keywordList[]={
     {TOKEN_FUNC,"func","函数"},
     {TOKEN_WHILE,"while","当"},
+    {TOKEN_FOR,"for","循环"},
     {TOKEN_BREAK,"break","结束"},
     {TOKEN_RETURN,"return","返回"},
     {TOKEN_IF,"if","如果"},
@@ -774,6 +775,8 @@ void getBlock(Parser*parser,intList*clist,Env env){
             getFunction(parser,clist,env);
         }else if(token.type==TOKEN_WHILE){
             getWhileState(parser,clist,env);
+        }else if(token.type==TOKEN_FOR){
+            getForState(parser,clist,env);
         }else if(token.type==TOKEN_CLASS){
             getClass(parser,clist,env);
         }else if(token.type==TOKEN_INCLUDE){
@@ -1062,7 +1065,7 @@ void getClass(Parser*parser,intList*clist,Env env){
     LIST_INIT(initFunc.clist,int)
     LIST_INIT(classd.parentList,int);
     if(strcmp(classd.name,"meta")!=0){
-        LIST_ADD(classd.parentList,int,-CLASS_META+1)
+        LIST_ADD(classd.parentList,int,-CLASS_META-1)
     }
     token=nextToken(parser);
     if(token.type==TOKEN_COLON){
@@ -1100,6 +1103,7 @@ void getClass(Parser*parser,intList*clist,Env env){
         }else if(token.type==TOKEN_END){
             reportError(parser,"expected \"}\" after defining a class.",msgStart);
         }else if(token.type==TOKEN_FUNC){
+            env.isFuncDef=true;
             part.start=parser->ptr;
             part.line=parser->line;
             part.column=parser->column;
@@ -1139,6 +1143,7 @@ void getClass(Parser*parser,intList*clist,Env env){
             addCmd(parser,&method.clist,OPCODE_RETURN);
             method.moduleID=0;
             LIST_ADD(parser->classList.vals[class].methods,Func,method)
+            env.isFuncDef=false;
         }else{
             bool isFound=false;
             for(int i=0;i<OPERAT_INFIX_COUNT;i++){
@@ -1213,9 +1218,68 @@ void getClass(Parser*parser,intList*clist,Env env){
     addCmd1(parser,&initFunc.clist,OPCODE_CALL_METHOD,0);
     addCmd1(parser,&initFunc.clist,OPCODE_POP_STACK,1);
     addCmd(parser,&initFunc.clist,OPCODE_RETURN);
-    addCmd1(parser,clist,OPCODE_ENABLE_CLASS,class);
     addCmd1(parser,clist,OPCODE_ENABLE_FUNCTION,parser->funcList.count);
+    addCmd1(parser,clist,OPCODE_ENABLE_CLASS,class);
     initFunc.name=classd.name;
     LIST_ADD(parser->funcList,Func,initFunc)
     parser->classList.vals[class].varBase=classd.var.count;
+}
+void getForState(Parser*parser,intList*clist,Env env){
+    int msgStart=parser->ptr;
+    Part part;
+    intList breakList;
+    Token token;
+    Symbol symbol;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
+    part.line=parser->line;
+    part.column=parser->column;
+    part.start=parser->ptr;
+    int pt=parser->partList.count;
+    parser->curPart=pt;
+    LIST_INIT(breakList,int)
+    env.breakList=&breakList;
+    matchToken(parser,TOKEN_PARE1,"\"(\" in for state",msgStart);
+    addCmd(parser,clist,OPCODE_SET_LOOP);
+    token=matchToken(parser,TOKEN_WORD,"a for state variable",msgStart);
+    int s0,st;
+    symbol.type=SYM_INT;
+    symbol.num=0;
+    s0=addSymbol(parser,symbol);
+    addCmd1(parser,clist,OPCODE_LOAD_CONST,s0);
+    symbol.type=SYM_STRING;
+    symbol.str=token.word;
+    st=addSymbol(parser,symbol);
+    addCmd1(parser,clist,OPCODE_PUSH_VAL,st);
+    matchToken(parser,TOKEN_COMMA,"\",\" in for state",msgStart);
+    getExpression(parser,clist,0,env);
+    matchToken(parser,TOKEN_PARE2,"\")\" in for state",msgStart);
+    part.end=parser->ptr;
+    LIST_ADD(parser->partList,Part,part)
+    addCmd1(parser,clist,OPCODE_LOAD_CONST,s0);
+    int jret=clist->count;
+    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+    addCmd(parser,clist,OPCODE_GET_VARCOUNT);
+    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+    addCmd(parser,clist,OPCODE_GTHAN);
+    int jptr=clist->count;
+    addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
+    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
+    addCmd(parser,clist,OPCODE_LOAD_INDEX);
+    addCmd1(parser,clist,OPCODE_STORE_VAL,st);
+    symbol.type=SYM_INT;
+    symbol.num=1;
+    addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
+    addCmd(parser,clist,OPCODE_ADD);
+    getBlock(parser,clist,env);
+    addCmd1(parser,clist,OPCODE_JUMP,jret);
+    clist->vals[jptr+2]=clist->count;
+    for(int i=0;i<breakList.count;i++){
+        clist->vals[breakList.vals[i]]=clist->count;
+    }
+    addCmd(parser,clist,OPCODE_FREE_LOOP);
+    addCmd1(parser,clist,OPCODE_POP_STACK,2);
+    addCmd1(parser,clist,OPCODE_POP_VAR,1);
+    LIST_DELETE(breakList)
 }

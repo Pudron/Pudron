@@ -8,7 +8,7 @@ void initStd(VM*vm){
         class.optMethod[i].clist.count=0;
     }
     LIST_INIT(class.parentList,int)
-    LIST_ADD(class.parentList,int,-CLASS_META+1)
+    LIST_ADD(class.parentList,int,-CLASS_META-1)
     class.name=(char*)malloc(4);
     strcpy(class.name,"int");
     LIST_ADD(vm->classList,Class,class)
@@ -24,20 +24,22 @@ void initStd(VM*vm){
     import(&parser,"lib/float.pdl");
     import(&parser,"lib/string.pdl");
     LIST_CONNECT(vm->classList,parser.classList,Class,0)
+    LIST_CONNECT(vm->funcList,parser.funcList,Func,1)
     freeParser(&parser);
     Var var;
-    var.val.class=CLASS_CLASS;
+    var.val.refID=-1;
+    var.val.class=-CLASS_CLASS-1;
     var.name=(char*)malloc(4);
     strcpy(var.name,"int");
-    var.val.num=-CLASS_INT+1;
+    var.val.num=-CLASS_INT-1;
     LIST_ADD(vm->varList,Var,var)
     var.name=(char*)malloc(7);
     strcpy(var.name,"string");
-    var.val.num=-CLASS_STRING+1;
+    var.val.num=-CLASS_STRING-1;
     LIST_ADD(vm->varList,Var,var)
     var.name=(char*)malloc(6);
     strcpy(var.name,"float");
-    var.val.num=-CLASS_FLOAT+1;
+    var.val.num=-CLASS_FLOAT-1;
     LIST_ADD(vm->varList,Var,var)
 }
 void initVM(VM*vm,Parser parser){
@@ -48,8 +50,6 @@ void initVM(VM*vm,Parser parser){
     vm->moduleList=parser.moduleList;
     vm->curModule=vm->moduleList.vals[0];
     LIST_INIT(vm->classList,Class)
-    initStd(vm);
-    LIST_CONNECT(vm->classList,parser.classList,Class,0)
     LIST_INIT(vm->stack,Value)
     LIST_INIT(vm->refList,Ref)
     LIST_INIT(vm->varList,Var)
@@ -60,6 +60,8 @@ void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->loopList,int)
     LIST_INIT(vm->mlist,Module)
     LIST_INIT(vm->funcPartList,int)
+    initStd(vm);
+    LIST_CONNECT(vm->classList,parser.classList,Class,0)
     vm->ptr=0;
     vm->curVar=-1;
     LIST_INIT(vm->vlist,int)
@@ -115,15 +117,16 @@ bool searchAttr(VM*vm,int*result,int class,char*name){
     }
     return false;
 }
-void makeRef(VM*vm,Ref ref){
+int makeRef(VM*vm,Ref ref){
     ref.isUsed=true;
     for(int i=0;i<vm->refList.count;i++){
         if(!vm->refList.vals[i].isUsed){
             vm->refList.vals[i]=ref;
-            return;
+            return i;
         }
     }
     LIST_ADD(vm->refList,Ref,ref)
+    return vm->refList.count-1;
 }
 Value makeValue(VM*vm,int class){
     Value val;
@@ -137,8 +140,7 @@ Value makeValue(VM*vm,int class){
     if(ref.varCount>0 || class==getVMClass(vm,CLASS_STRING)){
         ref.var=(Value*)malloc(ref.varCount*sizeof(Value));
         ref.refCount=1;
-        makeRef(vm,ref);
-        val.refID=vm->refList.count-1;
+        val.refID=makeRef(vm,ref);
     }else{
         val.refID=-1;
     }
@@ -456,16 +458,20 @@ inline static void stackCopy(VM*vm,int arg,int curPart){
     addRef(vm,val);
 }
 inline static void popVar(VM*vm,int arg,int curPart){
-    checkStack(vm,arg,curPart);
+    char temp[100];
+    if(vm->varList.count<arg){
+        sprintf(temp,"in %d:it need %d variable(s) to pop but only %d in it.",vm->ptr,arg,vm->varList.count);
+        reportVMError(vm,temp,curPart);
+    }
     for(int i=0;i<arg;i++){
-        reduceRef(vm,vm->varList.vals[vm->varList.count-i-1].val);
+        reduceRef(vm,vm->varList.vals[vm->varList.count-1].val);
         LIST_SUB(vm->varList,Var)
     }
 }
 inline static void popStack(VM*vm,int arg,int curPart){
     checkStack(vm,arg,curPart);
     for(int i=0;i<arg;i++){
-        reduceRef(vm,vm->stack.vals[vm->stack.count-i-1]);
+        reduceRef(vm,vm->stack.vals[vm->stack.count-1]);
         LIST_SUB(vm->stack,Value)
     }
 }
@@ -520,9 +526,39 @@ void addFuncArgs(VM*vm,int count){
     for(int i=0;i<count;i++){
         ref.var[i]=vm->stack.vals[vm->stack.count-count+i];
     }
-    makeRef(vm,ref);
-    var.val.refID=vm->refList.count-1;
+    var.val.refID=makeRef(vm,ref);
     LIST_ADD(vm->varList,Var,var)
+}
+void exeFunc(VM*vm,Func func,int argCount,bool isMethod,int curPart){
+    checkStack(vm,argCount,curPart);
+    LIST_ADD(vm->mlist,Module,vm->curModule)
+    vm->curModule=vm->moduleList.vals[func.moduleID];
+    Var var;
+    for(int i=0;i<argCount && i<func.args.count;i++){
+        var.val=vm->stack.vals[vm->stack.count-argCount+i];
+        var.name=func.args.vals[i];
+        LIST_ADD(vm->varList,Var,var)
+    }
+    LIST_ADD(vm->retFieldList,int,vm->fields.count-1)
+    LIST_ADD(vm->retLoopList,int,vm->loopList.count-1)
+    LIST_ADD(vm->funcPartList,int,curPart)
+    addFuncArgs(vm,argCount);
+    LIST_REDUCE(vm->stack,Value,argCount+(isMethod?2:1))
+    execute(vm,func.clist);
+    LIST_SUB(vm->funcPartList,int)
+    popVar(vm,argCount,curPart);
+    vm->curModule=vm->mlist.vals[vm->mlist.count-1];
+    LIST_SUB(vm->mlist,Module)
+    int top=vm->retLoopList.vals[vm->retLoopList.count-1];
+    while(vm->loopList.count>top+1){
+        freeLoop(vm,curPart);
+    }
+    top=vm->retFieldList.vals[vm->retFieldList.count-1];
+    while(vm->fields.count>top+1){
+        freeField(vm,curPart);
+    }
+    LIST_SUB(vm->retLoopList,int)
+    LIST_SUB(vm->retFieldList,int)
 }
 inline static void callFunction(VM*vm,int arg,int curPart){
     checkStack(vm,arg+1,curPart);
@@ -567,34 +603,7 @@ inline static void callFunction(VM*vm,int arg,int curPart){
             reportVMError(vm,temp,curPart);
         }
     }
-    LIST_ADD(vm->mlist,Module,vm->curModule)
-    vm->curModule=vm->moduleList.vals[func.moduleID];
-    Var var;
-    for(int i=0;i<arg && i<func.args.count;i++){
-        var.val=vm->stack.vals[vm->stack.count-arg+i];
-        var.name=func.args.vals[i];
-        LIST_ADD(vm->varList,Var,var)
-    }
-    LIST_REDUCE(vm->stack,Value,arg+1)
-    LIST_ADD(vm->retFieldList,int,vm->fields.count-1)
-    LIST_ADD(vm->retLoopList,int,vm->loopList.count-1)
-    LIST_ADD(vm->funcPartList,int,curPart)
-    addFuncArgs(vm,arg);
-    execute(vm,func.clist);
-    LIST_SUB(vm->funcPartList,int)
-    popVar(vm,arg,curPart);
-    vm->curModule=vm->mlist.vals[vm->mlist.count-1];
-    LIST_SUB(vm->mlist,Module)
-    int top=vm->retLoopList.vals[vm->retLoopList.count-1];
-    while(vm->loopList.count>top+1){
-        freeLoop(vm,curPart);
-    }
-    top=vm->retFieldList.vals[vm->retFieldList.count-1];
-    while(vm->fields.count>top+1){
-        freeField(vm,curPart);
-    }
-    LIST_SUB(vm->retLoopList,int)
-    LIST_SUB(vm->retFieldList,int)
+    exeFunc(vm,func,arg,false,curPart);
 }
 inline static void callMethod(VM*vm,int arg,int curPart){
     checkStack(vm,arg+2,curPart);
@@ -620,43 +629,17 @@ inline static void callMethod(VM*vm,int arg,int curPart){
         sprintf(temp,"method \"%s\" not found.",vm->refList.vals[b.refID].str);
         reportVMError(vm,temp,curPart);
     }
-    LIST_ADD(vm->mlist,Module,vm->curModule)
-    vm->curModule=vm->moduleList.vals[func.moduleID];
     Var var;
     var.val=a;
     var.name=(char*)malloc(5);
     strcpy(var.name,"this");
-    int vt=vm->varList.count;
-    LIST_ADD(vm->varList,Var,var)
-    for(int i=0;i<arg && i<func.args.count;i++){
-        var.val=vm->stack.vals[vm->stack.count-arg+i];
-        var.name=func.args.vals[i];
-        LIST_ADD(vm->varList,Var,var)
-    }
-    LIST_REDUCE(vm->stack,Value,arg+2)
-    LIST_ADD(vm->retFieldList,int,vm->fields.count-1)
-    LIST_ADD(vm->retLoopList,int,vm->loopList.count-1)
-    LIST_ADD(vm->funcPartList,int,curPart)
     LIST_ADD(vm->vlist,int,vm->curVar)
-    vm->curVar=vt;
-    addFuncArgs(vm,arg);
-    execute(vm,func.clist);
+    vm->curVar=vm->varList.count;
+    LIST_ADD(vm->varList,Var,var)
+    exeFunc(vm,func,arg,true,curPart);
+    popVar(vm,1,curPart);
     vm->curVar=vm->vlist.vals[vm->vlist.count-1];;
     LIST_SUB(vm->vlist,int)
-    LIST_SUB(vm->funcPartList,int)
-    popVar(vm,arg+1,curPart);
-    vm->curModule=vm->mlist.vals[vm->mlist.count-1];
-    LIST_SUB(vm->mlist,Module)
-    int top=vm->retLoopList.vals[vm->retLoopList.count-1];
-    while(vm->loopList.count>top+1){
-        freeLoop(vm,curPart);
-    }
-    top=vm->retFieldList.vals[vm->retFieldList.count-1];
-    while(vm->fields.count>top+1){
-        freeField(vm,curPart);
-    }
-    LIST_SUB(vm->retLoopList,int)
-    LIST_SUB(vm->retFieldList,int)
 }
 inline static void enableFunction(VM*vm,int arg){
     LIST_ADD(vm->enableFunc,int,arg+vm->curModule.funcBase)
@@ -728,17 +711,19 @@ inline static void returnModule(VM*vm){
 static void getVarCount(VM*vm,int curPart){
     checkStack(vm,1,curPart);
     Value val=vm->stack.vals[vm->stack.count-1];
-    reduceRef(vm,val);
+    Value v2=makeValue(vm,getVMClass(vm,CLASS_INT));
     if(val.refID<0){
-        val=makeValue(vm,getVMClass(vm,CLASS_INT));
-        val.num=0;
-        vm->stack.vals[vm->stack.count-1]=val;
+        v2.num=0;
     }else{
         Ref ref=vm->refList.vals[val.refID];
-        val=makeValue(vm,getClassSize(vm,CLASS_INT));
-        val.num=ref.varCount;
-        vm->stack.vals[vm->stack.count-1]=val;
+        if(val.class==getVMClass(vm,CLASS_STRING)){
+            v2.num=strlen(ref.str);
+        }else{
+            v2.num=ref.varCount;
+        }
     }
+    vm->stack.vals[vm->stack.count-1]=v2;
+    reduceRef(vm,val);
 }
 static void resizeVar(VM*vm,int curPart){
     checkStack(vm,2,curPart);
@@ -770,10 +755,9 @@ inline static void makeArray(VM*vm,int arg,int curPart){
     for(int i=0;i<arg;i++){
         ref.var[i]=vm->stack.vals[vm->stack.count-arg+i];
     }
-    makeRef(vm,ref);
     LIST_REDUCE(vm->stack,Value,arg-1)
     vm->stack.vals[vm->stack.count-1]=makeValue(vm,getVMClass(vm,CLASS_INT));
-    vm->stack.vals[vm->stack.count-1].refID=vm->refList.count-1;
+    vm->stack.vals[vm->stack.count-1].refID=makeRef(vm,ref);
     vm->stack.vals[vm->stack.count-1].num=0;
 }
 static void exeOpt(VM*vm,int ind,int curPart){
@@ -808,7 +792,6 @@ static void exeOpt(VM*vm,int ind,int curPart){
     LIST_SUB(vm->retLoopList,int)
     LIST_SUB(vm->retFieldList,int)
 }
-
 #define CINT 0
 #define CFLOAT 4
 #define CCLASS 2

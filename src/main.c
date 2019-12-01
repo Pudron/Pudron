@@ -36,6 +36,6 @@ int main(int argc,char**argv){
             fileName=argv[i];
         }
     }
-    run(fileName,isLib);
+    test(fileName,isLib);
     return 0;
 }

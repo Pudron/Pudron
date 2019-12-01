@@ -18,5 +18,5 @@ lib:lib/float.pd lib/meta.pd lib/string.pd
 
 .PHONY:clean
 clean:
-	-rm objs/*
-#	-del /Q objs
+#	-rm objs/*
+	-del /Q objs

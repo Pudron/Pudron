@@ -80,6 +80,7 @@ typedef enum{
     TOKEN_STRING,
     TOKEN_FUNC,
     TOKEN_WHILE,
+    TOKEN_FOR,
     TOKEN_BREAK,
     TOKEN_RETURN,
     TOKEN_IF,
