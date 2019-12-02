@@ -20,6 +20,16 @@ class meta{
         >>COPY_OBJECT;
         >>RETURN;
     }
+    func getVarBasis(){
+        >>LOAD_VAL this;
+        >>GET_VARBASIS;
+        >>RETURN;
+    }
+    func setVarBasis(val){
+        >>LOAD_VAL this;
+        >>LOAD_VAL val;
+        >>SET_VARBASIS;
+    }
 }
 func exit(value){
     >>LOAD_VAL value;

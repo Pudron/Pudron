@@ -56,11 +56,14 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_RESIZE_VAR,"RESIZE_VAR",false,false},
     {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",true,false},
     {OPCODE_GET_CLASS,"GET_CLASS",false,false},
+    {OPCODE_GET_VARBASIS,"GET_VARBASIS",false,false},
+    {OPCODE_SET_VARBASIS,"SET_VARBASIS",false,false},
     {OPCODE_EXIT,"EXIT",false,false},
     {OPCODE_MAKE_RANGE,"MAKE_RANGE",false,false},
     {OPCODE_COPY_OBJECT,"COPY_OBJECT",false,false},
     {OPCODE_STR_FORMAT,"STR_FORMAT",false,false},
-    {OPCODE_PRINT,"PRINT",false,false}
+    {OPCODE_PRINT,"PRINT",false,false},
+    {OPCODE_INPUT,"INPUT",false,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
@@ -96,7 +99,7 @@ void freeParser(Parser*parser){
 }
 /*void extend(Class*class,Class eclass){
     LIST_CONNECT(class->var,eclass.var,Name,0)
-    class->varBase=eclass.varBase;
+    class->varBasis=eclass.varBasis;
     LIST_CONNECT(class->methods,eclass.methods,Func,1)
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         class->optMethod[i]=eclass.optMethod[i];
@@ -109,7 +112,7 @@ void clistToString(Parser parser,intList clist,char*text,Module module){
     text[0]='\0';
     for(int i=0;i<clist.count;i++){
         cmd=clist.vals[i++];
-        sprintf(temp,"%d(%d:%d):",i,parser.partList.vals[cmd+module.partBase].line,parser.partList.vals[cmd+module.partBase].column);
+        sprintf(temp,"%d(%d:%d):",i,parser.partList.vals[cmd+module.partBasis].line,parser.partList.vals[cmd+module.partBasis].column);
         strcat(text,temp);
         cmd=clist.vals[i];
         OpcodeMsg opcode=opcodeList[cmd];
@@ -120,7 +123,7 @@ void clistToString(Parser parser,intList clist,char*text,Module module){
             sprintf(temp," %d",cmd);
             strcat(text,temp);
             if(opcode.isSymbol){
-                symbol=parser.symList.vals[cmd+module.symBase];
+                symbol=parser.symList.vals[cmd+module.symBasis];
                 switch(symbol.type){
                     case SYM_INT:
                         sprintf(temp,"(%d)",symbol.num);

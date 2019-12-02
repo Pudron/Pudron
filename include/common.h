@@ -138,7 +138,7 @@ typedef enum{
     TOKEN_LINE
 }TokenType;
 #define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 62
+#define OPCODE_COUNT 66
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -202,12 +202,15 @@ typedef enum{
     OPCODE_RESIZE_VAR,
     OPCODE_MAKE_ARRAY,
     OPCODE_GET_CLASS,
+    OPCODE_GET_VARBASIS,
+    OPCODE_SET_VARBASIS,
     OPCODE_EXIT,
 
     OPCODE_MAKE_RANGE,
     OPCODE_COPY_OBJECT,
     OPCODE_STR_FORMAT,
-    OPCODE_PRINT
+    OPCODE_PRINT,
+    OPCODE_INPUT
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
@@ -264,11 +267,11 @@ typedef struct{
 }Command;
 typedef struct{
     char*name;
-    int funcBase;
-    int cmdBase;
-    int symBase;
-    int classBase;
-    int partBase;
+    int funcBasis;
+    int cmdBasis;
+    int symBasis;
+    int classBasis;
+    int partBasis;
 }Module;
 LIST_DECLARE(Module)
 typedef struct{
@@ -281,7 +284,7 @@ LIST_DECLARE(Func)
 typedef struct{
     char*name;
     NameList var;
-    int varBase;
+    int varBasis;
     FuncList methods;
     int optID[OPT_METHOD_COUNT];
     intList parentList;

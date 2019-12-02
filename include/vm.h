@@ -16,7 +16,7 @@ LIST_DECLARE(Field)
 typedef struct{
 	Value*var;
     int varCount;
-    int varBase;
+    int varBasis;
 	int refCount;
 	bool isUsed;
 	char*str;

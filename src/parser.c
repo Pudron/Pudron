@@ -183,8 +183,7 @@ Token nextToken(Parser*parser){
         }
         word[i]='\0';
         parser->column+=i;
-        token.word=(char*)malloc(i+1);
-        strcpy(token.word,word);
+        token.word=(char*)malloc(i+1);        strcpy(token.word,word);
         token.type=TOKEN_WORD;
     }else if(c=='\''){
         int i=0;
@@ -404,7 +403,7 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
                 for(int i=0;i<parser->classList.vals[env.classDef].var.count;i++){
                     if(strcmp(word,parser->classList.vals[env.classDef].var.vals[i])==0){
                         if(env.isClassVarDef){
-                            sprintf(msgText,"the member \"%s\" in the class \"%s\" has already existed.",token.word,parser->classList.vals[env.classDef].name);
+                            sprintf(msgText,"the member \"%s\" in the class \"%s\" has already existed.",word,parser->classList.vals[env.classDef].name);
                             reportError(parser,msgText,msgStart);
                         }
                         isFound=true;
@@ -1056,6 +1055,7 @@ void getFunction(Parser*parser,intList*clist,Env env){
     func.moduleID=parser->curModule;
     LIST_ADD(parser->funcList,Func,func)
 }
+/*不知怎么回事，类成员不能用a,b,c作为名字*/
 void getClass(Parser*parser,intList*clist,Env env){
     Func method;
     Token token;
@@ -1236,7 +1236,7 @@ void getClass(Parser*parser,intList*clist,Env env){
     addCmd1(parser,clist,OPCODE_ENABLE_CLASS,class);
     initFunc.name=classd.name;
     LIST_ADD(parser->funcList,Func,initFunc)
-    parser->classList.vals[class].varBase=classd.var.count;
+    parser->classList.vals[class].varBasis=classd.var.count;
     free(initName);
     free(destroyName);
 }

@@ -1,4 +1,10 @@
 import "lib/debug.pdl";
-print("asd\n",123,"\n");
+class Test{
+    x,y,z;
+}
+t=Test();
+print("count:"+t.getVarBasis(),"\n");
+t.setVarBasis(1);
+print("count2:"+t.getVarBasis(),"\n");
 #>>PRINT_STACK;
 >>PRINT_VAR;#

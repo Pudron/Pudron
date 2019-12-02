@@ -70,20 +70,20 @@ char*readString(Bin*bin){
 }
 void writeModule(charList*dat,Module module){
     writeString(dat,module.name);
-    writeInt(dat,module.funcBase);
-    writeInt(dat,module.cmdBase);
-    writeInt(dat,module.symBase);
-    writeInt(dat,module.classBase);
-    writeInt(dat,module.partBase);
+    writeInt(dat,module.funcBasis);
+    writeInt(dat,module.cmdBasis);
+    writeInt(dat,module.symBasis);
+    writeInt(dat,module.classBasis);
+    writeInt(dat,module.partBasis);
 }
 Module readModule(Bin*bin){
     Module module;
     module.name=readString(bin);
-    module.funcBase=readInt(bin);
-    module.cmdBase=readInt(bin);
-    module.symBase=readInt(bin);
-    module.classBase=readInt(bin);
-    module.partBase=readInt(bin);
+    module.funcBasis=readInt(bin);
+    module.cmdBasis=readInt(bin);
+    module.symBasis=readInt(bin);
+    module.classBasis=readInt(bin);
+    module.partBasis=readInt(bin);
     return module;
 }
 void writePart(charList*dat,Part part){
@@ -162,7 +162,7 @@ Func readFunc(Bin*bin){
 void writeClass(charList*dat,Class class){
     writeString(dat,class.name);
     WRITE_LIST(dat,class.var,String)
-    writeInt(dat,class.varBase);
+    writeInt(dat,class.varBasis);
     WRITE_LIST(dat,class.methods,Func)
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         writeInt(dat,class.optID[i]);
@@ -177,7 +177,7 @@ Class readClass(Bin*bin){
     class.name=readString(bin);
     LIST_INIT(class.var,Name)
     READ_LIST(bin,class.var,Name,String)
-    class.varBase=readInt(bin);
+    class.varBasis=readInt(bin);
     LIST_INIT(class.methods,Func)
     READ_LIST(bin,class.methods,Func,Func)
     for(int i=0;i<OPT_METHOD_COUNT;i++){
@@ -274,11 +274,11 @@ void import(Parser*parser,char*fileName){
     int sid=addSymbol(parser,symbol);
     READ_LIST(&bin,parser->moduleList,Module,Module)
     for(int i=begin;i<parser->moduleList.count;i++){
-        parser->moduleList.vals[i].funcBase+=parser->funcList.count;
-        parser->moduleList.vals[i].cmdBase+=parser->clist.count;
-        parser->moduleList.vals[i].symBase+=parser->symList.count;
-        parser->moduleList.vals[i].classBase+=parser->classList.count;
-        parser->moduleList.vals[i].partBase+=parser->partList.count;
+        parser->moduleList.vals[i].funcBasis+=parser->funcList.count;
+        parser->moduleList.vals[i].cmdBasis+=parser->clist.count;
+        parser->moduleList.vals[i].symBasis+=parser->symList.count;
+        parser->moduleList.vals[i].classBasis+=parser->classList.count;
+        parser->moduleList.vals[i].partBasis+=parser->partList.count;
     }
     READ_LIST(&bin,parser->partList,Part,Part)
     addCmd1(parser,&parser->clist,OPCODE_SET_MODULE,sid);

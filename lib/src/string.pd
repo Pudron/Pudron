@@ -21,3 +21,7 @@ func print(text){
     >>LOAD_VAL str;
     >>PRINT;
 }
+func input(){
+    >>INPUT;
+    >>RETURN;
+}

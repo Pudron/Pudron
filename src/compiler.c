@@ -2,7 +2,7 @@
 void initStd(Parser*parser){
     Class class;
     Part part;
-    class.varBase=0;
+    class.varBasis=0;
     class.var.count=0;
     class.methods.count=0;
     class.initID=-1;

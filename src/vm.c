@@ -99,7 +99,7 @@ void addFuncArgs(VM*vm,int count){
     var.val=makeValue(vm,CLASS_INT);
     var.val.num=count;
     ref.refCount=1;
-    ref.varBase=0;
+    ref.varBasis=0;
     ref.varCount=count;
     ref.str=NULL;
     ref.var=(Value*)malloc(count*sizeof(Value));
@@ -155,7 +155,7 @@ Value makeValue(VM*vm,int class){
     val.class=class;
     classd=vm->classList.vals[val.class];
     ref.varCount=getClassSize(vm,val.class);
-    ref.varBase=classd.varBase;
+    ref.varBasis=classd.varBasis;
     ref.str=NULL;
     if(ref.varCount>0 || class==CLASS_STRING){
         ref.var=(Value*)malloc(ref.varCount*sizeof(Value));
@@ -183,13 +183,13 @@ void printClist(VM*vm,intList clist,int moduleID){
     Symbol symbol;
     int arg;
     for(int i=0;i<clist.count;i++){
-        part=vm->partList.vals[clist.vals[i++]+module.partBase];
+        part=vm->partList.vals[clist.vals[i++]+module.partBasis];
         opcode=opcodeList[clist.vals[i]];
         printf("%d(%d:%d):%s",i-1,part.line,part.column,opcode.name);
         if(opcode.isArg){
             arg=clist.vals[++i];
             if(opcode.isSymbol){
-                symbol=vm->symList.vals[arg+module.symBase];
+                symbol=vm->symList.vals[arg+module.symBasis];
                 switch(symbol.type){
                     case SYM_INT:
                         printf(" %d\n",symbol.num);
@@ -308,7 +308,7 @@ inline static void printClass(VM*vm,int curPart){
     puts("class end\n");
 }
 inline static void loadConst(VM*vm,int arg,int curPart){
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     Value value;
     switch (symbol.type)
     {
@@ -345,7 +345,7 @@ inline static void loadConst(VM*vm,int arg,int curPart){
     LIST_ADD(vm->stack,Value,value)
 }
 inline static void loadVal(VM*vm,int arg,int curPart){
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     char temp[50];
     if(symbol.type!=SYM_STRING){
         reportVMError(vm,"LOAD_VAL:symbol type must be string.",curPart);
@@ -377,7 +377,7 @@ inline static void loadVal(VM*vm,int arg,int curPart){
 }
 inline static void loadAttr(VM*vm,int arg,int curPart){
     checkStack(vm,1,curPart);
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     char temp[50];
     if(symbol.type!=SYM_STRING){
         reportVMError(vm,"LOAD_ATTR:symbol type must be string.",curPart);
@@ -409,7 +409,7 @@ inline static void loadIndex(VM*vm,int curPart){
         reportVMError(vm,"it must be integer when calling array.",curPart);
     }
     Ref ref=vm->refList.vals[a.refID];
-    int ind=b.num+ref.varBase;
+    int ind=b.num+ref.varBasis;
     if((ind<0 || ind>=ref.varCount) && a.class!=CLASS_STRING){
         reportVMError(vm,"illegal array index.",curPart);
     }
@@ -430,7 +430,7 @@ inline static void loadIndex(VM*vm,int curPart){
 }
 inline static void storeVal(VM*vm,int arg,int curPart){
     checkStack(vm,1,curPart);
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     if(symbol.type!=SYM_STRING){
         reportVMError(vm,"STORE_VAL:symbol type must be string.",curPart);
     }
@@ -465,7 +465,7 @@ inline static void storeVal(VM*vm,int arg,int curPart){
 }
 inline static void storeAttr(VM*vm,int arg,int curPart){
     checkStack(vm,2,curPart);
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     char temp[50];
     if(symbol.type!=SYM_STRING){
         reportVMError(vm,"STORE_ATTR:symbol type must be string.",curPart);
@@ -506,7 +506,7 @@ inline static void storeIndex(VM*vm,int curPart){
         reportVMError(vm,"it must be integer when calling array.",curPart);
     }
     Ref ref=vm->refList.vals[a.refID];
-    int ind=b.num+ref.varBase;
+    int ind=b.num+ref.varBasis;
     if((ind<0 || ind>=ref.varCount) && a.class!=CLASS_STRING){
         reportVMError(vm,"illegal array index.",curPart);
     }
@@ -527,7 +527,7 @@ inline static void storeIndex(VM*vm,int curPart){
 }
 inline static void pushVal(VM*vm,int arg,int curPart){
     checkStack(vm,1,curPart);
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     if(symbol.type!=SYM_STRING){
         reportVMError(vm,"PUSH_VAL:symbol type must be string.",curPart);
     }
@@ -629,10 +629,10 @@ void exeFunc(VM*vm,Func func,int argCount,bool isMethod,bool isInit,int curPart)
     }
     /*can not use popStack() because of ref*/
     LIST_REDUCE(vm->stack,Value,argCount+(isMethod?2:1)-(isInit?1:0))
-    int cmdBase=vm->curModule.cmdBase;
-    vm->curModule.cmdBase=0;
+    int cmdBasis=vm->curModule.cmdBasis;
+    vm->curModule.cmdBasis=0;
     execute(vm,func.clist);
-    vm->curModule.cmdBase=cmdBase;
+    vm->curModule.cmdBasis=cmdBasis;
     checkStack(vm,1,curPart);
     Value rval=vm->stack.vals[vm->stack.count-1];
     LIST_SUB(vm->stack,Value)
@@ -729,15 +729,15 @@ inline static void callMethod(VM*vm,int arg,int curPart){
     exeFunc(vm,func,arg,true,false,curPart);
 }
 inline static void enableFunction(VM*vm,int arg){
-    LIST_ADD(vm->enableFunc,int,arg+vm->curModule.funcBase)
+    LIST_ADD(vm->enableFunc,int,arg+vm->curModule.funcBasis)
     Var var;
-    var.name=vm->funcList.vals[arg+vm->curModule.funcBase].name;
+    var.name=vm->funcList.vals[arg+vm->curModule.funcBasis].name;
     var.val=makeValue(vm,CLASS_FUNCTION);
-    var.val.num=arg+vm->curModule.funcBase;
+    var.val.num=arg+vm->curModule.funcBasis;
     LIST_ADD(vm->varList,Var,var)
 }
 inline static void makeObject(VM*vm,int arg){
-    Value val=makeValue(vm,arg+vm->curModule.classBase);
+    Value val=makeValue(vm,arg+vm->curModule.classBasis);
     LIST_ADD(vm->stack,Value,val)
 }
 bool searchParent(VM*vm,int class,int parent){
@@ -759,22 +759,22 @@ inline static void extendClass(VM*vm,int arg,int curPart){
     if(val.class!=CLASS_CLASS){
         reportVMError(vm,"the variable must be a class when extending class.",curPart);
     }
-    int class=arg+vm->curModule.classBase;
+    int class=arg+vm->curModule.classBasis;
     if(!searchParent(vm,class,val.num)){
-        vm->classList.vals[class].varBase+=vm->classList.vals[val.num].var.count;
+        vm->classList.vals[class].varBasis+=vm->classList.vals[val.num].var.count;
         LIST_ADD(vm->classList.vals[class].parentList,int,val.num);
     }
 }
 inline static void enableClass(VM*vm,int arg){
     Var var;
-    int class=arg+vm->curModule.classBase;
+    int class=arg+vm->curModule.classBasis;
     var.name=vm->classList.vals[class].name;
     var.val=makeValue(vm,CLASS_CLASS);
     var.val.num=class;
     LIST_ADD(vm->varList,Var,var)
 }
 inline static void setModule(VM*vm,int arg,int curPart){
-    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
+    Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     if(symbol.type!=SYM_STRING){
         reportVMError(vm,"SET_MODULE:the symbol type must be string.",curPart);
     }
@@ -846,7 +846,7 @@ inline static void makeArray(VM*vm,int arg,int curPart){
     checkStack(vm,arg,curPart);
     Ref ref;
     ref.varCount=arg;
-    ref.varBase=0;
+    ref.varBasis=0;
     ref.refCount=1;
     ref.str=NULL;
     ref.var=(Value*)malloc(arg*sizeof(Value));
@@ -897,7 +897,7 @@ inline static void makeRange(VM*vm,int curPart){
     Ref ref;
     ref.str=NULL;
     ref.varCount=len;
-    ref.varBase=0;
+    ref.varBasis=0;
     ref.refCount=1;
     ref.var=(Value*)malloc(len*sizeof(Value));
     for(int i=0;i<len;i++){
@@ -979,6 +979,37 @@ inline static void mprint(VM*vm,int curPart){
     printf("%s",vm->refList.vals[val.refID].str);
     popStack(vm,1,curPart);
 }
+inline static void minput(VM*vm,int curPart){
+    Value val=makeValue(vm,CLASS_STRING);
+    vm->refList.vals[val.refID].str=(char*)malloc(MAX_WORD_LENGTH);
+    scanf("%s",vm->refList.vals[val.refID].str);
+    LIST_ADD(vm->stack,Value,val)
+}
+inline static void getVarBasis(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    Value val=vm->stack.vals[vm->stack.count-1];
+    Value result=makeValue(vm,CLASS_INT);
+    if(val.refID>=0){
+        result.num=vm->refList.vals[val.refID].varBasis;
+    }else{
+        result.num=0;
+    }
+    reduceRef(vm,val);
+    vm->stack.vals[vm->stack.count-1]=result;
+}
+inline static void setVarBasis(VM*vm,int curPart){
+    checkStack(vm,2,curPart);
+    Value val,sum;
+    val=vm->stack.vals[vm->stack.count-2];
+    sum=vm->stack.vals[vm->stack.count-1];
+    if(sum.class!=CLASS_INT){
+        reportVMError(vm,"it must be integer when setting varBasis.",curPart);
+    }
+    if(val.refID>=0){
+        vm->refList.vals[val.refID].varBasis=sum.num;
+    }
+    popStack(vm,2,curPart);
+}
 #define EXE_OPT(opt,ind) \
     checkStack(vm,2,curPart);\
     a=vm->stack.vals[vm->stack.count-2];\
@@ -1043,7 +1074,7 @@ void execute(VM*vm,intList clist){
     char temp[50];
     Value a,b;
     for(int i=0;i<clist.count;i++){
-        curPart=clist.vals[i++]+vm->curModule.partBase;
+        curPart=clist.vals[i++]+vm->curModule.partBasis;
         opcode=clist.vals[i];
         vm->ptr=i;
         //printf("cmd:%d\n",i);
@@ -1162,7 +1193,7 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_JUMP:
                 i++;
-                i=clist.vals[i]+vm->curModule.cmdBase-1;
+                i=clist.vals[i]+vm->curModule.cmdBasis-1;
                 break;
             case OPCODE_JUMP_IF_FALSE:
                 checkStack(vm,1,curPart);
@@ -1172,7 +1203,7 @@ void execute(VM*vm,intList clist){
                 }
                 i++;
                 if(!a.num){
-                    i=clist.vals[i]+vm->curModule.cmdBase-1;
+                    i=clist.vals[i]+vm->curModule.cmdBasis-1;
                 }
                 LIST_SUB(vm->stack,Value)
             case OPCODE_SET_FIELD:
@@ -1251,6 +1282,15 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_PRINT:
                 mprint(vm,curPart);
+                break;
+            case OPCODE_INPUT:
+                minput(vm,curPart);
+                break;
+            case OPCODE_GET_VARBASIS:
+                getVarBasis(vm,curPart);
+                break;
+            case OPCODE_SET_VARBASIS:
+                setVarBasis(vm,curPart);
                 break;
             default:
                 sprintf(temp,"unknown operation code (%d).",opcode);
