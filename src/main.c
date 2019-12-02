@@ -36,6 +36,19 @@ int main(int argc,char**argv){
             fileName=argv[i];
         }
     }
-    test(fileName,isLib);
+    if(fileName==NULL){
+        printf("error:expected a file.\n");
+        return -1;
+    }
+    char*post=getPostfix(fileName);
+    if(strcmp(post,FILE_LIB_POSTFIX)==0){
+        if(isLib){
+            printf("warning:can not make library again.\n");
+        }
+        direct(fileName);
+    }else{
+        run(fileName,isLib);
+    }
+    free(post);
     return 0;
 }

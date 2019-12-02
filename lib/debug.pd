@@ -1,0 +1,8 @@
+func printFunction(function){
+    >>LOAD_VAL function;
+    >>PRINT_FUNC;
+}
+func printClass(classd){
+    >>LOAD_VAL classd;
+    >>PRINT_CLASS;
+}

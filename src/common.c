@@ -50,9 +50,14 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_RETURN_MODULE,"RETURN_MODULE",false,false},
     {OPCODE_PRINT_STACK,"PRINT_STACK",false,false},
     {OPCODE_PRINT_VAR,"PRINT_VAR",false,false},
+    {OPCODE_PRINT_FUNC,"PRINT_FUNC",false,false},
+    {OPCODE_PRINT_CLASS,"PRINT_CLASS",false,false},
     {OPCODE_GET_VARCOUNT,"GET_VARCOUNT",false,false},
     {OPCODE_RESIZE_VAR,"RESIZE_VAR",false,false},
-    {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",true,false}
+    {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",true,false},
+    {OPCODE_GET_CLASS,"GET_CLASS",false,false},
+    {OPCODE_EXIT,"EXIT",false,false},
+    {OPCODE_MAKE_RANGE,"MAKE_RANGE",false,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
@@ -61,6 +66,8 @@ void initParser(Parser*parser,bool isRoot){
     parser->line=1;
     parser->column=1;
     parser->curPart=0;
+    parser->curModule=0;
+    parser->isLib=false;
     if(isRoot){
         LIST_INIT(parser->partList,Part)
         LIST_INIT(parser->clist,int)
@@ -134,7 +141,7 @@ void clistToString(Parser parser,intList clist,char*text,Module module){
 void funcToString(Parser parser,FuncList funcList,char*text){
     text[0]='\0';
     Func func;
-    char temp[500];
+    char temp[5000];
     for(int i=0;i<funcList.count;i++){
         func=funcList.vals[i];
         sprintf(temp,"Function %s(",func.name);
@@ -175,7 +182,7 @@ void classToString(Parser parser,char*text){
 char*cutText(char*text,int start,int end){
     char*str;
     int len=end-start;
-    if(len<=0){
+    if(len<=0 || text==NULL){
         return NULL;
     }
     str=(char*)malloc(len+1);
@@ -197,6 +204,43 @@ char*cutPostfix(char*text){
     }
     char*str=(char*)malloc(strlen(t)+1);
     strcpy(str,t);
+    return str;
+}
+char*getPostfix(char*text){
+    char*str=malloc(1);
+    int len=strlen(text);
+    int len2=0;
+    int start=-1;
+    for(int i=0;i<len;i++){
+        if(text[i]=='.'){
+            free(str);
+            start=i;
+            len2=len-start;
+            str=(char*)malloc(len2+1);
+            str[0]='.';
+        }else if(start>=0){
+            str[i-start]=text[i];
+        }
+    }
+    str[len2]='\0';
+    return str;
+}
+char*cutPath(char*text){
+    int len=strlen(text);
+    int start=0;
+    char*str;
+    for(int i=len-1;i>=0;i--){
+        if(text[i]=='/' || text[i]=='\\'){
+            start=i+1;
+            break;
+        }
+    }
+    int len2=len-start;
+    str=(char*)malloc(len2+1);
+    for(int i=0;i<len2;i++){
+        str[i]=text[start+i];
+    }
+    str[len2]='\0';
     return str;
 }
 void reportMsg(Msg msg){

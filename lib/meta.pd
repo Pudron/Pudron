@@ -12,4 +12,39 @@ class meta{
         >>STORE_VAL count;
         return count;
     }
+    func getClass(){
+        classd;
+        >>LOAD_VAL this;
+        >>GET_CLASS;
+        >>STORE_VAL classd;
+        return classd;
+    }
+}
+func exit(value){
+    >>LOAD_VAL value;
+    >>EXIT;
+}
+func range(a,b,c){
+    result;
+    if(argVar.getVarCount()=1){
+        a-=1;
+        >>LOAD_CONST 0;
+        >>LOAD_VAL a;
+        >>LOAD_CONST 1;
+        >>MAKE_RANGE;
+        >>STORE_VAL result;
+    }elif(argVar.getVarCount()=2){
+        >>LOAD_VAL a;
+        >>LOAD_VAL b;
+        >>LOAD_CONST 1;
+        >>MAKE_RANGE;
+        >>STORE_VAL result;
+    }elif(argVar.getVarCount()=3){
+        >>LOAD_VAL a;
+        >>LOAD_VAL b;
+        >>LOAD_VAL c;
+        >>MAKE_RANGE;
+        >>STORE_VAL result;
+    }
+    return result;
 }

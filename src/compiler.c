@@ -1,4 +1,38 @@
 #include"compiler.h"
+void initStd(Parser*parser){
+    Class class;
+    Part part;
+    class.varBase=0;
+    class.var.count=0;
+    class.methods.count=0;
+    class.initID=-1;
+    class.destroyID=-1;
+    for(int i=0;i<OPT_METHOD_COUNT;i++){
+        class.optMethod[i].clist.count=0;
+    }
+    LIST_INIT(class.parentList,int)
+    LIST_ADD(class.parentList,int,CLASS_META)
+    class.name=(char*)malloc(4);
+    strcpy(class.name,"int");
+    LIST_ADD(parser->classList,Class,class)
+    class.name=(char*)malloc(5);
+    strcpy(class.name,"class");
+    LIST_ADD(parser->classList,Class,class)
+    class.name=(char*)malloc(8);
+    strcpy(class.name,"function");
+    LIST_ADD(parser->classList,Class,class)
+    part.fileName=parser->fileName;
+    part.code=NULL;
+    part.line=0;
+    part.column=0;
+    part.start=0;
+    part.end=0;
+    parser->curPart=parser->partList.count;
+    LIST_ADD(parser->partList,Part,part)
+    import(parser,"lib/meta.pdl");
+    import(parser,"lib/float.pdl");
+    import(parser,"lib/string.pdl");
+}
 Parser compile(Parser*parent,char*fileName,bool isLib){
     Parser parser;
     initParser(&parser,(parent==NULL)?true:false);
@@ -14,22 +48,14 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
         parser.funcList=parent->funcList;
         parser.classList=parent->classList;
         parser.moduleList=parent->moduleList;
+    }else if(!isLib){
+        initStd(&parser);
     }
-    int len=strlen(fileName);
-    char c;
-    char*name2=(char*)malloc(len-strlen(FILE_POSTFIX)+1);
-    for(int i=0;i<len;i++){
-        c=fileName[i];
-        if(c=='.'){
-            name2[i]='\0';
-            break;
-        }
-        name2[i]=c;
-    }
+    char*namet=cutPostfix(fileName);
+    char*name2=cutPath(namet);
+    free(namet);
     Module module={name2,0,0,0,0,0};
-    if(!isLib){
-        module.classBase=STD_CLASS_COUNT;
-    }
+    parser.curModule=parser.moduleList.count;
     LIST_ADD(parser.moduleList,Module,module)
     Env env={-1,false,NULL,true,false};
     getBlock(&parser,&parser.clist,env);
@@ -53,15 +79,29 @@ void run(char*fileName,bool isLib){
         execute(&vm,vm.clist);
     }
 }
+void direct(char*fileName){
+    Parser parser;
+    initParser(&parser,true);
+    parser.fileName=fileName;
+    parser.isLib=false;
+    initStd(&parser);
+    Module module={fileName,0,0,0,0,0};
+    parser.curModule=parser.moduleList.count;
+    LIST_ADD(parser.moduleList,Module,module)
+    import(&parser,fileName);
+    VM vm;
+    initVM(&vm,parser);
+    execute(&vm,vm.clist);
+}
 #ifndef RELEASE
 void test(char*fileName,bool isLib){
     Parser parser=compile(NULL,fileName,isLib);
-    char text[1000];
+    char text[5000];
     classToString(parser,text);
     printf("%s",text);
     funcToString(parser,parser.funcList,text);
     printf("%s",text);
-    clistToString(parser,parser.clist,text,parser.moduleList.vals[0]);
+    clistToString(parser,parser.clist,text,parser.moduleList.vals[parser.curModule]);
     printf("clist(size:%d):\n%s\n",parser.clist.count,text);
     if(isLib){
         export(parser);

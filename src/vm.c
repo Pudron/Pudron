@@ -1,55 +1,13 @@
 #include"vm.h"
-void initStd(VM*vm){
-    Class class;
-    class.varBase=0;
-    class.var.count=0;
-    class.methods.count=0;
-    for(int i=0;i<OPT_METHOD_COUNT;i++){
-        class.optMethod[i].clist.count=0;
-    }
-    LIST_INIT(class.parentList,int)
-    LIST_ADD(class.parentList,int,-CLASS_META-1)
-    class.name=(char*)malloc(4);
-    strcpy(class.name,"int");
-    LIST_ADD(vm->classList,Class,class)
-    class.name=(char*)malloc(5);
-    strcpy(class.name,"class");
-    LIST_ADD(vm->classList,Class,class)
-    class.name=(char*)malloc(8);
-    strcpy(class.name,"function");
-    LIST_ADD(vm->classList,Class,class)
-    Parser parser;
-    initParser(&parser,true);
-    import(&parser,"lib/meta.pdl");
-    import(&parser,"lib/float.pdl");
-    import(&parser,"lib/string.pdl");
-    LIST_CONNECT(vm->classList,parser.classList,Class,0)
-    LIST_CONNECT(vm->funcList,parser.funcList,Func,1)
-    freeParser(&parser);
-    Var var;
-    var.val.refID=-1;
-    var.val.class=-CLASS_CLASS-1;
-    var.name=(char*)malloc(4);
-    strcpy(var.name,"int");
-    var.val.num=-CLASS_INT-1;
-    LIST_ADD(vm->varList,Var,var)
-    var.name=(char*)malloc(7);
-    strcpy(var.name,"string");
-    var.val.num=-CLASS_STRING-1;
-    LIST_ADD(vm->varList,Var,var)
-    var.name=(char*)malloc(6);
-    strcpy(var.name,"float");
-    var.val.num=-CLASS_FLOAT-1;
-    LIST_ADD(vm->varList,Var,var)
-}
+extern OpcodeMsg opcodeList[];
 void initVM(VM*vm,Parser parser){
     vm->partList=parser.partList;
     vm->clist=parser.clist;
     vm->symList=parser.symList;
     vm->funcList=parser.funcList;
     vm->moduleList=parser.moduleList;
-    vm->curModule=vm->moduleList.vals[0];
-    LIST_INIT(vm->classList,Class)
+    vm->curModule=vm->moduleList.vals[parser.curModule];
+    vm->classList=parser.classList;
     LIST_INIT(vm->stack,Value)
     LIST_INIT(vm->refList,Ref)
     LIST_INIT(vm->varList,Var)
@@ -60,11 +18,24 @@ void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->loopList,int)
     LIST_INIT(vm->mlist,Module)
     LIST_INIT(vm->funcPartList,int)
-    initStd(vm);
-    LIST_CONNECT(vm->classList,parser.classList,Class,0)
     vm->ptr=0;
+    vm->curPart=0;
     vm->curVar=-1;
     LIST_INIT(vm->vlist,int)
+    Var var;
+    var.val=makeValue(vm,CLASS_CLASS);
+    var.name=(char*)malloc(4);
+    strcpy(var.name,"int");
+    var.val.num=CLASS_INT;
+    LIST_ADD(vm->varList,Var,var)
+    var.name=(char*)malloc(6);
+    strcpy(var.name,"class");
+    var.val.num=CLASS_CLASS;
+    LIST_ADD(vm->varList,Var,var)
+    var.name=(char*)malloc(9);
+    strcpy(var.name,"function");
+    var.val.num=CLASS_FUNCTION;
+    LIST_ADD(vm->varList,Var,var)
 }
 void reportVMError(VM*vm,char*text,int curPart){
     Msg msg;
@@ -86,12 +57,6 @@ void reportVMError(VM*vm,char*text,int curPart){
     msg.column=part.column;
     strcpy(msg.text,text);
     reportMsg(msg);
-}
-int getVMClass(VM*vm,int class){
-    if(class<0){
-        return -class-1;
-    }
-    return vm->curModule.classBase+class;
 }
 int getClassSize(VM*vm,int class){
     Class classd=vm->classList.vals[class];
@@ -137,12 +102,22 @@ Value makeValue(VM*vm,int class){
     ref.varCount=getClassSize(vm,val.class);
     ref.varBase=classd.varBase;
     ref.str=NULL;
-    if(ref.varCount>0 || class==getVMClass(vm,CLASS_STRING)){
+    if(ref.varCount>0 || class==CLASS_STRING){
         ref.var=(Value*)malloc(ref.varCount*sizeof(Value));
         ref.refCount=1;
         val.refID=makeRef(vm,ref);
+        for(int i=0;i<ref.varCount;i++){
+            ref.var[i]=makeValue(vm,CLASS_INT);
+            ref.var[i].num=0;
+        }
     }else{
         val.refID=-1;
+    }
+    if(classd.initID>=0){
+        LIST_ADD(vm->stack,Value,val)
+        vm->refList.vals[val.refID].refCount++;
+        exeFunc(vm,classd.methods.vals[classd.initID],0,true,true,vm->curPart);
+        LIST_SUB(vm->stack,Value)
     }
     return val;
 }
@@ -159,10 +134,22 @@ static void addRef(VM*vm,Value value){
     }
 }
 static void reduceRef(VM*vm,Value value){
+    Class class;
     if(value.refID>=0){
+        class=vm->classList.vals[value.class];
         vm->refList.vals[value.refID].refCount--;
         if(vm->refList.vals[value.refID].refCount<=0){
+            if(class.destroyID>=0){
+                vm->refList.vals[value.refID].refCount=2;
+                LIST_ADD(vm->stack,Value,value)
+                exeFunc(vm,class.methods.vals[class.destroyID],0,true,true,vm->curPart);
+                LIST_SUB(vm->stack,Value)
+            }
+            for(int i=0;i<vm->refList.vals[value.refID].varCount;i++){
+                reduceRef(vm,vm->refList.vals[value.refID].var[i]);
+            }
             free(vm->refList.vals[value.refID].var);
+            vm->refList.vals[value.refID].var=NULL;
             vm->refList.vals[value.refID].isUsed=false;
             if(vm->refList.vals[value.refID].str!=NULL){
                 free(vm->refList.vals[value.refID].str);
@@ -170,52 +157,136 @@ static void reduceRef(VM*vm,Value value){
         }
     }
 }
-/*void printClist(VM*vm,intList clist){
+void printClist(VM*vm,intList clist,int moduleID){
     OpcodeMsg opcode;
-    int c;
+    Module module=vm->moduleList.vals[moduleID];
+    Part part;
+    Symbol symbol;
+    int arg;
     for(int i=0;i<clist.count;i++){
-        c=clist.vals[i++];
-        printf("%d(%d:%d)",)
-        opcode=opcodeList[c];
+        part=vm->partList.vals[clist.vals[i++]+module.partBase];
+        opcode=opcodeList[clist.vals[i]];
+        printf("%d(%d:%d):%s",i-1,part.line,part.column,opcode.name);
+        if(opcode.isArg){
+            arg=clist.vals[++i];
+            if(opcode.isSymbol){
+                symbol=vm->symList.vals[arg+module.symBase];
+                switch(symbol.type){
+                    case SYM_INT:
+                        printf(" %d\n",symbol.num);
+                        break;
+                    case SYM_FLOAT:
+                        printf(" %f\n",symbol.numf);
+                        break;
+                    case SYM_STRING:
+                        printf(" %s\n",symbol.str);
+                        break;
+                    default:
+                        printf(" unknown(%d)\n",symbol.type);
+                        break;
+                }
+            }else{
+                printf(" %d\n",arg);
+            }
+        }else{
+            printf("\n");
+        }
     }
-}*/
+}
 inline static void printStack(VM*vm){
     Value val;
-    char temp[20];
+    char temp[20],mt[10];
     for(int i=0;i<vm->stack.count;i++){
         val=vm->stack.vals[i];
-        if(val.class==getVMClass(vm,CLASS_INT) || val.class==getVMClass(vm,CLASS_CLASS) || val.class==getVMClass(vm,CLASS_FUNCTION)){
+        if(val.class==CLASS_INT || val.class==CLASS_CLASS || val.class==CLASS_FUNCTION){
             sprintf(temp,"%d",val.num);
-        }else if(val.class==getVMClass(vm,CLASS_FLOAT)){
+        }else if(val.class==CLASS_FLOAT){
             sprintf(temp,"%f",val.numf);
-        }else if(val.class==getVMClass(vm,CLASS_STRING)){
+        }else if(val.class==CLASS_STRING){
             sprintf(temp,"%s",vm->refList.vals[val.refID].str);
         }else{
             strcpy(temp,"object");
+        }
+        if(val.refID>=0){
+            sprintf(mt,"(%d)",vm->refList.vals[val.refID].varCount);
+            strcat(temp,mt);
         }
         printf("stack%d:class:%s,value:%s,refID:%d\n",i,vm->classList.vals[val.class].name,temp,val.refID);
     }
 }
 inline static void printVar(VM*vm){
     Var var;
-    char temp[20];
+    char temp[20],mt[10];
     for(int i=0;i<vm->varList.count;i++){
         var=vm->varList.vals[i];
-        if(var.val.class==getVMClass(vm,CLASS_INT) || var.val.class==getVMClass(vm,CLASS_CLASS) || var.val.class==getVMClass(vm,CLASS_FUNCTION)){
+        if(var.val.class==CLASS_INT || var.val.class==CLASS_CLASS || var.val.class==CLASS_FUNCTION){
             sprintf(temp,"%d",var.val.num);
-        }else if(var.val.class==getVMClass(vm,CLASS_FLOAT)){
+        }else if(var.val.class==CLASS_FLOAT){
             sprintf(temp,"%f",var.val.numf);
-        }else if(var.val.class==getVMClass(vm,CLASS_STRING)){
+        }else if(var.val.class==CLASS_STRING){
             sprintf(temp,"%s",vm->refList.vals[var.val.refID].str);
         }else{
             strcpy(temp,"object");
         }
+        if(var.val.refID>=0){
+            sprintf(mt,"(%d)",vm->refList.vals[var.val.refID].varCount);
+            strcat(temp,mt);
+        }
         printf("variable%d(%s):class:%s,value:%s,refID:%d\n",i,var.name,vm->classList.vals[var.val.class].name,temp,var.val.refID);
     }
 }
-inline static void printOpcode(VM*vm,int curPart){
+inline static void printFunc(VM*vm,int curPart){
     checkStack(vm,1,curPart);
-
+    Value val=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_FUNCTION){
+        reportVMError(vm,"expected an function when printing one.",curPart);
+    }
+    Func func=vm->funcList.vals[val.num];
+    reduceRef(vm,val);
+    LIST_SUB(vm->stack,Value)
+    printf("function %s(",func.name);
+    for(int i=0;i<func.args.count;i++){
+        printf("%s",func.args.vals[i]);
+        if(i<func.args.count-1){
+            puts(",");
+        }
+    }
+    printf("):\n");
+    printClist(vm,func.clist,func.moduleID);
+    puts("function end\n");
+}
+inline static void printClass(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    Value val=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_CLASS){
+        reportVMError(vm,"expected an class when printing one.",curPart);
+    }
+    reduceRef(vm,val);
+    LIST_SUB(vm->stack,Value)
+    Class class=vm->classList.vals[val.num];
+    printf("class %s:\nmembers:",class.name);
+    for(int i=0;i<class.var.count;i++){
+        printf("%s",class.var.vals[i]);
+        if(i<class.var.count-1){
+            printf(",");
+        }
+    }
+    printf(";\n");
+    Func func;
+    for(int i=0;i<class.methods.count;i++){
+        func=class.methods.vals[i];
+        printf("method %s(",func.name);
+        for(int i2=0;i2<func.args.count;i2++){
+            printf("%s",func.args.vals[i2]);
+            if(i2<func.args.count-1){
+                puts(",");
+            }
+        }
+        printf("):\n");
+        printClist(vm,func.clist,func.moduleID);
+        printf("method end\n");
+    }
+    puts("class end\n");
 }
 inline static void loadConst(VM*vm,int arg,int curPart){
     Symbol symbol=vm->symList.vals[arg+vm->curModule.symBase];
@@ -235,7 +306,7 @@ inline static void loadConst(VM*vm,int arg,int curPart){
         reportVMError(vm,"LOAD_CONST:unknown symbol type.",curPart);
         break;
     }
-    value=makeValue(vm,getVMClass(vm,value.class));
+    value=makeValue(vm,value.class);
     switch (symbol.type)
     {
     case SYM_INT:
@@ -298,20 +369,14 @@ inline static void loadAttr(VM*vm,int arg,int curPart){
         reportVMError(vm,temp,curPart);
     }
     Ref ref=vm->refList.vals[a.refID];
-    bool isFound=false;
-    for(int i=0;i<vm->classList.vals[a.class].var.count;i++){
-        if(strcmp(symbol.str,vm->classList.vals[a.class].var.vals[i])==0){
-            isFound=true;
-            vm->stack.vals[vm->stack.count-1]=ref.var[i];
-            addRef(vm,ref.var[i]);
-            reduceRef(vm,a);
-            break;
-        }
-    }
-    if(!isFound){
+    int ind=0;
+    if(!searchAttr(vm,&ind,a.class,symbol.str)){
         sprintf(temp,"member \"%s\" not found.",symbol.str);
         reportVMError(vm,temp,curPart);
     }
+    vm->stack.vals[vm->stack.count-1]=ref.var[ind];
+    addRef(vm,ref.var[ind]);
+    reduceRef(vm,a);
 }
 inline static void loadIndex(VM*vm,int curPart){
     Value a,b;
@@ -321,28 +386,26 @@ inline static void loadIndex(VM*vm,int curPart){
     if(a.refID<0){
         reportVMError(vm,"the variable is not an array.",curPart);
     }
-    if(b.class!=getVMClass(vm,CLASS_INT)){
+    if(b.class!=CLASS_INT){
         reportVMError(vm,"it must be integer when calling array.",curPart);
     }
     Ref ref=vm->refList.vals[a.refID];
     int ind=b.num+ref.varBase;
-    if((ind<0 || ind>=ref.varCount) && a.class!=getVMClass(vm,CLASS_STRING)){
+    if((ind<0 || ind>=ref.varCount) && a.class!=CLASS_STRING){
         reportVMError(vm,"illegal array index.",curPart);
     }
     LIST_SUB(vm->stack,Value)
-    if(a.class==getVMClass(vm,CLASS_STRING)){
+    if(a.class==CLASS_STRING){
         if(b.num>=strlen(vm->refList.vals[a.refID].str)){
             reportVMError(vm,"illegal string index.",curPart);
         }
-        Value val;
-        val.class=getVMClass(vm,CLASS_INT);
+        Value val=makeValue(vm,CLASS_INT);
         val.num=vm->refList.vals[a.refID].str[b.num];
         vm->stack.vals[vm->stack.count-1]=val;
     }else{
         vm->stack.vals[vm->stack.count-1]=ref.var[ind];
+        addRef(vm,ref.var[ind]);
     }
-    vm->stack.vals[vm->stack.count-1]=ref.var[ind];
-    addRef(vm,ref.var[ind]);
     reduceRef(vm,a);
     reduceRef(vm,b);
 }
@@ -357,6 +420,7 @@ inline static void storeVal(VM*vm,int arg,int curPart){
         int sum=0;
         if(searchAttr(vm,&sum,vm->varList.vals[vm->curVar].val.class,symbol.str)){
             isFound=true;
+            reduceRef(vm,vm->refList.vals[vm->varList.vals[vm->curVar].val.refID].var[sum]);
             vm->refList.vals[vm->varList.vals[vm->curVar].val.refID].var[sum]=vm->stack.vals[vm->stack.count-1];
             LIST_SUB(vm->stack,Value)
         }
@@ -365,6 +429,7 @@ inline static void storeVal(VM*vm,int arg,int curPart){
         for(int i=vm->varList.count-1;i>=0;i--){
             if(strcmp(vm->varList.vals[i].name,symbol.str)==0){
                 isFound=true;
+                reduceRef(vm,vm->varList.vals[i].val);
                 vm->varList.vals[i].val=vm->stack.vals[vm->stack.count-1];
                 LIST_SUB(vm->stack,Value)
                 break;
@@ -396,6 +461,7 @@ inline static void storeAttr(VM*vm,int arg,int curPart){
     for(int i=0;i<vm->classList.vals[a.class].var.count;i++){
         if(strcmp(symbol.str,vm->classList.vals[a.class].var.vals[i])==0){
             isFound=true;
+            reduceRef(vm,ref.var[i]);
             ref.var[i]=vm->stack.vals[vm->stack.count-2];
             LIST_SUB(vm->stack,Value)
             LIST_SUB(vm->stack,Value)
@@ -417,20 +483,21 @@ inline static void storeIndex(VM*vm,int curPart){
     if(a.refID<=0){
         reportVMError(vm,"the variable is not an array.",curPart);
     }
-    if(b.class!=getVMClass(vm,CLASS_INT)){
+    if(b.class!=CLASS_INT){
         reportVMError(vm,"it must be integer when calling array.",curPart);
     }
     Ref ref=vm->refList.vals[a.refID];
     int ind=b.num+ref.varBase;
-    if((ind<0 || ind>=ref.varCount) && a.class!=getVMClass(vm,CLASS_STRING)){
+    if((ind<0 || ind>=ref.varCount) && a.class!=CLASS_STRING){
         reportVMError(vm,"illegal array index.",curPart);
     }
-    if(a.class==getVMClass(vm,CLASS_STRING)){
+    if(a.class==CLASS_STRING){
         if(b.num>=strlen(ref.str)){
             reportVMError(vm,"illegal string index.",curPart);
         }
         ref.str[b.num]=c.num;
     }else{
+        reduceRef(vm,ref.var[ind]);
         ref.var[ind]=c;
     }
     reduceRef(vm,a);
@@ -517,7 +584,8 @@ void addFuncArgs(VM*vm,int count){
     Ref ref;
     var.name=(char*)malloc(7);
     strcpy(var.name,"argVar");
-    var.val=makeValue(vm,getVMClass(vm,CLASS_INT));
+    var.val=makeValue(vm,CLASS_INT);
+    var.val.num=count;
     ref.refCount=1;
     ref.varBase=0;
     ref.varCount=count;
@@ -529,11 +597,19 @@ void addFuncArgs(VM*vm,int count){
     var.val.refID=makeRef(vm,ref);
     LIST_ADD(vm->varList,Var,var)
 }
-void exeFunc(VM*vm,Func func,int argCount,bool isMethod,int curPart){
+void exeFunc(VM*vm,Func func,int argCount,bool isMethod,bool isInit,int curPart){
     checkStack(vm,argCount,curPart);
     LIST_ADD(vm->mlist,Module,vm->curModule)
     vm->curModule=vm->moduleList.vals[func.moduleID];
     Var var;
+    if(isMethod){
+        var.name=(char*)malloc(5);
+        strcpy(var.name,"this");
+        var.val=vm->stack.vals[vm->stack.count-argCount-(isInit?1:2)];
+        LIST_ADD(vm->vlist,int,vm->curVar)
+        vm->curVar=vm->varList.count;
+        LIST_ADD(vm->varList,Var,var)
+    }
     for(int i=0;i<argCount && i<func.args.count;i++){
         var.val=vm->stack.vals[vm->stack.count-argCount+i];
         var.name=func.args.vals[i];
@@ -542,11 +618,14 @@ void exeFunc(VM*vm,Func func,int argCount,bool isMethod,int curPart){
     LIST_ADD(vm->retFieldList,int,vm->fields.count-1)
     LIST_ADD(vm->retLoopList,int,vm->loopList.count-1)
     LIST_ADD(vm->funcPartList,int,curPart)
-    addFuncArgs(vm,argCount);
-    LIST_REDUCE(vm->stack,Value,argCount+(isMethod?2:1))
+    if(!isInit){
+        addFuncArgs(vm,argCount);
+    }
+    /*can not use popStack() because of ref*/
+    LIST_REDUCE(vm->stack,Value,argCount+(isMethod?2:1)-(isInit?1:0))
     execute(vm,func.clist);
     LIST_SUB(vm->funcPartList,int)
-    popVar(vm,argCount,curPart);
+    popVar(vm,argCount+(isMethod?1:0)+(isInit?0:1),curPart);
     vm->curModule=vm->mlist.vals[vm->mlist.count-1];
     LIST_SUB(vm->mlist,Module)
     int top=vm->retLoopList.vals[vm->retLoopList.count-1];
@@ -559,12 +638,16 @@ void exeFunc(VM*vm,Func func,int argCount,bool isMethod,int curPart){
     }
     LIST_SUB(vm->retLoopList,int)
     LIST_SUB(vm->retFieldList,int)
+    if(isMethod){
+        vm->curVar=vm->vlist.vals[vm->vlist.count-1];;
+        LIST_SUB(vm->vlist,int)
+    }
 }
 inline static void callFunction(VM*vm,int arg,int curPart){
     checkStack(vm,arg+1,curPart);
     char temp[50];
     Value a=vm->stack.vals[vm->stack.count-arg-1];
-    if(a.class!=getVMClass(vm,CLASS_STRING)){
+    if(a.class!=CLASS_STRING){
         reportVMError(vm,"CALL_FUNCTION:expected function name.",curPart);
     }
     Func func;
@@ -590,7 +673,7 @@ inline static void callFunction(VM*vm,int arg,int curPart){
         Var var;
         for(int i=0;i<vm->varList.count;i++){
             var=vm->varList.vals[i];
-            if(var.val.class==getVMClass(vm,CLASS_FUNCTION)){
+            if(var.val.class==CLASS_FUNCTION){
                 if(strcmp(var.name,vm->refList.vals[a.refID].str)==0){
                     func=vm->funcList.vals[var.val.num];
                     isFound=true;
@@ -603,54 +686,45 @@ inline static void callFunction(VM*vm,int arg,int curPart){
             reportVMError(vm,temp,curPart);
         }
     }
-    exeFunc(vm,func,arg,false,curPart);
+    reduceRef(vm,a);
+    exeFunc(vm,func,arg,false,false,curPart);
 }
 inline static void callMethod(VM*vm,int arg,int curPart){
     checkStack(vm,arg+2,curPart);
     char temp[50];
     Value a=vm->stack.vals[vm->stack.count-arg-2];
     Value b=vm->stack.vals[vm->stack.count-arg-1];
-    if(b.class!=getVMClass(vm,CLASS_STRING)){
+    if(b.class!=CLASS_STRING){
         reportVMError(vm,"CALL_FUNCTION:expected function name.",curPart);
     }
     Func func;
-    func.args.vals=NULL;
-    func.args.count=0;
-    func.moduleID=0;
-    bool isFound=false;
-    for(int i=0;i<vm->classList.vals[a.class].methods.count;i++){
-        func=vm->classList.vals[a.class].methods.vals[i];
-        if(strcmp(vm->refList.vals[b.refID].str,func.name)==0){
-            isFound=true;
-            break;
+    if(!searchMethod(vm,&func,a.class,vm->refList.vals[b.refID].str)){
+        int ind=0;
+        if(searchAttr(vm,&ind,a.class,vm->refList.vals[b.refID].str)){
+            Value mv=vm->refList.vals[a.refID].var[ind];
+            if(mv.class!=CLASS_FUNCTION){
+                printf(temp,"member %s is not a method.",vm->refList.vals[b.refID].str);
+                reportVMError(vm,temp,curPart);
+            }
+            func=vm->funcList.vals[mv.num];
+        }else{
+            sprintf(temp,"method %s not found.",vm->refList.vals[b.refID].str);
+            reportVMError(vm,temp,curPart);
         }
     }
-    if(!isFound){
-        sprintf(temp,"method \"%s\" not found.",vm->refList.vals[b.refID].str);
-        reportVMError(vm,temp,curPart);
-    }
-    Var var;
-    var.val=a;
-    var.name=(char*)malloc(5);
-    strcpy(var.name,"this");
-    LIST_ADD(vm->vlist,int,vm->curVar)
-    vm->curVar=vm->varList.count;
-    LIST_ADD(vm->varList,Var,var)
-    exeFunc(vm,func,arg,true,curPart);
-    popVar(vm,1,curPart);
-    vm->curVar=vm->vlist.vals[vm->vlist.count-1];;
-    LIST_SUB(vm->vlist,int)
+    reduceRef(vm,b);
+    exeFunc(vm,func,arg,true,false,curPart);
 }
 inline static void enableFunction(VM*vm,int arg){
     LIST_ADD(vm->enableFunc,int,arg+vm->curModule.funcBase)
     Var var;
     var.name=vm->funcList.vals[arg+vm->curModule.funcBase].name;
-    var.val=makeValue(vm,getVMClass(vm,CLASS_FUNCTION));
+    var.val=makeValue(vm,CLASS_FUNCTION);
     var.val.num=arg+vm->curModule.funcBase;
     LIST_ADD(vm->varList,Var,var)
 }
 inline static void makeObject(VM*vm,int arg){
-    Value val=makeValue(vm,getVMClass(vm,arg));
+    Value val=makeValue(vm,arg+vm->curModule.classBase);
     LIST_ADD(vm->stack,Value,val)
 }
 bool searchParent(VM*vm,int class,int parent){
@@ -669,10 +743,10 @@ bool searchParent(VM*vm,int class,int parent){
 inline static void extendClass(VM*vm,int arg,int curPart){
     checkStack(vm,1,curPart);
     Value val=vm->stack.vals[vm->stack.count-1];
-    if(val.class!=getVMClass(vm,CLASS_CLASS)){
+    if(val.class!=CLASS_CLASS){
         reportVMError(vm,"the variable must be a class when extending class.",curPart);
     }
-    int class=getVMClass(vm,arg);
+    int class=arg+vm->curModule.classBase;
     if(!searchParent(vm,class,val.num)){
         vm->classList.vals[class].varBase+=vm->classList.vals[val.num].var.count;
         LIST_ADD(vm->classList.vals[class].parentList,int,val.num);
@@ -682,7 +756,7 @@ inline static void enableClass(VM*vm,int arg){
     Var var;
     int class=arg+vm->curModule.classBase;
     var.name=vm->classList.vals[class].name;
-    var.val=makeValue(vm,getVMClass(vm,CLASS_CLASS));
+    var.val=makeValue(vm,CLASS_CLASS);
     var.val.num=class;
     LIST_ADD(vm->varList,Var,var)
 }
@@ -711,12 +785,12 @@ inline static void returnModule(VM*vm){
 static void getVarCount(VM*vm,int curPart){
     checkStack(vm,1,curPart);
     Value val=vm->stack.vals[vm->stack.count-1];
-    Value v2=makeValue(vm,getVMClass(vm,CLASS_INT));
+    Value v2=makeValue(vm,CLASS_INT);
     if(val.refID<0){
         v2.num=0;
     }else{
         Ref ref=vm->refList.vals[val.refID];
-        if(val.class==getVMClass(vm,CLASS_STRING)){
+        if(val.class==CLASS_STRING){
             v2.num=strlen(ref.str);
         }else{
             v2.num=ref.varCount;
@@ -725,16 +799,27 @@ static void getVarCount(VM*vm,int curPart){
     vm->stack.vals[vm->stack.count-1]=v2;
     reduceRef(vm,val);
 }
-static void resizeVar(VM*vm,int curPart){
+inline static void getVarClass(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    Value val=vm->stack.vals[vm->stack.count-1];
+    Value v2=makeValue(vm,CLASS_CLASS);
+    v2.num=val.class;
+    reduceRef(vm,val);
+    vm->stack.vals[vm->stack.count-1]=v2;
+}
+inline static void resizeVar(VM*vm,int curPart){
     checkStack(vm,2,curPart);
     Value a,b;
     a=vm->stack.vals[vm->stack.count-2];
     b=vm->stack.vals[vm->stack.count-1];
-    if(b.class!=getVMClass(vm,CLASS_INT)){
+    if(b.class!=CLASS_INT){
         reportVMError(vm,"expected an integer to resize a variable.",curPart);
     }
     if(a.refID<0){
         reportVMError(vm,"expected memory for the variable to resize.",curPart);
+    }
+    if(a.class==CLASS_STRING){
+        vm->refList.vals[a.refID].str=(char*)realloc(vm->refList.vals[a.refID].str,b.num);
     }else{
         vm->refList.vals[a.refID].varCount=b.num;
         vm->refList.vals[a.refID].var=(Value*)realloc(vm->refList.vals[a.refID].var,b.num*sizeof(Value));
@@ -756,42 +841,64 @@ inline static void makeArray(VM*vm,int arg,int curPart){
         ref.var[i]=vm->stack.vals[vm->stack.count-arg+i];
     }
     LIST_REDUCE(vm->stack,Value,arg-1)
-    vm->stack.vals[vm->stack.count-1]=makeValue(vm,getVMClass(vm,CLASS_INT));
+    vm->stack.vals[vm->stack.count-1]=makeValue(vm,CLASS_INT);
     vm->stack.vals[vm->stack.count-1].refID=makeRef(vm,ref);
     vm->stack.vals[vm->stack.count-1].num=0;
 }
 static void exeOpt(VM*vm,int ind,int curPart){
-    Value a,b;
+    Value a;
+    char temp[50];
     a=vm->stack.vals[vm->stack.count-2];
-    b=vm->stack.vals[vm->stack.count-1];
-    Var var;
-    var.name=(char*)malloc(5);
-    strcpy(var.name,"this");
-    var.val=a;
-    LIST_ADD(vm->varList,Var,var)
-    var.name=vm->classList.vals[a.class].optMethod[ind].args.vals[0];
-    var.val=b;
-    LIST_ADD(vm->varList,Var,var)
-    LIST_ADD(vm->retFieldList,int,vm->fields.count-1)
-    LIST_ADD(vm->retLoopList,int,vm->loopList.count-1)
-    LIST_REDUCE(vm->stack,Value,2)
-    LIST_ADD(vm->funcPartList,int,curPart)
-    execute(vm,vm->classList.vals[a.class].optMethod[ind].clist);
-    LIST_SUB(vm->funcPartList,int)
-    LIST_SUB(vm->mlist,Module)
-    int top=vm->retLoopList.vals[vm->retLoopList.count-1];
-    while(vm->loopList.count>top+1){
-        freeLoop(vm,curPart);
+    if(vm->classList.vals[a.class].optMethod[ind].clist.count<=0){
+        sprintf(temp,"undefined operation for class %s.",vm->classList.vals[a.class].name);
+        reportVMError(vm,temp,curPart);
     }
-    top=vm->retFieldList.vals[vm->retFieldList.count-1];
-    while(vm->fields.count>top+1){
-        freeField(vm,curPart);
-    }
-    LIST_REDUCE(vm->varList,Var,2)
-    vm->curModule=vm->mlist.vals[vm->mlist.count-1];
-    LIST_SUB(vm->retLoopList,int)
-    LIST_SUB(vm->retFieldList,int)
+    exeFunc(vm,vm->classList.vals[a.class].optMethod[ind],1,true,true,curPart);
 }
+inline static void mexit(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    Value val=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_INT){
+        reportVMError(vm,"it must be integer when exiting.",curPart);
+    }
+    exit(val.num);
+}
+inline static void makeRange(VM*vm,int curPart){
+    checkStack(vm,3,curPart);
+    Value start,end,dis;
+    start=vm->stack.vals[vm->stack.count-3];
+    if(start.class!=CLASS_INT){
+        reportVMError(vm,"the start argument of range must be integer.",curPart);
+    }
+    end=vm->stack.vals[vm->stack.count-2];
+    if(end.class!=CLASS_INT){
+        reportVMError(vm,"the end argument of range must be integer.",curPart);
+    }
+    dis=vm->stack.vals[vm->stack.count-1];
+    if(dis.class!=CLASS_INT){
+        reportVMError(vm,"the distance argument of range must be integer.",curPart);
+    }
+    int len=(end.num-start.num+1)/dis.num;
+    Value ran=makeValue(vm,CLASS_INT);
+    Ref ref;
+    ref.str=NULL;
+    ref.varCount=len;
+    ref.varBase=0;
+    ref.refCount=1;
+    ref.var=(Value*)malloc(len*sizeof(Value));
+    for(int i=0;i<len;i++){
+        ref.var[i]=makeValue(vm,CLASS_INT);
+        ref.var[i].num=start.num+i*dis.num;
+    }
+    ran.refID=makeRef(vm,ref);
+    reduceRef(vm,start);
+    reduceRef(vm,end);
+    reduceRef(vm,dis);
+    LIST_SUB(vm->stack,Value)
+    LIST_SUB(vm->stack,Value)
+    vm->stack.vals[vm->stack.count-1]=ran;
+}
+
 #define CINT 0
 #define CFLOAT 4
 #define CCLASS 2
@@ -847,8 +954,8 @@ static void exeOpt(VM*vm,int ind,int curPart){
     checkStack(vm,2,curPart);\
     a=vm->stack.vals[vm->stack.count-2];\
     b=vm->stack.vals[vm->stack.count-1];\
-    if(a.class==getVMClass(vm,CLASS_INT)){\
-        if(b.class!=getVMClass(vm,CLASS_INT)){\
+    if(a.class==CLASS_INT){\
+        if(b.class!=CLASS_INT){\
             reportVMError(vm,"expected an integer to operate.",curPart);\
         }\
         a.num= a.num opt b.num;\
@@ -867,9 +974,11 @@ void execute(VM*vm,intList clist){
     char temp[50];
     Value a,b;
     for(int i=0;i<clist.count;i++){
-        curPart=clist.vals[i++];
+        curPart=clist.vals[i++]+vm->curModule.partBase;
         opcode=clist.vals[i];
         vm->ptr=i;
+        //printf("cmd:%d\n",i);
+        vm->curPart=curPart;
         switch(opcode){
             case OPCODE_NOP:
                 break;
@@ -926,7 +1035,7 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_SUBS:
                 a=vm->stack.vals[vm->stack.count-1];
-                if(a.class==getVMClass(vm,CLASS_INT)){
+                if(a.class==CLASS_INT){
                     a.num=-a.num;
                 }else if(a.class==CLASS_FLOAT){
                     a.numf=-a.numf;
@@ -935,14 +1044,14 @@ void execute(VM*vm,intList clist){
                 }
             case OPCODE_INVERT:
                 a=vm->stack.vals[vm->stack.count-1];
-                if(a.class==getVMClass(vm,CLASS_INT)){
+                if(a.class==CLASS_INT){
                     a.num=~a.num;
                 }else{
                     reportVMError(vm,"unsupported class for prefix operation \"~\".",curPart);
                 }
             case OPCODE_NOT:
                 a=vm->stack.vals[vm->stack.count-1];
-                if(a.class==getVMClass(vm,CLASS_INT)){
+                if(a.class==CLASS_INT){
                     a.num=!a.num;
                 }else if(a.class==CLASS_FLOAT){
                     a.numf=!a.numf;
@@ -989,7 +1098,7 @@ void execute(VM*vm,intList clist){
             case OPCODE_JUMP_IF_FALSE:
                 checkStack(vm,1,curPart);
                 a=vm->stack.vals[vm->stack.count-1];
-                if(a.class!=getVMClass(vm,CLASS_INT)){
+                if(a.class!=CLASS_INT){
                     reportVMError(vm,"expected an integer in condition statement.",curPart);
                 }
                 i++;
@@ -1041,6 +1150,12 @@ void execute(VM*vm,intList clist){
             case OPCODE_PRINT_VAR:
                 printVar(vm);
                 break;
+            case OPCODE_PRINT_FUNC:
+                printFunc(vm,curPart);
+                break;
+            case OPCODE_PRINT_CLASS:
+                printClass(vm,curPart);
+                break;
             case OPCODE_GET_VARCOUNT:
                 getVarCount(vm,curPart);
                 break;
@@ -1049,6 +1164,15 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_MAKE_ARRAY:
                 makeArray(vm,clist.vals[++i],curPart);
+                break;
+            case OPCODE_GET_CLASS:
+                getVarClass(vm,curPart);
+                break;
+            case OPCODE_EXIT:
+                mexit(vm,curPart);
+                break;
+            case OPCODE_MAKE_RANGE:
+                makeRange(vm,curPart);
                 break;
             default:
                 sprintf(temp,"unknown operation code (%d).",opcode);

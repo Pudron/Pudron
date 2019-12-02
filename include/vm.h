@@ -40,11 +40,13 @@ typedef struct{
 	Module curModule;
 	ModuleList mlist;
 	intList funcPartList;
-	int ptr;
+	int ptr,curPart;
 	int curVar;
 	intList vlist;
 }VM;
 void initVM(VM*vm,Parser parser);
+Value makeValue(VM*vm,int class);
+void exeFunc(VM*vm,Func func,int argCount,bool isMethod,bool isInit,int curPart);
 void reportVMError(VM*vm,char*text,int curPart);
 void execute(VM*vm,intList clist);
 #endif

@@ -7,6 +7,10 @@
 #define MAX_WORD_LENGTH 20
 #define FILE_POSTFIX ".pd"
 #define FILE_LIB_POSTFIX ".pdl"
+#define FILE_SIGN 5201314
+#define VERSION 1
+#define VERSION_MIN 1
+
 /*List Operations*/
 #define LIST_UNIT_SIZE 10
 #define LIST_DECLARE(type) \
@@ -64,12 +68,12 @@ typedef enum{
 }bool;
 
 #define STD_CLASS_COUNT 6
-#define CLASS_INT -1
-#define CLASS_CLASS -2
-#define CLASS_FUNCTION -3
-#define CLASS_META -4
-#define CLASS_FLOAT -5
-#define CLASS_STRING -6
+#define CLASS_INT 0
+#define CLASS_CLASS 1
+#define CLASS_FUNCTION 2
+#define CLASS_META 3
+#define CLASS_FLOAT 4
+#define CLASS_STRING 5
 
 typedef enum{
     TOKEN_END,
@@ -128,10 +132,13 @@ typedef enum{
     TOKEN_RIGHT_EQUAL,
     TOKEN_CLASS,
     TOKEN_IMPORT,
-    TOKEN_INCLUDE
+    TOKEN_INCLUDE,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
+    TOKEN_LINE
 }TokenType;
 #define OPT_METHOD_COUNT 18
-#define OPCODE_COUNT 51
+#define OPCODE_COUNT 58
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -188,10 +195,16 @@ typedef enum{
 
     OPCODE_PRINT_STACK,
     OPCODE_PRINT_VAR,
+    OPCODE_PRINT_FUNC,
+    OPCODE_PRINT_CLASS,
 
     OPCODE_GET_VARCOUNT,
     OPCODE_RESIZE_VAR,
-    OPCODE_MAKE_ARRAY
+    OPCODE_MAKE_ARRAY,
+    OPCODE_GET_CLASS,
+    OPCODE_EXIT,
+
+    OPCODE_MAKE_RANGE
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
@@ -269,6 +282,7 @@ typedef struct{
     FuncList methods;
     Func optMethod[OPT_METHOD_COUNT];
     intList parentList;
+    int initID,destroyID;
 }Class;
 LIST_DECLARE(Class)
 typedef struct{
@@ -278,6 +292,7 @@ typedef struct{
     int line,column;
     int curPart;
     bool isLib;
+    int curModule;
     ModuleList moduleList;
     PartList partList;
     intList clist;
@@ -296,6 +311,8 @@ void freeParser(Parser*parser);
 //void extend(Class*class,Class eclass);
 char*cutText(char*text,int start,int end);
 char*cutPostfix(char*text);
+char*getPostfix(char*text);
+char*cutPath(char*text);
 void reportMsg(Msg msg);
 void reportError(Parser*parser,char*text,int start);
 void reportWarning(Parser*parser,char*text,int start);

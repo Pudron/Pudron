@@ -168,6 +168,8 @@ void writeClass(charList*dat,Class class){
         writeFunc(dat,class.optMethod[i]);
     }
     WRITE_LIST(dat,class.parentList,Int)
+    writeInt(dat,class.initID);
+    writeInt(dat,class.destroyID);
 }
 Class readClass(Bin*bin){
     Class class;
@@ -183,11 +185,15 @@ Class readClass(Bin*bin){
     }
     LIST_INIT(class.parentList,int)
     READ_LIST(bin,class.parentList,int,Int)
+    class.initID=readInt(bin);
+    class.destroyID=readInt(bin);
     return class;
 }
 void export(Parser parser){
     charList dat;
     LIST_INIT(dat,char)
+    writeInt(&dat,FILE_SIGN);
+    writeInt(&dat,VERSION);
     WRITE_LIST(&dat,parser.moduleList,Module)
     WRITE_LIST(&dat,parser.partList,Part)
     WRITE_LIST(&dat,parser.clist,Int)
@@ -216,6 +222,14 @@ void export(Parser parser){
 }
 void import(Parser*parser,char*fileName){
     Bin bin;
+    char*ft=cutPath(fileName);
+    char*fn=cutPostfix(ft);
+    free(ft);
+    for(int i=0;i<parser->moduleList.count;i++){
+        if(strcmp(fn,parser->moduleList.vals[i].name)==0){
+            return;
+        }
+    }
     FILE*fp=fopen(fileName,"rb");
     if(fp==NULL){
         printf("import error:%s not found.\n",fileName);
@@ -225,12 +239,30 @@ void import(Parser*parser,char*fileName){
     bin.count=ftell(fp);
     rewind(fp);
     bin.dat=(char*)malloc(bin.count+1);
-    bin.count=fread(bin.dat,bin.count,1,fp);
+    fread(bin.dat,bin.count,1,fp);
     bin.ptr=0;
     fclose(fp);
+    if(bin.count<2*sizeof(int)){
+        printf("import error:%s is not a pudron file.\n",fileName);
+        exit(-1);
+    }
+    int dat=readInt(&bin);
+    if(dat!=FILE_SIGN){
+        printf("import error:%s is not in pudron format.\n",fileName);
+        exit(-1);
+    }
+    dat=readInt(&bin);
+    if(dat<VERSION_MIN){
+        printf("import error:%s: the version \"%d\" is too old.\ncurrent version:%d\nmin version:%d\n",fileName,dat,VERSION,VERSION_MIN);
+        exit(-1);
+    }
     int count;
     int begin=parser->moduleList.count;
     int moduleID=begin;
+    Symbol symbol;
+    symbol.type=SYM_STRING;
+    symbol.str=fn;
+    int sid=addSymbol(parser,symbol);
     READ_LIST(&bin,parser->moduleList,Module,Module)
     for(int i=begin;i<parser->moduleList.count;i++){
         parser->moduleList.vals[i].funcBase+=parser->funcList.count;
@@ -240,7 +272,9 @@ void import(Parser*parser,char*fileName){
         parser->moduleList.vals[i].partBase+=parser->partList.count;
     }
     READ_LIST(&bin,parser->partList,Part,Part)
+    addCmd1(parser,&parser->clist,OPCODE_SET_MODULE,sid);
     READ_LIST(&bin,parser->clist,int,Int)
+    addCmd(parser,&parser->clist,OPCODE_RETURN_MODULE);
     READ_LIST(&bin,parser->symList,Symbol,Symbol)
     begin=parser->funcList.count;
     READ_LIST(&bin,parser->funcList,Func,Func)

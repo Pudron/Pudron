@@ -1,7 +1,13 @@
-a={123,456,789,123456};
-b;
-for(i,a){
-    b=i;
+import "lib/debug.pdl";
+x=123;
+class Test{
+    abc;
 }
+func asd(){
+    x=456;
+}
+a=Test();
+a.abc=asd;
+a.abc();
 >>PRINT_STACK;
 >>PRINT_VAR;
