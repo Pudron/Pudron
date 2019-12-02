@@ -1,9 +1,23 @@
 class string{
-    length;
-    func copy(){
-
+    #不允许有initstring(),以防无限递归#
+    func operator+(val){
+        str;
+        str=copyVar();
+        >>LOAD_VAL str;
+        >>LOAD_VAL val;
+        >>STR_FORMAT;
+        >>LOAD_VAL str;
+        >>RETURN;
     }
-    func delete(){
-        
+}
+func print(text){
+    str;
+    str="\0";
+    for(i,argVar){
+        >>LOAD_VAL str;
+        >>LOAD_VAL i;
+        >>STR_FORMAT;
     }
+    >>LOAD_VAL str;
+    >>PRINT;
 }

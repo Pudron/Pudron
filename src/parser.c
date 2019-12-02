@@ -68,7 +68,7 @@ const Operat operatPrefix[]={
     {TOKEN_INVERT,OPCODE_INVERT,180},
     {TOKEN_SUB,OPCODE_SUBS,100}
 };
-const int OPERAT_INFIX_COUNT=17;
+const int OPERAT_INFIX_COUNT=OPT_METHOD_COUNT;
 const Operat operatInfix[]={
     {TOKEN_ADD,OPCODE_ADD,100},
     {TOKEN_SUB,OPCODE_SUB,100},
@@ -252,6 +252,14 @@ Token nextToken(Parser*parser){
                 switch(parser->code[parser->ptr+1]){
                     case 'n':
                         c='\n';
+                        parser->ptr++;
+                        break;
+                    case '\\':
+                        c='\\';
+                        parser->ptr++;
+                        break;
+                    case '0':
+                        c='\0';
                         parser->ptr++;
                         break;
                     default:
@@ -1071,13 +1079,8 @@ void getClass(Parser*parser,intList*clist,Env env){
     sprintf(initName,"init%s",classd.name);
     destroyName=(char*)malloc(8+strlen(classd.name));
     sprintf(destroyName,"destroy%s",classd.name);
-    char*optName=(char*)malloc(4);
-    strcpy(optName,"opt");
     for(int i=0;i<OPT_METHOD_COUNT;i++){
-        classd.optMethod[i].clist.count=0;
-        classd.optMethod[i].name=optName;
-        classd.optMethod[i].moduleID=parser->curModule;
-        classd.optMethod[i].args.count=0;
+        classd.optID[i]=-1;
     }
     classd.initID=-1;
     classd.destroyID=-1;
@@ -1133,19 +1136,38 @@ void getClass(Parser*parser,intList*clist,Env env){
             part.line=parser->line;
             part.column=parser->column;
             token=matchToken(parser,TOKEN_WORD,"a method name",msgStart);
-            for(int i=0;i<parser->classList.vals[class].methods.count;i++){
-                if(strcmp(token.word,parser->classList.vals[class].methods.vals[i].name)==0){
-                    reportError(parser,"the method has already existed.",msgStart);
-                }
-            }
+            bool isOpt=false;
             method.name=token.word;
-            if(strcmp(method.name,initName)==0){
+            if(strcmp(method.name,"operator")==0){
+                isOpt=true;
+            }else if(strcmp(method.name,initName)==0){
                 parser->classList.vals[class].initID=parser->classList.vals[class].methods.count;
             }else if(strcmp(method.name,destroyName)==0){
                 parser->classList.vals[class].destroyID=parser->classList.vals[class].methods.count;
             }
+            for(int i=0;i<parser->classList.vals[class].methods.count && !isOpt;i++){
+                if(strcmp(token.word,parser->classList.vals[class].methods.vals[i].name)==0){
+                    reportError(parser,"the method has already existed.",msgStart);
+                }
+            }
             LIST_INIT(method.args,Name)
             LIST_INIT(method.clist,int)
+            if(isOpt){
+                bool isFound=false;
+                token=nextToken(parser);
+                for(int i=0;i<OPERAT_INFIX_COUNT;i++){
+                    if(token.type==operatInfix[i].tokenType){
+                        if(parser->classList.vals[class].optID[operatInfix[i].opcode]>=0){
+                            reportError(parser,"the operator method has already exited.",msgStart);
+                        }
+                        parser->classList.vals[class].optID[operatInfix[i].opcode]=parser->classList.vals[class].methods.count;
+                        isFound=true;
+                    }
+                }
+                if(!isFound){
+                    reportError(parser,"expected an operator.",msgStart);
+                }
+            }
             matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
             token=nextToken(parser);
             bool needArg=false;
@@ -1162,6 +1184,9 @@ void getClass(Parser*parser,intList*clist,Env env){
                     needArg=false;
                 }
             }
+            if(isOpt && method.args.count!=1){
+                reportWarning(parser,"operator method can only support 1 argument.",msgStart);
+            }
             part.end=parser->ptr;
             int pt=parser->partList.count;
             LIST_ADD(parser->partList,Part,part)
@@ -1175,43 +1200,15 @@ void getClass(Parser*parser,intList*clist,Env env){
             LIST_ADD(parser->classList.vals[class].methods,Func,method)
             env.isFuncDef=false;
         }else{
-            bool isFound=false;
-            for(int i=0;i<OPERAT_INFIX_COUNT;i++){
-                /*获得自定义操作符方法*/
-                if(token.type==operatInfix[i].tokenType){
-                    isFound=true;
-                    part.start=parser->ptr;
-                    part.line=parser->line;
-                    part.column=parser->column;
-                    matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
-                    LIST_INIT(parser->classList.vals[class].optMethod[operatInfix[i].opcode].args,Name)
-                    token=matchToken(parser,TOKEN_WORD,"an operator argument",msgStart);
-                    LIST_ADD(parser->classList.vals[class].optMethod[operatInfix[i].opcode].args,Name,token.word)
-                    matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
-                    LIST_INIT(parser->classList.vals[class].optMethod[operatInfix[i].opcode].clist,int)
-                    getBlock(parser,&parser->classList.vals[class].optMethod[operatInfix[i].opcode].clist,env);
-                    symbol.type=SYM_STRING;
-                    symbol.str=(char*)malloc(5);
-                    strcpy(symbol.str,"this");
-                    part.end=parser->ptr;
-                    parser->curPart=parser->partList.count;
-                    LIST_ADD(parser->partList,Part,part)
-                    addCmd1(parser,&parser->classList.vals[class].optMethod[operatInfix[i].opcode].clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
-                    addCmd(parser,&parser->classList.vals[class].optMethod[operatInfix[i].opcode].clist,OPCODE_RETURN);
-                    break;
-                }
+            ORI_RET()
+            env.isClassVarDef=true;
+            parser->curPart=parser->partList.count;
+            if(!getAssignment(parser,&initFunc.clist,env)){
+                reportError(parser,"unsupported expression in class.",msgStart);
             }
-            if(!isFound){
-                ORI_RET()
-                env.isClassVarDef=true;
-                parser->curPart=parser->partList.count;
-                if(!getAssignment(parser,&initFunc.clist,env)){
-                    reportError(parser,"unsupported expression in class.",msgStart);
-                }
-                part.end=parser->ptr;
-                LIST_ADD(parser->partList,Part,part)
-                env.isClassVarDef=false;
-            }
+            part.end=parser->ptr;
+            LIST_ADD(parser->partList,Part,part)
+            env.isClassVarDef=false;
         }
     }
     parser->curPart=tpt;
@@ -1293,12 +1290,12 @@ void getForState(Parser*parser,intList*clist,Env env){
     addCmd(parser,clist,OPCODE_ADD);
     getBlock(parser,clist,env);
     addCmd1(parser,clist,OPCODE_JUMP,jret);
-    clist->vals[jptr+2]=clist->count;
     for(int i=0;i<breakList.count;i++){
         clist->vals[breakList.vals[i]]=clist->count;
     }
-    addCmd(parser,clist,OPCODE_FREE_LOOP);
+    clist->vals[jptr+2]=clist->count;
     addCmd1(parser,clist,OPCODE_POP_STACK,2);
     addCmd1(parser,clist,OPCODE_POP_VAR,1);
+    addCmd(parser,clist,OPCODE_FREE_LOOP);
     LIST_DELETE(breakList)
 }

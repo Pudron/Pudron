@@ -22,15 +22,22 @@ int main(int argc,char**argv){
         return 0;
     }
     bool isLib=false;
-    char*fileName=NULL;
+    char*fileName=NULL,*outputName=NULL;
     for(int i=1;i<argc;i++){
         if(argv[i][0]=='-'){
             if(argv[i][1]=='l'){
                 isLib=true;
+            }else if(argv[i][1]=='o'){
+                i++;
+                if(i>=argc){
+                    printf("error:expected output file name.\n");
+                    return -1;
+                }
+                outputName=argv[i];
             }
         }else{
             if(fileName!=NULL){
-                printf("error:can only compile one file.");
+                printf("error:can only compile one file.\n");
                 return -1;
             }
             fileName=argv[i];
@@ -40,6 +47,10 @@ int main(int argc,char**argv){
         printf("error:expected a file.\n");
         return -1;
     }
+    if(outputName!=NULL && !isLib){
+        printf("error:nothing to output.\n");
+        return -1;
+    }
     char*post=getPostfix(fileName);
     if(strcmp(post,FILE_LIB_POSTFIX)==0){
         if(isLib){
@@ -47,7 +58,7 @@ int main(int argc,char**argv){
         }
         direct(fileName);
     }else{
-        run(fileName,isLib);
+        run(fileName,isLib,outputName);
     }
     free(post);
     return 0;

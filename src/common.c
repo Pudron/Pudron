@@ -57,7 +57,10 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",true,false},
     {OPCODE_GET_CLASS,"GET_CLASS",false,false},
     {OPCODE_EXIT,"EXIT",false,false},
-    {OPCODE_MAKE_RANGE,"MAKE_RANGE",false,false}
+    {OPCODE_MAKE_RANGE,"MAKE_RANGE",false,false},
+    {OPCODE_COPY_OBJECT,"COPY_OBJECT",false,false},
+    {OPCODE_STR_FORMAT,"STR_FORMAT",false,false},
+    {OPCODE_PRINT,"PRINT",false,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
@@ -161,7 +164,7 @@ void funcToString(Parser parser,FuncList funcList,char*text){
 void classToString(Parser parser,char*text){
     text[0]='\0';
     Class class;
-    char temp[500];
+    char temp[5000];
     for(int i=0;i<parser.classList.count;i++){
         class=parser.classList.vals[i];
         sprintf(temp,"Class %s:\n",class.name);

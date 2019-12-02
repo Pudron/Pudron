@@ -8,7 +8,7 @@ void initStd(Parser*parser){
     class.initID=-1;
     class.destroyID=-1;
     for(int i=0;i<OPT_METHOD_COUNT;i++){
-        class.optMethod[i].clist.count=0;
+        class.optID[i]=-1;
     }
     LIST_INIT(class.parentList,int)
     LIST_ADD(class.parentList,int,CLASS_META)
@@ -68,10 +68,10 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
     }
     return parser;
 }
-void run(char*fileName,bool isLib){
+void run(char*fileName,bool isLib,char*outputName){
     Parser parser=compile(NULL,fileName,isLib);
     if(isLib){
-        export(parser);
+        export(parser,outputName);
         puts("done\n");
     }else{
         VM vm;
@@ -94,7 +94,7 @@ void direct(char*fileName){
     execute(&vm,vm.clist);
 }
 #ifndef RELEASE
-void test(char*fileName,bool isLib){
+void test(char*fileName,bool isLib,char*outputName){
     Parser parser=compile(NULL,fileName,isLib);
     char text[5000];
     classToString(parser,text);
@@ -104,7 +104,7 @@ void test(char*fileName,bool isLib){
     clistToString(parser,parser.clist,text,parser.moduleList.vals[parser.curModule]);
     printf("clist(size:%d):\n%s\n",parser.clist.count,text);
     if(isLib){
-        export(parser);
+        export(parser,outputName);
     }else{
         VM vm;
         initVM(&vm,parser);

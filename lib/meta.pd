@@ -6,18 +6,19 @@ class meta{
         >>RESIZE_VAR;
     }
     func getVarCount(){
-        count;
         >>LOAD_VAL this;
         >>GET_VARCOUNT;
-        >>STORE_VAL count;
-        return count;
+        >>RETURN;
     }
     func getClass(){
-        classd;
         >>LOAD_VAL this;
         >>GET_CLASS;
-        >>STORE_VAL classd;
-        return classd;
+        >>RETURN;
+    }
+    func copyVar(){
+        >>LOAD_VAL this;
+        >>COPY_OBJECT;
+        >>RETURN;
     }
 }
 func exit(value){

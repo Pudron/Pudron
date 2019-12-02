@@ -165,7 +165,7 @@ void writeClass(charList*dat,Class class){
     writeInt(dat,class.varBase);
     WRITE_LIST(dat,class.methods,Func)
     for(int i=0;i<OPT_METHOD_COUNT;i++){
-        writeFunc(dat,class.optMethod[i]);
+        writeInt(dat,class.optID[i]);
     }
     WRITE_LIST(dat,class.parentList,Int)
     writeInt(dat,class.initID);
@@ -181,7 +181,7 @@ Class readClass(Bin*bin){
     LIST_INIT(class.methods,Func)
     READ_LIST(bin,class.methods,Func,Func)
     for(int i=0;i<OPT_METHOD_COUNT;i++){
-        class.optMethod[i]=readFunc(bin);
+        class.optID[i]=readInt(bin);
     }
     LIST_INIT(class.parentList,int)
     READ_LIST(bin,class.parentList,int,Int)
@@ -189,7 +189,7 @@ Class readClass(Bin*bin){
     class.destroyID=readInt(bin);
     return class;
 }
-void export(Parser parser){
+void export(Parser parser,char*outputName){
     charList dat;
     LIST_INIT(dat,char)
     writeInt(&dat,FILE_SIGN);
@@ -200,22 +200,31 @@ void export(Parser parser){
     WRITE_LIST(&dat,parser.symList,Symbol)
     WRITE_LIST(&dat,parser.funcList,Func)
     WRITE_LIST(&dat,parser.classList,Class)
-    char fileName[MAX_WORD_LENGTH];
-    int len=strlen(parser.fileName);
-    char c;
-    for(int i=0;i<len;i++){
-        c=parser.fileName[i];
-        if(c=='.'){
-            fileName[i]='\0';
-            break;
+    FILE*fp;
+    if(outputName==NULL){
+        char fileName[MAX_WORD_LENGTH];
+        int len=strlen(parser.fileName);
+        char c;
+        for(int i=0;i<len;i++){
+            c=parser.fileName[i];
+            if(c=='.'){
+                fileName[i]='\0';
+                break;
+            }
+            fileName[i]=c;
         }
-        fileName[i]=c;
-    }
-    strcat(fileName,FILE_LIB_POSTFIX);
-    FILE*fp=fopen(fileName,"wb");
-    if(fp==NULL){
-        printf("output error:can not create the file %s.\n",fileName);
-        exit(-1);
+        strcat(fileName,FILE_LIB_POSTFIX);
+        fp=fopen(fileName,"wb");
+        if(fp==NULL){
+            printf("output error:can not create the file %s.\n",fileName);
+            exit(-1);
+        }
+    }else{
+        fp=fopen(outputName,"wb");
+        if(fp==NULL){
+            printf("output error:can not create the file %s.\n",outputName);
+            exit(-1);
+        }
     }
     fwrite(dat.vals,dat.count,1,fp);
     fclose(fp);

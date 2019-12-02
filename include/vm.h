@@ -10,6 +10,7 @@ LIST_DECLARE(Var)
 typedef struct{
 	int funcIndex;
 	int varIndex;
+	int stackIndex;
 }Field;
 LIST_DECLARE(Field)
 typedef struct{
@@ -35,8 +36,6 @@ typedef struct{
 	intList enableFunc;
 	FieldList fields;
 	intList loopList;
-	intList retFieldList;/*记录当前field,返回时逐个释放到此*/
-	intList retLoopList;
 	Module curModule;
 	ModuleList mlist;
 	intList funcPartList;
