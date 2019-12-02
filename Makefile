@@ -11,11 +11,11 @@ $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o objs/$@
 
 .PHONY:lib
-lib:lib/float.pd lib/meta.pd lib/string.pd lib/debug.pd
-	./pd -l lib/meta.pd
-	./pd -l lib/float.pd
-	./pd -l lib/string.pd
-	./pd -l lib/debug.pd
+lib:lib/src/float.pd lib/src/meta.pd lib/src/string.pd lib/src/debug.pd
+	./pd -l lib/src/meta.pd -o lib/meta.pdl
+	./pd -l lib/src/float.pd -o lib/float.pdl
+	./pd -l lib/src/string.pd -o lib/string.pdl
+	./pd -l lib/src/debug.pd -o lib/debug.pdl
 
 .PHONY:clean
 clean:
