@@ -1,10 +1,9 @@
 import "lib/debug.pdl";
-class Test{
-    x,y,z;
+import "lib/list.pdl";
+list=List(123,456,7);
+l2=List(234,567);
+for(i,list.getArray()){
+    print(i,"\n");
 }
-t=Test();
-print("count:"+t.getVarBasis(),"\n");
-t.setVarBasis(1);
-print("count2:"+t.getVarBasis(),"\n");
 #>>PRINT_STACK;
 >>PRINT_VAR;#

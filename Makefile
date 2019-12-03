@@ -16,6 +16,7 @@ lib:lib/src/float.pd lib/src/meta.pd lib/src/string.pd lib/src/debug.pd
 	./pd -l lib/src/float.pd -o lib/float.pdl
 	./pd -l lib/src/string.pd -o lib/string.pdl
 	./pd -l lib/src/debug.pd -o lib/debug.pdl
+	./pd -l lib/src/list.pd -o lib/list.pdl
 
 .PHONY:clean
 clean:

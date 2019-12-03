@@ -9,6 +9,15 @@ class string{
         >>LOAD_VAL str;
         >>RETURN;
     }
+    func operator=(str){
+        >>LOAD_VAL this;
+        >>LOAD_VAL str;
+        >>STR_COMPARE;
+        >>RETURN;
+    }
+    func code(){
+        return this[0];
+    }
 }
 func print(text){
     str;

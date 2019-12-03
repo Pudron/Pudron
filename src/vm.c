@@ -1,4 +1,5 @@
 #include"vm.h"
+/*所有变量在创建时必须初始化，否则其默认的refID会造成内存紊乱*/
 extern OpcodeMsg opcodeList[];
 void initVM(VM*vm,Parser parser){
     vm->partList=parser.partList;
@@ -42,8 +43,12 @@ void reportVMError(VM*vm,char*text,int curPart){
     for(int i=0;i<vm->funcPartList.count;i++){
         part=vm->partList.vals[vm->funcPartList.vals[i]];
         str=cutText(part.code,part.start,part.end);
-        printf("from %s:%d:%d:\n    %s\n",part.fileName,part.line,part.column,str);
-        free(str);
+        if(str==NULL){
+            printf("from %s:%d:%d:\n",part.fileName,part.line,part.column);
+        }else{
+            printf("from %s:%d:%d:\n    %s\n",part.fileName,part.line,part.column,str);
+            free(str);
+        }
     }
     msg.type=MSG_ERROR;
     part=vm->partList.vals[curPart];
@@ -148,6 +153,19 @@ static void reduceRef(VM*vm,Value value){
         }
     }
 }
+static void exeInit(VM*vm,int class,Value val){
+    Class classd=vm->classList.vals[class];
+    for(int i=0;i<classd.parentList.count;i++){
+        exeInit(vm,classd.parentList.vals[i],val);
+    }
+    if(classd.initValID>=0){
+        addRef(vm,val);
+        LIST_ADD(vm->stack,Value,val)
+        exeFunc(vm,classd.methods.vals[classd.initValID],0,true,true,vm->curPart);
+        reduceRef(vm,vm->stack.vals[vm->stack.count-1]);
+        LIST_SUB(vm->stack,Value);
+    }
+}
 Value makeValue(VM*vm,int class){
     Value val;
     Class classd;
@@ -160,18 +178,20 @@ Value makeValue(VM*vm,int class){
     if(ref.varCount>0 || class==CLASS_STRING){
         ref.var=(Value*)malloc(ref.varCount*sizeof(Value));
         ref.refCount=1;
-        val.refID=makeRef(vm,ref);
         for(int i=0;i<ref.varCount;i++){
             ref.var[i]=makeValue(vm,CLASS_INT);
             ref.var[i].num=0;
         }
+        val.refID=makeRef(vm,ref);
     }else{
         val.refID=-1;
     }
+    exeInit(vm,class,val);
     if(classd.initID>=0){
         LIST_ADD(vm->stack,Value,val)
-        vm->refList.vals[val.refID].refCount++;
+        addRef(vm,val);
         exeFunc(vm,classd.methods.vals[classd.initID],0,true,true,vm->curPart);
+        reduceRef(vm,vm->stack.vals[vm->stack.count-1]);
         LIST_SUB(vm->stack,Value)
     }
     return val;
@@ -270,7 +290,7 @@ inline static void printFunc(VM*vm,int curPart){
             puts(",");
         }
     }
-    printf("):\n");
+    printf(")module:%s:\n",vm->moduleList.vals[func.moduleID].name);
     printClist(vm,func.clist,func.moduleID);
     puts("function end\n");
 }
@@ -499,7 +519,7 @@ inline static void storeIndex(VM*vm,int curPart){
     a=vm->stack.vals[vm->stack.count-2];
     b=vm->stack.vals[vm->stack.count-1];
     c=vm->stack.vals[vm->stack.count-3];
-    if(a.refID<=0){
+    if(a.refID<0){
         reportVMError(vm,"the variable is not an array.",curPart);
     }
     if(b.class!=CLASS_INT){
@@ -831,11 +851,17 @@ inline static void resizeVar(VM*vm,int curPart){
     if(a.refID<0){
         reportVMError(vm,"expected memory for the variable to resize.",curPart);
     }
+    int rcount=vm->refList.vals[a.refID].varCount;
     if(a.class==CLASS_STRING){
         vm->refList.vals[a.refID].str=(char*)realloc(vm->refList.vals[a.refID].str,b.num);
     }else{
         vm->refList.vals[a.refID].varCount=b.num;
         vm->refList.vals[a.refID].var=(Value*)realloc(vm->refList.vals[a.refID].var,b.num*sizeof(Value));
+        Value val=makeValue(vm,CLASS_INT);
+        val.num=0;
+        for(int i=rcount;i<b.num;i++){
+            vm->refList.vals[a.refID].var[i]=val;
+        }
     }
     reduceRef(vm,a);
     reduceRef(vm,b);
@@ -1010,6 +1036,25 @@ inline static void setVarBasis(VM*vm,int curPart){
     }
     popStack(vm,2,curPart);
 }
+inline static void strCompare(VM*vm,int curPart){
+    checkStack(vm,2,curPart);
+    Value str1,str2;
+    str1=vm->stack.vals[vm->stack.count-2];
+    str2=vm->stack.vals[vm->stack.count-1];
+    if(str1.class!=CLASS_STRING || str2.class!=CLASS_STRING){
+        reportVMError(vm,"it must be string when comparing.",curPart);
+    }
+    Value result=makeValue(vm,CLASS_INT);
+    if(strcmp(vm->refList.vals[str1.refID].str,vm->refList.vals[str2.refID].str)==0){
+        result.num=true;
+    }else{
+        result.num=false;
+    }
+    reduceRef(vm,str1);
+    reduceRef(vm,str2);
+    LIST_SUB(vm->stack,Value)
+    vm->stack.vals[vm->stack.count-1]=result;
+}
 #define EXE_OPT(opt,ind) \
     checkStack(vm,2,curPart);\
     a=vm->stack.vals[vm->stack.count-2];\
@@ -1018,37 +1063,48 @@ inline static void setVarBasis(VM*vm,int curPart){
         case CLASS_INT:\
             switch(b.class){\
                 case CLASS_INT:\
-                    a.num=a.num opt b.num;\
+                    c=makeValue(vm,CLASS_INT);\
+                    c.num=a.num opt b.num;\
                     break;\
                 case CLASS_FLOAT:\
-                    a.class=CLASS_FLOAT;\
-                    a.numf=a.num opt b.numf;\
+                    c=makeValue(vm,CLASS_FLOAT);\
+                    c.numf=a.num opt b.numf;\
                     break;\
                 default:\
                     reportVMError(vm,"unsupport int operation.",curPart);\
             }\
+            reduceRef(vm,a);\
+            reduceRef(vm,b);\
             LIST_SUB(vm->stack,Value)\
-            vm->stack.vals[vm->stack.count-1]=a;\
+            vm->stack.vals[vm->stack.count-1]=c;\
             break;\
         case CLASS_FLOAT:\
+            c=makeValue(vm,CLASS_FLOAT);\
             switch(b.class){\
                 case CLASS_INT:\
-                    a.numf=a.numf opt b.num;\
+                    c.numf=a.numf opt b.num;\
                     break;\
                 case CLASS_FLOAT:\
-                    a.numf=a.numf opt b.numf;\
+                    c.numf=a.numf opt b.numf;\
                     break;\
                 default:\
                     reportVMError(vm,"unsupport float operation.",curPart);\
             }\
+            reduceRef(vm,a);\
+            reduceRef(vm,b);\
             LIST_SUB(vm->stack,Value)\
-            vm->stack.vals[vm->stack.count-1]=a;\
+            vm->stack.vals[vm->stack.count-1]=c;\
             break;\
         case CLASS_CLASS:\
             if(b.class!=CLASS_CLASS){\
                 reportVMError(vm,"expected a class to equal.",curPart);\
             }\
-            a.num=a.num==b.num;\
+            c=makeValue(vm,CLASS_INT);\
+            c.num=a.num opt b.num;\
+            reduceRef(vm,a);\
+            reduceRef(vm,b);\
+            LIST_SUB(vm->stack,Value)\
+            vm->stack.vals[vm->stack.count-1]=c;\
             break;\
         default:\
             exeOpt(vm,ind,curPart);\
@@ -1062,9 +1118,12 @@ inline static void setVarBasis(VM*vm,int curPart){
         if(b.class!=CLASS_INT){\
             reportVMError(vm,"expected an integer to operate.",curPart);\
         }\
-        a.num= a.num opt b.num;\
+        c=makeValue(vm,CLASS_INT);\
+        c.num= a.num opt b.num;\
+        reduceRef(vm,a);\
+        reduceRef(vm,b);\
         LIST_SUB(vm->stack,Value)\
-        vm->stack.vals[vm->stack.count-1]=a;\
+        vm->stack.vals[vm->stack.count-1]=c;\
     }else{\
         exeOpt(vm,ind,curPart);\
     }
@@ -1072,12 +1131,12 @@ inline static void setVarBasis(VM*vm,int curPart){
 void execute(VM*vm,intList clist){
     int opcode,curPart;
     char temp[50];
-    Value a,b;
+    Value a,b,c;
     for(int i=0;i<clist.count;i++){
         curPart=clist.vals[i++]+vm->curModule.partBasis;
         opcode=clist.vals[i];
         vm->ptr=i;
-        //printf("cmd:%d\n",i);
+        //printf("cmd:%d:%s\n",i,opcodeList[opcode].name);
         vm->curPart=curPart;
         switch(opcode){
             case OPCODE_NOP:
@@ -1205,7 +1264,9 @@ void execute(VM*vm,intList clist){
                 if(!a.num){
                     i=clist.vals[i]+vm->curModule.cmdBasis-1;
                 }
+                reduceRef(vm,a);
                 LIST_SUB(vm->stack,Value)
+                break;
             case OPCODE_SET_FIELD:
                 setField(vm);
                 break;
@@ -1291,6 +1352,9 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_SET_VARBASIS:
                 setVarBasis(vm,curPart);
+                break;
+            case OPCODE_STR_COMPARE:
+                strCompare(vm,curPart);
                 break;
             default:
                 sprintf(temp,"unknown operation code (%d).",opcode);

@@ -37,20 +37,20 @@ func exit(value){
 }
 func range(a,b,c){
     result;
-    if(argVar.getVarCount()=1){
+    if(argVar=1){
         a-=1;
         >>LOAD_CONST 0;
         >>LOAD_VAL a;
         >>LOAD_CONST 1;
         >>MAKE_RANGE;
         >>STORE_VAL result;
-    }elif(argVar.getVarCount()=2){
+    }elif(argVar=2){
         >>LOAD_VAL a;
         >>LOAD_VAL b;
         >>LOAD_CONST 1;
         >>MAKE_RANGE;
         >>STORE_VAL result;
-    }elif(argVar.getVarCount()=3){
+    }elif(argVar=3){
         >>LOAD_VAL a;
         >>LOAD_VAL b;
         >>LOAD_VAL c;

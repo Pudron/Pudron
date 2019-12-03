@@ -412,7 +412,9 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
                 }
             }
             if(!isFound && env.isClassVarDef){
-                LIST_ADD(parser->classList.vals[env.classDef].var,Name,word)
+                char*wd=(char*)malloc(strlen(word)+1);
+                strcpy(wd,word);
+                LIST_ADD(parser->classList.vals[env.classDef].var,Name,wd)
                 isFound=true;
                 assign.ncmds.count=0;
             }
@@ -1055,7 +1057,6 @@ void getFunction(Parser*parser,intList*clist,Env env){
     func.moduleID=parser->curModule;
     LIST_ADD(parser->funcList,Func,func)
 }
-/*不知怎么回事，类成员不能用a,b,c作为名字*/
 void getClass(Parser*parser,intList*clist,Env env){
     Func method;
     Token token;
@@ -1066,7 +1067,6 @@ void getClass(Parser*parser,intList*clist,Env env){
     part.code=parser->code;
     part.fileName=parser->fileName;
     int tpt;
-    Func initFunc;
     char*initName,*destroyName;
     ORI_DEF()
     int msgStart=parser->ptr;
@@ -1084,13 +1084,10 @@ void getClass(Parser*parser,intList*clist,Env env){
     }
     classd.initID=-1;
     classd.destroyID=-1;
+    classd.initValID=-1;
     LIST_INIT(classd.methods,Func)
     LIST_INIT(classd.var,Name)
     method.moduleID=parser->curModule;
-    initFunc.moduleID=parser->curModule;
-    initFunc.name=(char*)malloc(strlen(classd.name)+5);
-    sprintf(initFunc.name,"init%s",classd.name);
-    LIST_INIT(initFunc.clist,int)
     LIST_INIT(classd.parentList,int);
     if(strcmp(classd.name,"meta")!=0){
         LIST_ADD(classd.parentList,int,CLASS_META)
@@ -1146,7 +1143,7 @@ void getClass(Parser*parser,intList*clist,Env env){
                 parser->classList.vals[class].destroyID=parser->classList.vals[class].methods.count;
             }
             for(int i=0;i<parser->classList.vals[class].methods.count && !isOpt;i++){
-                if(strcmp(token.word,parser->classList.vals[class].methods.vals[i].name)==0){
+                if(strcmp(method.name,parser->classList.vals[class].methods.vals[i].name)==0){
                     reportError(parser,"the method has already existed.",msgStart);
                 }
             }
@@ -1203,7 +1200,17 @@ void getClass(Parser*parser,intList*clist,Env env){
             ORI_RET()
             env.isClassVarDef=true;
             parser->curPart=parser->partList.count;
-            if(!getAssignment(parser,&initFunc.clist,env)){
+            if(parser->classList.vals[class].initValID<0){
+                Func func;
+                func.name=(char*)malloc(5);
+                strcpy(func.name,"init");
+                LIST_INIT(func.args,Name)
+                LIST_INIT(func.clist,int)
+                func.moduleID=parser->curModule;
+                parser->classList.vals[class].initValID=parser->classList.vals[class].methods.count;
+                LIST_ADD(parser->classList.vals[class].methods,Func,func)
+            }
+            if(!getAssignment(parser,&parser->classList.vals[class].methods.vals[parser->classList.vals[class].initValID].clist,env)){
                 reportError(parser,"unsupported expression in class.",msgStart);
             }
             part.end=parser->ptr;
@@ -1213,22 +1220,15 @@ void getClass(Parser*parser,intList*clist,Env env){
     }
     parser->curPart=tpt;
     classd=parser->classList.vals[class];
-    if(classd.initID>=0){
-        initFunc.args=classd.methods.vals[classd.initID].args;
-        LIST_CONNECT(initFunc.clist,parser->classList.vals[class].methods.vals[classd.initID].clist,int,0)
-        LIST_DELETE(parser->classList.vals[class].methods.vals[classd.initID].clist)
-        parser->classList.vals[class].methods.vals[classd.initID]=initFunc;
-    }else if(initFunc.clist.count>0){
-        initFunc.args.count=0;
+    if(classd.initValID>=0){
         symbol.type=SYM_INT;
         symbol.num=0;
-        addCmd1(parser,&initFunc.clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
-        addCmd(parser,&initFunc.clist,OPCODE_RETURN);
-        parser->classList.vals[class].initID=classd.methods.count;
-        LIST_ADD(parser->classList.vals[class].methods,Func,initFunc)
-    }else{
-        initFunc.args.count=0;
+        addCmd1(parser,&parser->classList.vals[class].methods.vals[classd.initValID].clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
+        addCmd(parser,&parser->classList.vals[class].methods.vals[classd.initValID].clist,OPCODE_RETURN);
     }
+    Func initFunc;
+    initFunc.moduleID=parser->curModule;
+    LIST_INIT(initFunc.args,Name)
     LIST_INIT(initFunc.clist,int)
     addCmd1(parser,&initFunc.clist,OPCODE_MAKE_OBJECT,class);
     addCmd(parser,&initFunc.clist,OPCODE_RETURN);
@@ -1278,8 +1278,8 @@ void getForState(Parser*parser,intList*clist,Env env){
     addCmd(parser,clist,OPCODE_GET_VARCOUNT);
     addCmd1(parser,clist,OPCODE_STACK_COPY,1);
     addCmd(parser,clist,OPCODE_GTHAN);
-    int jptr=clist->count;
     addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
+    int jptr=clist->count-1;
     addCmd1(parser,clist,OPCODE_STACK_COPY,1);
     addCmd1(parser,clist,OPCODE_STACK_COPY,1);
     addCmd(parser,clist,OPCODE_LOAD_INDEX);
@@ -1293,7 +1293,7 @@ void getForState(Parser*parser,intList*clist,Env env){
     for(int i=0;i<breakList.count;i++){
         clist->vals[breakList.vals[i]]=clist->count;
     }
-    clist->vals[jptr+2]=clist->count;
+    clist->vals[jptr]=clist->count;
     addCmd1(parser,clist,OPCODE_POP_STACK,2);
     addCmd1(parser,clist,OPCODE_POP_VAR,1);
     addCmd(parser,clist,OPCODE_FREE_LOOP);

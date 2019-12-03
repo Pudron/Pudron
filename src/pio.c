@@ -170,6 +170,7 @@ void writeClass(charList*dat,Class class){
     WRITE_LIST(dat,class.parentList,Int)
     writeInt(dat,class.initID);
     writeInt(dat,class.destroyID);
+    writeInt(dat,class.initValID);
 }
 Class readClass(Bin*bin){
     Class class;
@@ -187,6 +188,7 @@ Class readClass(Bin*bin){
     READ_LIST(bin,class.parentList,int,Int)
     class.initID=readInt(bin);
     class.destroyID=readInt(bin);
+    class.initValID=readInt(bin);
     return class;
 }
 void export(Parser parser,char*outputName){
@@ -275,7 +277,7 @@ void import(Parser*parser,char*fileName){
     READ_LIST(&bin,parser->moduleList,Module,Module)
     for(int i=begin;i<parser->moduleList.count;i++){
         parser->moduleList.vals[i].funcBasis+=parser->funcList.count;
-        parser->moduleList.vals[i].cmdBasis+=parser->clist.count;
+        parser->moduleList.vals[i].cmdBasis+=parser->clist.count+3;/*加上后面的SET_MODULE*/
         parser->moduleList.vals[i].symBasis+=parser->symList.count;
         parser->moduleList.vals[i].classBasis+=parser->classList.count;
         parser->moduleList.vals[i].partBasis+=parser->partList.count;

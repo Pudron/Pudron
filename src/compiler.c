@@ -7,6 +7,7 @@ void initStd(Parser*parser){
     class.methods.count=0;
     class.initID=-1;
     class.destroyID=-1;
+    class.initValID=-1;
     for(int i=0;i<OPT_METHOD_COUNT;i++){
         class.optID[i]=-1;
     }

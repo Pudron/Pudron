@@ -63,7 +63,8 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_COPY_OBJECT,"COPY_OBJECT",false,false},
     {OPCODE_STR_FORMAT,"STR_FORMAT",false,false},
     {OPCODE_PRINT,"PRINT",false,false},
-    {OPCODE_INPUT,"INPUT",false,false}
+    {OPCODE_INPUT,"INPUT",false,false},
+    {OPCODE_STR_COMPARE,"STR_COMPARE",false,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
