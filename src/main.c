@@ -1,5 +1,11 @@
 #include"common.h"
 #include"compiler.h"
+char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
+"compile and run:pd [file]\n"
+"run pdl file:pd [file]\n"
+"argument:\n"
+"-l:make library\n"
+"-o [name]:use output file name\n";
 #ifndef RELEASE
 void testToken(Parser*parser){
     Token token;
@@ -20,7 +26,7 @@ void testToken(Parser*parser){
 #endif
 int main(int argc,char**argv){
     if(argc==1){
-        puts("Welcome to use Pudron Program Language\nusage:pd [file name]\n");
+        printf("%s",statement);
         return 0;
     }
     bool isLib=false;
