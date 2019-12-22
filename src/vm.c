@@ -1,4 +1,7 @@
 #include"vm.h"
+#ifdef LINUX
+#include<dlfcn.h>
+#endif
 /*所有变量在创建时必须初始化，否则其默认的refID会造成内存紊乱*/
 /*所以类必须有成员（包括继承的）才能执行destroyXXX()*/
 extern OpcodeMsg opcodeList[];
@@ -18,6 +21,7 @@ void initVM(VM*vm,Parser parser){
     LIST_INIT(vm->loopList,int)
     LIST_INIT(vm->mlist,Module)
     LIST_INIT(vm->funcPartList,int)
+    LIST_INIT(vm->dllptrList,Dllptr)
     vm->ptr=0;
     vm->curPart=0;
     vm->curVar=-1;
@@ -164,6 +168,12 @@ void exitVM(VM*vm){
     while(vm->varList.count>0){
         reduceRef(vm,vm->varList.vals[vm->varList.count-1].val);
         LIST_SUB(vm->varList,Var)
+    }
+    for(int i=0;i<vm->dllptrList.count;i++){
+        if(vm->dllptrList.vals[i]!=NULL){
+            dlclose(vm->dllptrList.vals[i]);
+            vm->dllptrList.vals[i]=NULL;
+        }
     }
 }
 static void exeInit(VM*vm,int class,Value val){
@@ -1111,6 +1121,134 @@ inline static void mwriteTextFile(VM*vm,int curPart){
     LIST_SUB(vm->stack,Value)
     LIST_SUB(vm->stack,Value)
 }
+inline static void dllOpen(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    char temp[50];
+    Value val=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_STRING){
+        reportVMError(vm,"the dll name must be string when opening a dll.",curPart);
+    }
+    int ind=-1;
+    for(int i=0;i<vm->dllptrList.count;i++){
+        if(vm->dllptrList.vals[i]==NULL){
+            ind=i;
+            break;
+        }
+    }
+    if(ind<0){
+        ind=vm->dllptrList.count;
+        LIST_ADD(vm->dllptrList,Dllptr,NULL)
+    }
+    #ifdef LINUX
+    vm->dllptrList.vals[ind]=dlopen(vm->refList.vals[val.refID].str,RTLD_LAZY);
+    if(vm->dllptrList.vals[ind]==NULL){
+        sprintf(temp,"opening dll \"%s\" failed.",vm->refList.vals[val.refID].str);
+        reportVMError(vm,temp,curPart);
+    }
+    #endif
+    reduceRef(vm,val);
+    val=makeValue(vm,CLASS_INT);
+    val.num=ind;
+    vm->stack.vals[vm->stack.count-1]=val;
+}
+inline static void dllClose(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    Value val=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_INT){
+        reportVMError(vm,"the dll index must be an integer.",curPart);
+    }
+    if(val.num<0 || val.num>=vm->dllptrList.count){
+        reportVMError(vm,"illegal dll index when closing dll.",curPart);
+    }
+    if(vm->dllptrList.vals[val.num]!=NULL){
+        #ifdef LINUX
+        dlclose(vm->dllptrList.vals[val.num]);
+        #endif
+        vm->dllptrList.vals[val.num]=NULL;
+    }
+    reduceRef(vm,val);
+    LIST_SUB(vm->stack,Value)
+}
+inline static void dllExecute(VM*vm,int curPart){
+    checkStack(vm,4,curPart);
+    Value val=vm->stack.vals[vm->stack.count-4];
+    Value ret=vm->stack.vals[vm->stack.count-3];
+    Value fname=vm->stack.vals[vm->stack.count-2];
+    Value arg=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_INT){
+        reportVMError(vm,"the dll index must be an integer.",curPart);
+    }
+    if(ret.class!=CLASS_CLASS){
+        reportVMError(vm,"expected a dll return type.",curPart);
+    }
+    if(fname.class!=CLASS_STRING){
+        reportVMError(vm,"expected a dll function name.",curPart);
+    }
+    if(val.num<0 || val.num>=vm->dllptrList.count){
+        reportVMError(vm,"illegal dll index when calling dll.",curPart);
+    }
+    void*dllptr=vm->dllptrList.vals[val.num];
+    if(dllptr==NULL){
+        reportVMError(vm,"the dll has already closed.",curPart);
+    }
+    char*name=vm->refList.vals[fname.refID].str;
+    char*str=NULL;
+    #define exedll \
+        dlsym(dllptr,name);\
+        str=dlerror();\
+        if(str!=NULL){\
+            reportVMError(vm,str,curPart);\
+        }
+
+    if(ret.num==CLASS_INT){
+        ret=makeValue(vm,CLASS_INT);
+        if(arg.class==CLASS_INT){
+            int (*func)(int)=exedll;
+            ret.num=func(arg.num);
+        }else if(arg.class==CLASS_FLOAT){
+            int (*func)(float)=exedll;
+            ret.num=func(arg.numf);
+        }else if(arg.class==CLASS_STRING){
+            int (*func)(char*)=exedll;
+            ret.num=func(vm->refList.vals[arg.refID].str);
+        }else{
+            reportVMError(vm,"dll can only support int,float or string for argument.",curPart);
+        }
+    }else if(ret.num==CLASS_FLOAT){
+        ret=makeValue(vm,CLASS_FLOAT);
+        if(arg.class==CLASS_INT){
+            float (*func)(int)=exedll;
+            ret.numf=func(arg.num);
+        }else if(arg.class==CLASS_FLOAT){
+            float (*func)(float)=exedll;
+            ret.numf=func(arg.numf);
+        }else if(arg.class==CLASS_STRING){
+            float (*func)(char*)=exedll;
+            ret.numf=func(vm->refList.vals[arg.refID].str);
+        }else{
+            reportVMError(vm,"dll can only support int,float or string for argument.",curPart);
+        }
+    }else if(ret.num==CLASS_STRING){
+        ret=makeValue(vm,CLASS_STRING);
+        if(arg.class==CLASS_INT){
+            char* (*func)(int)=exedll;
+            vm->refList.vals[ret.refID].str=func(arg.num);
+        }else if(arg.class==CLASS_FLOAT){
+            char* (*func)(float)=exedll;
+            vm->refList.vals[ret.refID].str=func(arg.numf);
+        }else if(arg.class==CLASS_STRING){
+            char* (*func)(char*)=exedll;
+            vm->refList.vals[ret.refID].str=func(vm->refList.vals[arg.refID].str);
+        }else{
+            reportVMError(vm,"dll can only support int,float or string for argument.",curPart);
+        }
+    }else{
+        reportVMError(vm,"dll return type can only support int,float,string.",curPart);
+    }
+    #undef exedll
+    popStack(vm,4,curPart);
+    LIST_ADD(vm->stack,Value,ret)
+}
 #define EXE_OPT(opt,ind) \
     checkStack(vm,2,curPart);\
     a=vm->stack.vals[vm->stack.count-2];\
@@ -1417,6 +1555,15 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_WRITE_TEXT_FILE:
                 mwriteTextFile(vm,curPart);
+                break;
+            case OPCODE_DLL_OPEN:
+                dllOpen(vm,curPart);
+                break;
+            case OPCODE_DLL_CLOSE:
+                dllClose(vm,curPart);
+                break;
+            case OPCODE_DLL_EXECUTE:
+                dllExecute(vm,curPart);
                 break;
             default:
                 sprintf(temp,"unknown operation code (%d).",opcode);

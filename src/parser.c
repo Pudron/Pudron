@@ -1228,7 +1228,11 @@ void getClass(Parser*parser,intList*clist,Env env){
     }
     Func initFunc;
     initFunc.moduleID=parser->curModule;
-    LIST_INIT(initFunc.args,Name)
+    if(classd.initID>=0){
+        initFunc.args=classd.methods.vals[classd.initID].args;
+    }else{
+        LIST_INIT(initFunc.args,Name)
+    }
     LIST_INIT(initFunc.clist,int)
     addCmd1(parser,&initFunc.clist,OPCODE_MAKE_OBJECT,class);
     addCmd(parser,&initFunc.clist,OPCODE_RETURN);

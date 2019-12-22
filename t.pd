@@ -1,15 +1,9 @@
 import "lib/debug.pdl";
 import "lib/list.pdl";
 import "lib/file.pdl";
-class Test{
-    x;
-    func initTest(){
-        print("init\n");
-    }
-    func destroyTest(){
-        print("destroy\n");
-    }
-}
-test=Test();
+import "lib/dll.pdl";
+dll=DLL("/home/pi/Documents/test/opendll/libt.so");
+dll.execute(int,"test",456);
+dll.execute(int,"test",789);
 #>>PRINT_STACK;
 >>PRINT_VAR;#

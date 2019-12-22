@@ -1,0 +1,20 @@
+class DLL{
+    dllptr;
+    func initDLL(path){
+        >>LOAD_VAL path;
+        >>DLL_OPEN;
+        >>STORE_VAL dllptr;
+    }
+    func destroyDLL(){
+        >>LOAD_VAL dllptr;
+        >>DLL_CLOSE;
+    }
+    func execute(type,name,arg){
+        >>LOAD_VAL dllptr;
+        >>LOAD_VAL type;
+        >>LOAD_VAL name;
+        >>LOAD_VAL arg;
+        >>DLL_EXECUTE;
+        >>RETURN;
+    }
+}

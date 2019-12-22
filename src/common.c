@@ -66,7 +66,10 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_INPUT,"INPUT",false,false},
     {OPCODE_STR_COMPARE,"STR_COMPARE",false,false},
     {OPCODE_READ_TEXT_FILE,"READ_TEXT_FILE",false,false},
-    {OPCODE_WRITE_TEXT_FILE,"WRITE_TEXT_FILE",false,false}
+    {OPCODE_WRITE_TEXT_FILE,"WRITE_TEXT_FILE",false,false},
+    {OPCODE_DLL_OPEN,"DLL_OPEN",false,false},
+    {OPCODE_DLL_CLOSE,"DLL_CLOSE",false,false},
+    {OPCODE_DLL_EXECUTE,"DLL_EXECUTE",false,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;

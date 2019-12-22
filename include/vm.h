@@ -22,6 +22,8 @@ typedef struct{
 	char*str;
 }Ref;
 LIST_DECLARE(Ref)
+typedef void* Dllptr;
+LIST_DECLARE(Dllptr)
 typedef struct{
 	PartList partList;
     intList clist;
@@ -42,6 +44,7 @@ typedef struct{
 	int ptr,curPart;
 	int curVar;
 	intList vlist;
+	DllptrList dllptrList;
 }VM;
 void initVM(VM*vm,Parser parser);
 void exitVM(VM*vm);

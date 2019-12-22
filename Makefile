@@ -2,10 +2,11 @@ vpath %.h include
 vpath %.c src
 vpath %.o objs
 CC=gcc
-CFLAGS=-Iinclude -Wall -O2 -g
+CFLAGS=-Iinclude -Wall -O2 -g -DLINUX
+LIBS=-ldl
 OBJS=main.o common.o pio.o parser.o vm.o compiler.o
 pd:$(OBJS)
-	$(CC) $(addprefix objs/,$(OBJS)) -o pd
+	$(CC) $(addprefix objs/,$(OBJS)) -o pd $(LIBS)
 
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o objs/$@
@@ -18,6 +19,7 @@ lib:lib/src/float.pd lib/src/meta.pd lib/src/string.pd lib/src/debug.pd
 	./pd -l lib/src/debug.pd -o lib/debug.pdl
 	./pd -l lib/src/list.pd -o lib/list.pdl
 	./pd -l lib/src/file.pd -o lib/file.pdl
+	./pd -l lib/src/dll.pd -o lib/dll.pdl
 
 .PHONY:clean
 clean:
