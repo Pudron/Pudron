@@ -64,7 +64,9 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_STR_FORMAT,"STR_FORMAT",false,false},
     {OPCODE_PRINT,"PRINT",false,false},
     {OPCODE_INPUT,"INPUT",false,false},
-    {OPCODE_STR_COMPARE,"STR_COMPARE",false,false}
+    {OPCODE_STR_COMPARE,"STR_COMPARE",false,false},
+    {OPCODE_READ_TEXT_FILE,"READ_TEXT_FILE",false,false},
+    {OPCODE_WRITE_TEXT_FILE,"WRITE_TEXT_FILE",false,false}
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;

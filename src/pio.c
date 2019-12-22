@@ -228,7 +228,7 @@ void export(Parser parser,char*outputName){
             exit(-1);
         }
     }
-    fwrite(dat.vals,dat.count,1,fp);
+    fwrite(dat.vals,1,dat.count,fp);
     fclose(fp);
 }
 void import(Parser*parser,char*fileName){
@@ -250,7 +250,7 @@ void import(Parser*parser,char*fileName){
     bin.count=ftell(fp);
     rewind(fp);
     bin.dat=(char*)malloc(bin.count+1);
-    fread(bin.dat,bin.count,1,fp);
+    bin.count=fread(bin.dat,1,bin.count,fp);
     bin.ptr=0;
     fclose(fp);
     if(bin.count<2*sizeof(int)){

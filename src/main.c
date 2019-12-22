@@ -1,5 +1,6 @@
 #include"common.h"
 #include"compiler.h"
+#ifndef RELEASE
 void testToken(Parser*parser){
     Token token;
     token=nextToken(parser);
@@ -16,6 +17,7 @@ void testToken(Parser*parser){
         token=nextToken(parser);
     }
 }
+#endif
 int main(int argc,char**argv){
     if(argc==1){
         puts("Welcome to use Pudron Program Language\nusage:pd [file name]\n");

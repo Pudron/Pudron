@@ -138,7 +138,7 @@ typedef enum{
     TOKEN_LINE
 }TokenType;
 #define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 64
+#define OPCODE_COUNT 66
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -211,7 +211,9 @@ typedef enum{
     OPCODE_STR_FORMAT,
     OPCODE_PRINT,
     OPCODE_INPUT,
-    OPCODE_STR_COMPARE
+    OPCODE_STR_COMPARE,
+    OPCODE_READ_TEXT_FILE,
+    OPCODE_WRITE_TEXT_FILE
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)

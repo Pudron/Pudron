@@ -1,0 +1,10 @@
+func readTextFile(file){
+    >>LOAD_VAL file;
+    >>READ_TEXT_FILE;
+    >>RETURN;
+}
+func writeTextFile(file,text){
+    >>LOAD_VAL file;
+    >>LOAD_VAL text;
+    >>WRITE_TEXT_FILE;
+}

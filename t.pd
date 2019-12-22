@@ -1,9 +1,6 @@
 import "lib/debug.pdl";
 import "lib/list.pdl";
-list=List(123,456,7);
-l2=List(234,567);
-for(i,list.getArray()){
-    print(i,"\n");
-}
+import "lib/file.pdl";
+print(readTextFile("t.pd"),"\n");
 #>>PRINT_STACK;
 >>PRINT_VAR;#

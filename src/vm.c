@@ -1055,6 +1055,49 @@ inline static void strCompare(VM*vm,int curPart){
     LIST_SUB(vm->stack,Value)
     vm->stack.vals[vm->stack.count-1]=result;
 }
+inline static void mreadTextFile(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    char temp[50];
+    Value val=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_STRING){
+        reportVMError(vm,"the file name must be string when reading text file",curPart);
+    }
+    FILE*fp=fopen(vm->refList.vals[val.refID].str,"rt");
+    if(fp==NULL){
+        sprintf(temp,"fail to read text file \"%s\".",vm->refList.vals[val.refID].str);
+        reportVMError(vm,temp,curPart);
+    }
+    reduceRef(vm,val);
+    val=makeValue(vm,CLASS_STRING);
+    fseek(fp,0,SEEK_END);
+    int len=ftell(fp);
+    rewind(fp);
+    vm->refList.vals[val.refID].str=(char*)malloc(len+1);
+    len=fread(vm->refList.vals[val.refID].str,1,len,fp);
+    fclose(fp);
+    vm->refList.vals[val.refID].str[len]='\0';
+    vm->stack.vals[vm->stack.count-1]=val;
+}
+inline static void mwriteTextFile(VM*vm,int curPart){
+    checkStack(vm,1,curPart);
+    char temp[50];
+    Value val=vm->stack.vals[vm->stack.count-2];
+    Value str=vm->stack.vals[vm->stack.count-1];
+    if(val.class!=CLASS_STRING){
+        reportVMError(vm,"the file name must be string when reading text file",curPart);
+    }
+    FILE*fp=fopen(vm->refList.vals[val.refID].str,"wt");
+    if(fp==NULL){
+        sprintf(temp,"fail to read text file \"%s\".",vm->refList.vals[val.refID].str);
+        reportVMError(vm,temp,curPart);
+    }
+    fwrite(vm->refList.vals[str.refID].str,1,strlen(vm->refList.vals[str.refID].str),fp);
+    fclose(fp);
+    reduceRef(vm,str);
+    reduceRef(vm,val);
+    LIST_SUB(vm->stack,Value)
+    LIST_SUB(vm->stack,Value)
+}
 #define EXE_OPT(opt,ind) \
     checkStack(vm,2,curPart);\
     a=vm->stack.vals[vm->stack.count-2];\
@@ -1355,6 +1398,12 @@ void execute(VM*vm,intList clist){
                 break;
             case OPCODE_STR_COMPARE:
                 strCompare(vm,curPart);
+                break;
+            case OPCODE_READ_TEXT_FILE:
+                mreadTextFile(vm,curPart);
+                break;
+            case OPCODE_WRITE_TEXT_FILE:
+                mwriteTextFile(vm,curPart);
                 break;
             default:
                 sprintf(temp,"unknown operation code (%d).",opcode);
