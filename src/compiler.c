@@ -78,6 +78,7 @@ void run(char*fileName,bool isLib,char*outputName){
         VM vm;
         initVM(&vm,parser);
         execute(&vm,vm.clist);
+        exitVM(&vm);
     }
 }
 void direct(char*fileName){
@@ -110,6 +111,7 @@ void test(char*fileName,bool isLib,char*outputName){
         VM vm;
         initVM(&vm,parser);
         execute(&vm,vm.clist);
+        exitVM(&vm);
     }
 }
 #endif

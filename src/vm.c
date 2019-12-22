@@ -1,5 +1,6 @@
 #include"vm.h"
 /*所有变量在创建时必须初始化，否则其默认的refID会造成内存紊乱*/
+/*所以类必须有成员（包括继承的）才能执行destroyXXX()*/
 extern OpcodeMsg opcodeList[];
 void initVM(VM*vm,Parser parser){
     vm->partList=parser.partList;
@@ -59,6 +60,7 @@ void reportVMError(VM*vm,char*text,int curPart){
     msg.line=part.line;
     msg.column=part.column;
     strcpy(msg.text,text);
+    exitVM(vm);
     reportMsg(msg);
 }
 int getClassSize(VM*vm,int class){
@@ -149,8 +151,19 @@ static void reduceRef(VM*vm,Value value){
             vm->refList.vals[value.refID].isUsed=false;
             if(vm->refList.vals[value.refID].str!=NULL){
                 free(vm->refList.vals[value.refID].str);
+                vm->refList.vals[value.refID].str=NULL;
             }
         }
+    }
+}
+void exitVM(VM*vm){
+    while(vm->stack.count>0){
+        reduceRef(vm,vm->stack.vals[vm->stack.count-1]);
+        LIST_SUB(vm->stack,Value)
+    }
+    while(vm->varList.count>0){
+        reduceRef(vm,vm->varList.vals[vm->varList.count-1].val);
+        LIST_SUB(vm->varList,Var)
     }
 }
 static void exeInit(VM*vm,int class,Value val){
