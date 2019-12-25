@@ -29,7 +29,7 @@ int main(int argc,char**argv){
         printf("%s",statement);
         return 0;
     }
-    bool isLib=false;
+    bool isLib=false,isVersion=false;
     char*fileName=NULL,*outputName=NULL;
     for(int i=1;i<argc;i++){
         if(argv[i][0]=='-'){
@@ -42,6 +42,12 @@ int main(int argc,char**argv){
                     return -1;
                 }
                 outputName=argv[i];
+            }else if(argv[i][1]=='v'){
+                printf("version%d\n",VERSION);
+                isVersion=true;
+            }else{
+                printf("error:unknown argument \"%s\".\n",argv[i]);
+                return -1;
             }
         }else{
             if(fileName!=NULL){
@@ -52,6 +58,9 @@ int main(int argc,char**argv){
         }
     }
     if(fileName==NULL){
+        if(isVersion){
+            return 0;
+        }
         printf("error:expected a file.\n");
         return -1;
     }
