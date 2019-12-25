@@ -261,6 +261,14 @@ Token nextToken(Parser*parser){
                         c='\0';
                         parser->ptr++;
                         break;
+                    case '\'':
+                        c='\'';
+                        parser->ptr++;
+                        break;
+                    case '\"':
+                        c='\"';
+                        parser->ptr++;
+                        break;
                     default:
                         break;
                 }
