@@ -13,6 +13,7 @@ void initVM(VM*vm,Parser parser){
     vm->moduleList=parser.moduleList;
     vm->curModule=vm->moduleList.vals[parser.curModule];
     vm->classList=parser.classList;
+    vm->path=parser.path;
     LIST_INIT(vm->stack,Value)
     LIST_INIT(vm->refList,Ref)
     LIST_INIT(vm->varList,Var)
@@ -971,10 +972,11 @@ inline static void copyObject(VM*vm,int curPart){
         r2=ref;
         r2.refCount=1;
         r2.var=(Value*)malloc(ref.varCount*sizeof(Value));
-        for(int i=0;i<ref.varCount;i++){
-            /*考虑用memcpy()代替*/
+        /*for(int i=0;i<ref.varCount;i++){
+            //考虑用memcpy()代替
             r2.var[i]=ref.var[i];
-        }
+        }*/
+        memcpy(r2.var,ref.var,ref.varCount*sizeof(Value));
         if(val.class==CLASS_STRING && ref.str!=NULL){
             r2.str=(char*)malloc(strlen(ref.str)+1);
             strcpy(r2.str,ref.str);
@@ -1139,11 +1141,18 @@ inline static void dllOpen(VM*vm,int curPart){
         ind=vm->dllptrList.count;
         LIST_ADD(vm->dllptrList,Dllptr,NULL)
     }
+    char*file=vm->refList.vals[val.refID].str;
     #ifdef LINUX
-    vm->dllptrList.vals[ind]=dlopen(vm->refList.vals[val.refID].str,RTLD_LAZY);
+    vm->dllptrList.vals[ind]=dlopen(file,RTLD_LAZY);
     if(vm->dllptrList.vals[ind]==NULL){
-        sprintf(temp,"opening dll \"%s\" failed.",vm->refList.vals[val.refID].str);
-        reportVMError(vm,temp,curPart);
+        char*path=(char*)malloc(strlen(file)+strlen(vm->path)+2);
+        sprintf(path,"%s/lib/%s",vm->path,file);
+        vm->dllptrList.vals[ind]=dlopen(path,RTLD_LAZY);
+        if(vm->dllptrList.vals[ind]==NULL){
+            sprintf(temp,"opening dll \"%s\" failed.",vm->refList.vals[val.refID].str);
+            reportVMError(vm,temp,curPart);
+        }
+        free(path);
     }
     #endif
     reduceRef(vm,val);

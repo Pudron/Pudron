@@ -1,4 +1,7 @@
 #include"compiler.h"
+#ifdef LINUX
+#include<unistd.h>
+#endif
 void initStd(Parser*parser){
     Class class;
     Part part;
@@ -30,9 +33,13 @@ void initStd(Parser*parser){
     part.end=0;
     parser->curPart=parser->partList.count;
     LIST_ADD(parser->partList,Part,part)
-    import(parser,"lib/meta.pdl");
-    import(parser,"lib/float.pdl");
-    import(parser,"lib/string.pdl");
+    char temp[MAX_WORD_LENGTH];
+    sprintf(temp,"%s/lib/meta.pdl",parser->path);
+    import(parser,temp);
+    sprintf(temp,"%s/lib/float.pdl",parser->path);
+    import(parser,temp);
+    sprintf(temp,"%s/lib/string.pdl",parser->path);
+    import(parser,temp);
 }
 Parser compile(Parser*parent,char*fileName,bool isLib){
     Parser parser;
@@ -42,6 +49,20 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
     }
     parser.fileName=fileName;
     parser.isLib=isLib;
+    if(parent==NULL){
+        char*path=(char*)malloc(MAX_WORD_LENGTH);
+        int len=-1;
+        #ifdef LINUX
+            len=readlink("/proc/self/exe",path,MAX_WORD_LENGTH-1);
+        #endif
+        if(len<0){
+            printf("error:failed to get pudron path.\n");
+            exit(-1);
+        }
+        path[len]='\0';
+        parser.path=getPath(path);
+        free(path);
+    }
     if(parent!=NULL){
         parser.partList=parent->partList;
         parser.clist=parent->clist;
@@ -49,6 +70,7 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
         parser.funcList=parent->funcList;
         parser.classList=parent->classList;
         parser.moduleList=parent->moduleList;
+        parser.path=parent->path;
     }else if(!isLib){
         initStd(&parser);
     }

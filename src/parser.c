@@ -843,9 +843,8 @@ void getBlock(Parser*parser,intList*clist,Env env){
             char*fileName=NULL;
             token=nextToken(parser);
             if(token.type==TOKEN_WORD){
-                fileName=(char*)malloc(strlen(token.word)+strlen(FILE_LIB_POSTFIX)+1);
-                strcpy(fileName,token.word);
-                strcat(fileName,FILE_LIB_POSTFIX);
+                fileName=(char*)malloc(strlen(parser->path)+strlen(token.word)+strlen(FILE_LIB_POSTFIX)+5);
+                sprintf(fileName,"%s/lib/%s%s",parser->path,token.word,FILE_LIB_POSTFIX);
             }else if(token.type==TOKEN_STRING){
                 fileName=token.word;
             }else{

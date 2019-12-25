@@ -73,6 +73,7 @@ const OpcodeMsg opcodeList[]={
 };
 void initParser(Parser*parser,bool isRoot){
     parser->code=NULL;
+    parser->path=NULL;
     parser->fileName=NULL;
     parser->ptr=0;
     parser->line=1;
@@ -103,14 +104,6 @@ void freeParser(Parser*parser){
     LIST_DELETE(parser->symList)
     LIST_DELETE(parser->clist)
 }
-/*void extend(Class*class,Class eclass){
-    LIST_CONNECT(class->var,eclass.var,Name,0)
-    class->varBasis=eclass.varBasis;
-    LIST_CONNECT(class->methods,eclass.methods,Func,1)
-    for(int i=0;i<OPT_METHOD_COUNT;i++){
-        class->optMethod[i]=eclass.optMethod[i];
-    }
-}*/
 void clistToString(Parser parser,intList clist,char*text,Module module){
     int cmd;
     Symbol symbol;
@@ -254,6 +247,22 @@ char*cutPath(char*text){
     }
     str[len2]='\0';
     return str;
+}
+char*getPath(char*text){
+    int len=strlen(text);
+    int end=len-1;
+    for(int i=len-1;i>=0;i--){
+        if(text[i]=='/' || text[i]=='\\'){
+            end=i-1;
+            break;
+        }
+    }
+    char*path=(char*)malloc(end+2);
+    for(int i=0;i<=end;i++){
+        path[i]=text[i];
+    }
+    path[end+1]='\0';
+    return path;
 }
 void reportMsg(Msg msg){
     char*text,temp[10];

@@ -1,8 +1,9 @@
 import "lib/debug.pdl";
 import "lib/list.pdl";
 import "lib/file.pdl";
-import "lib/dll.pdl";
-dll=DLL("/home/pi/Documents/test/opendll/libt.so");
+import dll;
+dn="/home/pi/Documents/test/opendll/libt.so";
+dll=DLL(dn);
 dll.execute(int,"test",456);
 dll.execute(int,"test",789);
 #>>PRINT_STACK;

@@ -45,6 +45,7 @@ typedef struct{
 	int curVar;
 	intList vlist;
 	DllptrList dllptrList;
+	char*path;
 }VM;
 void initVM(VM*vm,Parser parser);
 void exitVM(VM*vm);

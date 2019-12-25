@@ -4,7 +4,7 @@
 #include<stdlib.h>
 #include<string.h>
 
-#define MAX_WORD_LENGTH 20
+#define MAX_WORD_LENGTH 128
 #define FILE_POSTFIX ".pd"
 #define FILE_LIB_POSTFIX ".pdl"
 #define FILE_SIGN 5201314
@@ -306,6 +306,7 @@ typedef struct{
     int curPart;
     bool isLib;
     int curModule;
+    char*path;
     ModuleList moduleList;
     PartList partList;
     intList clist;
@@ -326,6 +327,7 @@ char*cutText(char*text,int start,int end);
 char*cutPostfix(char*text);
 char*getPostfix(char*text);
 char*cutPath(char*text);
+char*getPath(char*text);
 void reportMsg(Msg msg);
 void reportError(Parser*parser,char*text,int start);
 void reportWarning(Parser*parser,char*text,int start);
