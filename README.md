@@ -1,2 +1,2 @@
 # Pudron
-A self-make programming language which is being developed.
+## 一个解释型编程语言
