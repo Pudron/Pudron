@@ -1,6 +1,6 @@
-import "lib/debug.pdl";
-import "lib/list.pdl";
-import "lib/file.pdl";
+import debug;
+import list;
+import file;
 import dll;
 dn="/home/pi/Documents/test/opendll/libt.so";
 dll=DLL(dn);
