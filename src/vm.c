@@ -1,7 +1,4 @@
 #include"vm.h"
-#ifdef LINUX
-#include<dlfcn.h>
-#endif
 /*所有变量在创建时必须初始化，否则其默认的refID会造成内存紊乱*/
 /*所以类必须有成员（包括继承的）才能执行destroyXXX()*/
 extern OpcodeMsg opcodeList[];
@@ -1154,6 +1151,8 @@ inline static void dllOpen(VM*vm,int curPart){
         }
         free(path);
     }
+    #else
+    vm->dllptrList.vals[ind]=LoadLibrary(file);
     #endif
     reduceRef(vm,val);
     val=makeValue(vm,CLASS_INT);
@@ -1172,6 +1171,8 @@ inline static void dllClose(VM*vm,int curPart){
     if(vm->dllptrList.vals[val.num]!=NULL){
         #ifdef LINUX
         dlclose(vm->dllptrList.vals[val.num]);
+        #else
+        FreeLibrary(vm->dllptrList.vals[val.num]);
         #endif
         vm->dllptrList.vals[val.num]=NULL;
     }
@@ -1202,13 +1203,17 @@ inline static void dllExecute(VM*vm,int curPart){
     }
     char*name=vm->refList.vals[fname.refID].str;
     char*str=NULL;
+    #ifdef LINUX
     #define exedll \
         dlsym(dllptr,name);\
         str=dlerror();\
         if(str!=NULL){\
             reportVMError(vm,str,curPart);\
         }
-
+    #else
+    #define exedll \
+        GetProcAddress(dllptr,name);
+    #endif
     if(ret.num==CLASS_INT){
         ret=makeValue(vm,CLASS_INT);
         if(arg.class==CLASS_INT){

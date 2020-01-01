@@ -1,6 +1,8 @@
 #include"compiler.h"
 #ifdef LINUX
 #include<unistd.h>
+#else
+#include<windows.h>
 #endif
 void initStd(Parser*parser){
     Class class;
@@ -54,12 +56,14 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
         int len=-1;
         #ifdef LINUX
             len=readlink("/proc/self/exe",path,MAX_WORD_LENGTH-1);
+            if(len<0){
+                printf("error:failed to get pudron path.\n");
+                exit(-1);
+            }
+            path[len]='\0';
+        #else
+            GetModuleFileName(NULL,path,MAX_WORD_LENGTH-1);
         #endif
-        if(len<0){
-            printf("error:failed to get pudron path.\n");
-            exit(-1);
-        }
-        path[len]='\0';
         parser.path=getPath(path);
         free(path);
     }

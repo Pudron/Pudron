@@ -2,6 +2,11 @@
 #define _PD_VM_H_
 #include"common.h"
 #include"pio.h"
+#ifdef LINUX
+#include<dlfcn.h>
+#else
+#include<windows.h>
+#endif
 typedef struct{
 	char*name;
 	Value val;
@@ -22,7 +27,11 @@ typedef struct{
 	char*str;
 }Ref;
 LIST_DECLARE(Ref)
+#ifdef LINUX
 typedef void* Dllptr;
+#else
+typedef HINSTANCE Dllptr;
+#endif
 LIST_DECLARE(Dllptr)
 typedef struct{
 	PartList partList;
