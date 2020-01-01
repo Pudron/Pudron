@@ -48,4 +48,5 @@ void getWhileState(Parser*parser,intList*clist,Env env);
 void getFunction(Parser*parser,intList*clist,Env env);
 void getClass(Parser*parser,intList*clist,Env env);
 void getForState(Parser*parser,intList*clist,Env env);
+void getDowhileState(Parser*parser,intList*clist,Env env);
 #endif

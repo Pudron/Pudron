@@ -1409,6 +1409,8 @@ void execute(VM*vm,intList clist){
                 }else{
                     reportVMError(vm,"unsupported class for prefix operation \"-\".",curPart);
                 }
+                vm->stack.vals[vm->stack.count-1]=a;
+                break;
             case OPCODE_INVERT:
                 a=vm->stack.vals[vm->stack.count-1];
                 if(a.class==CLASS_INT){
@@ -1416,6 +1418,8 @@ void execute(VM*vm,intList clist){
                 }else{
                     reportVMError(vm,"unsupported class for prefix operation \"~\".",curPart);
                 }
+                vm->stack.vals[vm->stack.count-1]=a;
+                break;
             case OPCODE_NOT:
                 a=vm->stack.vals[vm->stack.count-1];
                 if(a.class==CLASS_INT){
@@ -1425,6 +1429,8 @@ void execute(VM*vm,intList clist){
                 }else{
                     reportVMError(vm,"unsupported class for prefix operation \"!\".",curPart);
                 }
+                vm->stack.vals[vm->stack.count-1]=a;
+                break;
             case OPCODE_LOAD_CONST:
                 loadConst(vm,clist.vals[++i],curPart);
                 break;

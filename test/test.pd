@@ -6,5 +6,10 @@ dn="/home/pi/Documents/test/opendll/libt.so";
 dll=DLL(dn);
 dll.execute(int,"test",456);
 dll.execute(int,"test",789);
+a=123;
+do{
+    a+=1;
+}while(a<=129);
+print(a);
 #>>PRINT_STACK;
 >>PRINT_VAR;#

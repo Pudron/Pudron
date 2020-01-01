@@ -1,6 +1,6 @@
 #include"parser.h"
 const int SYMBOL_COUNT=36;
-const int KEYWORD_COUNT=18;
+const int KEYWORD_COUNT=19;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
     {TOKEN_LEFT_EQUAL,"<<=",3},
@@ -60,7 +60,8 @@ const Keyword keywordList[]={
     {TOKEN_INCLUDE,"include","包括"},
     {TOKEN_TRUE,"true","真"},
     {TOKEN_FALSE,"false","假"},
-    {TOKEN_LINE,"__LINE__","__行__"}
+    {TOKEN_LINE,"__LINE__","__行__"},
+    {TOKEN_DO,"do","做"}
 };
 const int OPERAT_PREFIX_COUNT=3;
 const Operat operatPrefix[]={
@@ -334,6 +335,7 @@ void getAllToken(Parser*parser){
         token=getToken(parser);
         LIST_ADD(parser->tokenList,Token,token)
     }while(token.type!=TOKEN_END);
+    parser->ptr=0;
 }
 Token nextToken(Parser*parser){
     Token token=parser->tokenList.vals[++parser->curToken];
@@ -404,7 +406,8 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
         if(token.type==TOKEN_PARE1){
             ORI_ASI()
             symbol.type=SYM_STRING;
-            symbol.str=word;
+            symbol.str=(char*)malloc(strlen(word)+1);
+            strcpy(symbol.str,word);
             addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
             int count=0;
             token=nextToken(parser);
@@ -807,6 +810,7 @@ void getBlock(Parser*parser,intList*clist,Env env){
     char temp[50];
     ORI_DEF()
     if(!isGlobal){
+        msgStart=parser->tokenList.vals[parser->curToken].start;
         matchToken(parser,TOKEN_BRACE1,"\"{\"",msgStart);
         addCmd(parser,clist,OPCODE_SET_FIELD);
     }
@@ -849,6 +853,8 @@ void getBlock(Parser*parser,intList*clist,Env env){
             getWhileState(parser,clist,env);
         }else if(token.type==TOKEN_FOR){
             getForState(parser,clist,env);
+        }else if(token.type==TOKEN_DO){
+            getDowhileState(parser,clist,env);
         }else if(token.type==TOKEN_CLASS){
             getClass(parser,clist,env);
         }else if(token.type==TOKEN_INCLUDE){
@@ -1341,6 +1347,42 @@ void getForState(Parser*parser,intList*clist,Env env){
     clist->vals[jptr]=clist->count;
     addCmd1(parser,clist,OPCODE_POP_STACK,2);
     addCmd1(parser,clist,OPCODE_POP_VAR,1);
+    addCmd(parser,clist,OPCODE_FREE_LOOP);
+    LIST_DELETE(breakList)
+}
+void getDowhileState(Parser*parser,intList*clist,Env env){
+    int jret;
+    intList breakList;
+    Part part;
+    part.code=parser->code;
+    part.fileName=parser->fileName;
+    int pt;
+    Token token;
+    LIST_INIT(breakList,int)
+    env.breakList=&breakList;
+    pt=parser->partList.count;
+    parser->curPart=pt;
+    LIST_ADD(parser->partList,Part,part)
+    addCmd(parser,clist,OPCODE_SET_LOOP);/*用前面的part*/
+    jret=clist->count;
+    getBlock(parser,clist,env);
+    parser->curPart=pt;
+    int msgStart=parser->ptr;
+    token=matchToken(parser,TOKEN_WHILE,"while statement",msgStart);
+    msgStart=token.start;
+    parser->partList.vals[pt].start=token.start;
+    parser->partList.vals[pt].line=token.line;
+    parser->partList.vals[pt].column=token.column;
+    matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
+    getExpression(parser,clist,0,env);
+    token=matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    parser->partList.vals[pt].end=token.end;
+    matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
+    addCmd(parser,clist,OPCODE_NOT);
+    addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,jret);
+    for(int i=0;i<breakList.count;i++){
+        clist->vals[breakList.vals[i]]=clist->count;
+    }
     addCmd(parser,clist,OPCODE_FREE_LOOP);
     LIST_DELETE(breakList)
 }
