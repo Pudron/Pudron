@@ -678,6 +678,10 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
         opcode=OPCODE_ADD;
     }else if(token.type==TOKEN_SUB_EQUAL){
         opcode=OPCODE_SUB;
+    }else if(token.type==TOKEN_MUL_EQUAL){
+        opcode=OPCODE_MUL;
+    }else if(token.type==TOKEN_DIV_EQUAL){
+        opcode=OPCODE_DIV;
     }else if(token.type==TOKEN_AND_EQUAL){
         opcode=OPCODE_AND;
     }else if(token.type==TOKEN_OR_EQUAL){
