@@ -2,15 +2,12 @@
 #define _PD_PARSER_H_
 #include"common.h"
 #include"compiler.h"
-#define ORI_DEF() int rline,rcolumn,rptr;
+#define ORI_DEF() int rtoken;
 #define ORI_ASI() \
-    rline=parser->line;\
-    rcolumn=parser->column;\
-    rptr=parser->ptr;
+    rtoken=parser->curToken;
+
 #define ORI_RET() \
-    parser->line=rline;\
-    parser->column=rcolumn;\
-    parser->ptr=rptr;
+    parser->curToken=rtoken;
 
 typedef struct{
     TokenType type;
@@ -40,6 +37,7 @@ typedef struct{
 }Assign;
 LIST_DECLARE(Assign)
 Token nextToken(Parser*parser);
+void getAllToken(Parser*parser);
 Token matchToken(Parser*parser,TokenType et,char*str,int start);
 bool getValue(Parser*parser,intList*clist,Assign*asi,Env env);
 Operat getExpression(Parser*parser,intList*clist,int level,Env env);

@@ -80,7 +80,9 @@ void initParser(Parser*parser,bool isRoot){
     parser->column=1;
     parser->curPart=0;
     parser->curModule=0;
+    parser->curToken=-1;
     parser->isLib=false;
+    LIST_INIT(parser->tokenList,Token)
     if(isRoot){
         LIST_INIT(parser->partList,Part)
         LIST_INIT(parser->clist,int)
@@ -291,7 +293,7 @@ void reportError(Parser*parser,char*text,int start){
     msg.column=parser->column;
     strcpy(msg.text,text);
     msg.start=start;
-    msg.end=parser->ptr;
+    msg.end=parser->tokenList.vals[parser->curToken].end;
     reportMsg(msg);
 }
 void reportWarning(Parser*parser,char*text,int start){
@@ -303,7 +305,7 @@ void reportWarning(Parser*parser,char*text,int start){
     msg.column=parser->column;
     strcpy(msg.text,text);
     msg.start=start;
-    msg.end=parser->ptr;
+    msg.end=parser->tokenList.vals[parser->curToken].end;
     reportMsg(msg);
 }
 void addCmd(Parser*parser,intList*clist,int opcode){

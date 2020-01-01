@@ -6,6 +6,11 @@ CC=gcc
 CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM)
 LIBS=-ldl
 OBJS=main.o common.o pio.o parser.o vm.o compiler.o
+ifeq ($(PLATFORM),LINUX)
+	EXE=./
+else
+	EXE=
+endif
 all:mkd pd lib
 
 .PHONY:mkd
@@ -20,11 +25,6 @@ pd:$(OBJS)
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o build/objs/$@
 
-ifeq ($(PLATFORM),LINUX)
-	EXE=./
-else
-	EXE=
-endif
 .PHONY:lib
 lib:lib/float.pd lib/meta.pd lib/string.pd lib/debug.pd
 	$(EXE)build/pudron/pd -l lib/meta.pd -o build/pudron/lib/meta.pdl

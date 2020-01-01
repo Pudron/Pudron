@@ -90,7 +90,7 @@ const Operat operatInfix[]={
 };
 extern OpcodeMsg opcodeList[];
 /*Token*/
-Token nextToken(Parser*parser){
+Token getToken(Parser*parser){
     char word[1024];
     Msg msg;
     Token token;
@@ -132,8 +132,12 @@ Token nextToken(Parser*parser){
         c=parser->code[++parser->ptr];
     }
     msg.start=parser->ptr;
+    token.start=parser->ptr;
+    token.line=parser->line;
+    token.column=parser->column;
     if(c=='\0'){
         token.type=TOKEN_END;
+        token.end=parser->ptr;
         return token;
     }
     if(c>='0' && c<='9'){
@@ -164,6 +168,7 @@ Token nextToken(Parser*parser){
                 }
             }
         }
+        token.end=parser->ptr;
         return token;
     }else if((c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_' || (c>='0' && c<='9')){
         int i=0;
@@ -185,6 +190,7 @@ Token nextToken(Parser*parser){
         parser->column+=i;
         token.word=(char*)malloc(i+1);        strcpy(token.word,word);
         token.type=TOKEN_WORD;
+        token.end=parser->ptr;
     }else if(c=='\''){
         int i=0;
         msg.line=parser->line;
@@ -218,6 +224,7 @@ Token nextToken(Parser*parser){
         token.word=(char*)malloc(i+1);
         strcpy(token.word,word);
         token.type=TOKEN_WORD;
+        token.end=parser->ptr;
     }else if(c=='\"'){
         int i=0;
         msg.line=parser->line;
@@ -282,6 +289,7 @@ Token nextToken(Parser*parser){
         token.word=(char*)malloc(i+1);
         strcpy(token.word,word);
         token.type=TOKEN_STRING;
+        token.end=parser->ptr;
         return token;
     }else{
         TokenSymbol symbol;
@@ -298,6 +306,7 @@ Token nextToken(Parser*parser){
             }
             if(isFound){
                 token.type=symbol.type;
+                token.end=parser->ptr;
                 parser->ptr+=symbol.len;
                 parser->column+=symbol.len;
                 return token;
@@ -317,6 +326,18 @@ Token nextToken(Parser*parser){
             }
         }
     }
+    return token;
+}
+void getAllToken(Parser*parser){
+    Token token;
+    do{
+        token=getToken(parser);
+        LIST_ADD(parser->tokenList,Token,token)
+    }while(token.type!=TOKEN_END);
+}
+Token nextToken(Parser*parser){
+    Token token=parser->tokenList.vals[++parser->curToken];
+    parser->ptr=token.end;
     return token;
 }
 Token matchToken(Parser*parser,TokenType et,char*str,int start){
@@ -419,15 +440,15 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
                     }
                 }
             }
+            char*wd=(char*)malloc(strlen(word)+1);
+            strcpy(wd,word);
             if(!isFound && env.isClassVarDef){
-                char*wd=(char*)malloc(strlen(word)+1);
-                strcpy(wd,word);
-                LIST_ADD(parser->classList.vals[env.classDef].var,Name,wd)
+                LIST_ADD(parser->classList.vals[env.classDef].var,Name,word)
                 isFound=true;
                 assign.ncmds.count=0;
             }
             symbol.type=SYM_STRING;
-            symbol.str=word;
+            symbol.str=wd;
             assign.gcmds.code[0]=OPCODE_LOAD_VAL;
             assign.gcmds.code[1]=addSymbol(parser,symbol);
             assign.gcmds.count=2;
@@ -464,7 +485,8 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
         canAssign=false;
     }else if(token.type==TOKEN_STRING){
         symbol.type=SYM_STRING;
-        symbol.str=token.word;
+        symbol.str=(char*)malloc(strlen(token.word)+1);
+        strcpy(symbol.str,token.word);
         addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
         canAssign=false;
     }else{
@@ -486,7 +508,8 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
                 reportError(parser,"expect a class member or method name in expression.",msgStart);
             }
             symbol.type=SYM_STRING;
-            symbol.str=token.word;
+            symbol.str=(char*)malloc(strlen(token.word)+1);
+            strcpy(symbol.str,token.word);
             ORI_ASI()
             token=nextToken(parser);
             if(token.type==TOKEN_PARE1){
@@ -788,12 +811,12 @@ void getBlock(Parser*parser,intList*clist,Env env){
         addCmd(parser,clist,OPCODE_SET_FIELD);
     }
     while(1){
-        part.line=parser->line;
-        part.column=parser->column;
-        part.start=parser->ptr;
-        msgStart=parser->ptr;
         ORI_ASI()
         token=nextToken(parser);
+        part.line=token.line;
+        part.column=token.column;
+        part.start=token.start;
+        msgStart=token.start;
         if(token.type==TOKEN_END){
             if(isGlobal){
                 break;
@@ -815,8 +838,8 @@ void getBlock(Parser*parser,intList*clist,Env env){
             parser->curPart=parser->partList.count;
             getExpression(parser,clist,0,env);
             addCmd(parser,clist,OPCODE_RETURN);
-            matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
-            part.end=parser->ptr;
+            token=matchToken(parser,TOKEN_SEMI,"\";\"",msgStart);
+            part.end=token.end;
             LIST_ADD(parser->partList,Part,part)
         }else if(token.type==TOKEN_IF){
             getIfState(parser,clist,env);
@@ -911,8 +934,8 @@ void getBlock(Parser*parser,intList*clist,Env env){
             }else{
                 addCmd(parser,clist,opcode.opcode);
             }
-            matchToken(parser,TOKEN_SEMI,"\";\" after operation code",msgStart);
-            part.end=parser->ptr;
+            token=matchToken(parser,TOKEN_SEMI,"\";\" after operation code",msgStart);
+            part.end=token.end;
             LIST_ADD(parser->partList,Part,part)
         }else{
             ORI_RET()
@@ -935,23 +958,24 @@ void getBlock(Parser*parser,intList*clist,Env env){
     }
 }
 void getIfState(Parser*parser,intList*clist,Env env){
-    int msgStart=parser->ptr;
-    Token token;
+    Token token=parser->tokenList.vals[parser->curToken];
     int lastJump;
     Part part;
+    int msgStart=token.start;
     part.code=parser->code;
     part.fileName=parser->fileName;
     ORI_DEF()
     intList endList;
     LIST_INIT(endList,int)
-    part.line=parser->line;
-    part.column=parser->column;
-    part.start=parser->ptr;
-    matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
-    getExpression(parser,clist,0,env);
-    matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    part.line=token.line;
+    part.column=token.column;
+    part.start=token.start;
+    token=matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
     parser->curPart=parser->partList.count;
     LIST_ADD(parser->partList,Part,part)
+    getExpression(parser,clist,0,env);
+    token=matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    parser->partList.vals[parser->curPart].end=token.end;
     addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
     lastJump=clist->count-1;
     getBlock(parser,clist,env);
@@ -962,14 +986,15 @@ void getIfState(Parser*parser,intList*clist,Env env){
         addCmd1(parser,clist,OPCODE_JUMP,0);
         LIST_ADD(endList,int,clist->count-1)
         clist->vals[lastJump]=clist->count;
-        part.line=parser->line;
-        part.column=parser->column;
-        part.start=parser->ptr;
+        part.line=token.line;
+        part.column=token.column;
+        part.start=token.start;
         matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
-        getExpression(parser,clist,0,env);
-        matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
         parser->curPart=parser->partList.count;
         LIST_ADD(parser->partList,Part,part)
+        getExpression(parser,clist,0,env);
+        token=matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+        parser->partList.vals[parser->curPart].end=token.end;
         addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
         lastJump=clist->count-1;
         getBlock(parser,clist,env);
@@ -992,26 +1017,27 @@ void getIfState(Parser*parser,intList*clist,Env env){
 }
 void getWhileState(Parser*parser,intList*clist,Env env){
     int jump,jret;
-    int msgStart=parser->ptr;
     intList breakList;
     Part part;
     part.code=parser->code;
     part.fileName=parser->fileName;
     int pt;
-    part.line=parser->line;
-    part.column=parser->column;
-    part.start=parser->ptr;
+    Token token=parser->tokenList.vals[parser->curToken];
+    part.line=token.line;
+    part.column=token.column;
+    part.start=token.start;
+    int msgStart=token.start;
     LIST_INIT(breakList,int)
     env.breakList=&breakList;
+    pt=parser->partList.count;
+    parser->curPart=pt;
+    LIST_ADD(parser->partList,Part,part)
     addCmd(parser,clist,OPCODE_SET_LOOP);/*用前面的part*/
     matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
     jret=clist->count;
     getExpression(parser,clist,0,env);
-    matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
-    part.end=parser->ptr;
-    pt=parser->partList.count;
-    parser->curPart=pt;
-    LIST_ADD(parser->partList,Part,part)
+    token=matchToken(parser,TOKEN_PARE2,"\")\"",msgStart);
+    parser->partList.vals[pt].end=token.end;
     addCmd1(parser,clist,OPCODE_JUMP_IF_FALSE,0);
     jump=clist->count-1;
     getBlock(parser,clist,env);
@@ -1028,13 +1054,14 @@ void getFunction(Parser*parser,intList*clist,Env env){
     Func func;
     Symbol symbol;
     Part part;
+    Token token=parser->tokenList.vals[parser->curToken];
     part.code=parser->code;
     part.fileName=parser->fileName;
-    part.start=parser->ptr;
-    part.line=parser->line;
-    part.column=parser->column;
-    int msgStart=parser->ptr;
-    Token token=matchToken(parser,TOKEN_WORD,"a function name",msgStart);
+    part.start=token.start;
+    part.line=token.line;
+    part.column=token.column;
+    int msgStart=token.start;
+    token=matchToken(parser,TOKEN_WORD,"a function name",msgStart);
     func.name=token.word;
     LIST_INIT(func.clist,int)
     matchToken(parser,TOKEN_PARE1,"\"(\" when defining a function",msgStart);
@@ -1054,7 +1081,7 @@ void getFunction(Parser*parser,intList*clist,Env env){
             needArg=false;
         }
     }
-    part.end=parser->ptr;
+    part.end=token.end;
     env.isFuncDef=true;
     env.breakList=NULL;
     getBlock(parser,&func.clist,env);
@@ -1070,7 +1097,7 @@ void getFunction(Parser*parser,intList*clist,Env env){
 }
 void getClass(Parser*parser,intList*clist,Env env){
     Func method;
-    Token token;
+    Token token=parser->tokenList.vals[parser->curToken];
     Class classd;
     int class;
     Symbol symbol;
@@ -1080,10 +1107,10 @@ void getClass(Parser*parser,intList*clist,Env env){
     int tpt;
     char*initName,*destroyName;
     ORI_DEF()
-    int msgStart=parser->ptr;
-    part.start=parser->ptr;
-    part.line=parser->line;
-    part.column=parser->column;
+    int msgStart=token.start;
+    part.start=token.start;
+    part.line=token.line;
+    part.column=token.column;
     token=matchToken(parser,TOKEN_WORD,"class name",msgStart);
     classd.name=token.word;
     initName=(char*)malloc(5+strlen(classd.name));
@@ -1104,6 +1131,8 @@ void getClass(Parser*parser,intList*clist,Env env){
         LIST_ADD(classd.parentList,int,CLASS_META)
     }
     token=nextToken(parser);
+    tpt=parser->partList.count;
+    parser->curPart=tpt;
     if(token.type==TOKEN_COLON){
         symbol.type=SYM_STRING;
         while(1){
@@ -1124,25 +1153,23 @@ void getClass(Parser*parser,intList*clist,Env env){
     LIST_ADD(parser->classList,Class,classd)
     class=parser->classList.count-1;
     part.end=parser->ptr;
-    tpt=parser->partList.count;
-    parser->curPart=tpt;
     LIST_ADD(parser->partList,Part,part)
     env.classDef=class;
     env.isGlobal=false;
     env.breakList=NULL;
     while(1){
         ORI_ASI()
-        msgStart=parser->ptr;
         token=nextToken(parser);
+        msgStart=token.start;
         if(token.type==TOKEN_BRACE2){
             break;
         }else if(token.type==TOKEN_END){
             reportError(parser,"expected \"}\" after defining a class.",msgStart);
         }else if(token.type==TOKEN_FUNC){
             env.isFuncDef=true;
-            part.start=parser->ptr;
-            part.line=parser->line;
-            part.column=parser->column;
+            part.start=token.start;
+            part.line=token.line;
+            part.column=token.column;
             token=matchToken(parser,TOKEN_WORD,"a method name",msgStart);
             bool isOpt=false;
             method.name=token.word;
@@ -1211,6 +1238,9 @@ void getClass(Parser*parser,intList*clist,Env env){
             ORI_RET()
             env.isClassVarDef=true;
             parser->curPart=parser->partList.count;
+            part.start=token.start;
+            part.line=token.line;
+            part.column=token.column;
             if(parser->classList.vals[class].initValID<0){
                 Func func;
                 func.name=(char*)malloc(5);
@@ -1256,16 +1286,16 @@ void getClass(Parser*parser,intList*clist,Env env){
     free(destroyName);
 }
 void getForState(Parser*parser,intList*clist,Env env){
-    int msgStart=parser->ptr;
     Part part;
     intList breakList;
-    Token token;
+    Token token=parser->tokenList.vals[parser->curToken];
     Symbol symbol;
     part.code=parser->code;
     part.fileName=parser->fileName;
-    part.line=parser->line;
-    part.column=parser->column;
-    part.start=parser->ptr;
+    part.line=token.line;
+    part.column=token.column;
+    part.start=token.start;
+    int msgStart=token.start;
     int pt=parser->partList.count;
     parser->curPart=pt;
     LIST_INIT(breakList,int)

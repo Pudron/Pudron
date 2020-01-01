@@ -230,7 +230,9 @@ typedef struct{
         float numf;
         char*word;
     };
+    int start,end,column,line;
 }Token;
+LIST_DECLARE(Token)
 typedef struct{
     enum{
         MSG_ERROR,
@@ -301,12 +303,12 @@ LIST_DECLARE(Class)
 typedef struct{
     char*fileName;
     char*code;
-    int ptr;
-    int line,column;
+    int curToken,ptr,line,column;
     int curPart;
     bool isLib;
     int curModule;
     char*path;
+    TokenList tokenList;
     ModuleList moduleList;
     PartList partList;
     intList clist;

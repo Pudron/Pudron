@@ -85,6 +85,7 @@ Parser compile(Parser*parent,char*fileName,bool isLib){
     parser.curModule=parser.moduleList.count;
     LIST_ADD(parser.moduleList,Module,module)
     Env env={-1,false,NULL,true,false};
+    getAllToken(&parser);
     getBlock(&parser,&parser.clist,env);
     if(parent!=NULL){
         parent->partList=parser.partList;
