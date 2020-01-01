@@ -9,7 +9,8 @@
 * 潜力巨大
 ## 编译
 在命令行中输入 `make`
-build目录中的pudron即为编译结果
+build目录中的pudron即为编译结果  
+注意：在linux上编译时，加上参数 `PLATFORM=LINUX`
 ## 用法
 在命令行打开pd来打印参数使用方法
 ## 开发缘由
