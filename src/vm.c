@@ -517,19 +517,14 @@ inline static void storeAttr(VM*vm,int arg,int curPart){
         reportVMError(vm,temp,curPart);
     }
     Ref ref=vm->refList.vals[a.refID];
-    bool isFound=false;
-    for(int i=0;i<vm->classList.vals[a.class].var.count;i++){
-        if(strcmp(symbol.str,vm->classList.vals[a.class].var.vals[i])==0){
-            isFound=true;
-            reduceRef(vm,ref.var[i]);
-            ref.var[i]=vm->stack.vals[vm->stack.count-2];
-            LIST_SUB(vm->stack,Value)
-            LIST_SUB(vm->stack,Value)
-            reduceRef(vm,a);
-            break;
-        }
-    }
-    if(!isFound){
+    int ind=0;
+    if(searchAttr(vm,&ind,a.class,symbol.str)){
+        reduceRef(vm,ref.var[ind]);
+        ref.var[ind]=vm->stack.vals[vm->stack.count-2];
+        LIST_SUB(vm->stack,Value)
+        LIST_SUB(vm->stack,Value)
+        reduceRef(vm,a);
+    }else{
         sprintf(temp,"member \"%s\" not found.",symbol.str);
         reportVMError(vm,temp,curPart);
     }

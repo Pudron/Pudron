@@ -11,13 +11,25 @@ ifeq ($(PLATFORM),LINUX)
 else
 	EXE=
 endif
+ifneq (build/objs,$(wildcard build/objs))
+	MKD1=mkdir build/objs
+else
+	MKD1=
+endif
+ifneq (build/pudron,$(wildcard build/pudron))
+	MKD2=mkdir build/pudron
+	MKD3=mkdir build/pudron/lib
+else
+	MKD2=
+	MKD3=
+endif
 all:mkd pd lib
 
 .PHONY:mkd
 mkd:
-	-mkdir build/objs
-	-mkdir build/pudron
-	-mkdir build/pudron/lib
+	$(MKD1)
+	$(MKD2)
+	$(MKD3)
 
 pd:$(OBJS)
 	$(CC) $(addprefix build/objs/,$(OBJS)) -o build/pudron/pd $(LIBS)

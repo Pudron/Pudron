@@ -6,10 +6,18 @@ dn="/home/pi/Documents/test/opendll/libt.so";
 dll=DLL(dn);
 dll.execute(int,"test",456);
 dll.execute(int,"test",789);
-a=123;
-do{
-    a+=1;
-}while(a<=129);
-print(a);
+class A{
+    a,b;
+}
+class B:A{
+    c;
+    func t(){
+        print(a,"\n");
+    }
+}
+printClass(B);
+x=B();
+x.a=123;
+x.t();
 #>>PRINT_STACK;
 >>PRINT_VAR;#
