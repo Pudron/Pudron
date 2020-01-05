@@ -6,4 +6,7 @@
 2. [表达式](expression.md)
 3. [变量与赋值](assignment.md)
 4. [数组](array.md)
-4. [函数](function.md)
+5. [语句](statement.md)
+6. [函数](function.md)
+7. [类](class.md)
+8. [字符串](string.md)

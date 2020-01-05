@@ -266,6 +266,17 @@ char*getPath(char*text){
     path[end+1]='\0';
     return path;
 }
+int pow2(int num){
+	num+=(num==0);
+	num--;
+	num|=num>>1;
+	num|=num>>2;
+	num|=num>>4;
+	num|=num>>8;
+	num|=num>>16;
+	num++;
+	return num;
+}
 void reportMsg(Msg msg){
     char*text,temp[10];
     text=cutText(msg.code,msg.start,msg.end);

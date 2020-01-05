@@ -9,15 +9,16 @@ dll.execute(int,"test",789);
 class A{
     a,b;
 }
-class B:A{
-    c;
-    func t(){
-        print(a,"\n");
+class B{
+    func xx(){
+        print("a:",a,"\n");
     }
 }
-printClass(B);
-x=B();
-x.a=123;
-x.t();
+class C:A,B{
+    c,d;
+}
+c=C();
+c.a=100;
+c.xx();
 #>>PRINT_STACK;
 >>PRINT_VAR;#

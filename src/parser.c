@@ -340,6 +340,8 @@ void getAllToken(Parser*parser){
 Token nextToken(Parser*parser){
     Token token=parser->tokenList.vals[++parser->curToken];
     parser->ptr=token.end;
+    parser->line=token.line;
+    parser->column=token.column;
     return token;
 }
 Token matchToken(Parser*parser,TokenType et,char*str,int start){

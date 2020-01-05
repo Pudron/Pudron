@@ -12,7 +12,7 @@
 #define VERSION_MIN 1
 
 /*List Operations*/
-#define LIST_UNIT_SIZE 10
+//#define LIST_UNIT_SIZE 10
 #define LIST_DECLARE(type) \
         typedef struct{\
             int count;\
@@ -22,8 +22,8 @@
 
 #define LIST_INIT(list,type) \
         list.count=0;\
-        list.size=LIST_UNIT_SIZE;\
-        list.vals=(type*)malloc(LIST_UNIT_SIZE*sizeof(type));
+        list.size=0;\
+        list.vals=NULL;//(type*)malloc(LIST_UNIT_SIZE*sizeof(type));
 
 #define LIST_DELETE(list) \
         free(list.vals);\
@@ -34,29 +34,31 @@
 #define LIST_ADD(list,type,val) \
         list.count++;\
         if(list.count>list.size){\
-            list.size+=LIST_UNIT_SIZE;\
+            list.size=pow2(list.count);\
             list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
         }\
         list.vals[list.count-1]=val;
 
 #define LIST_SUB(list,type) \
     list.count--;\
-    if(list.count<=(list.size-LIST_UNIT_SIZE)){\
-        list.size-=LIST_UNIT_SIZE;\
+    list.size=pow2(list.count);\
+    if(list.count<=list.size){\
         list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
     }
 #define LIST_REDUCE(list,type,mcount) \
     list.count-=mcount;\
-    if(list.count<=(list.size-LIST_UNIT_SIZE)){\
-        list.size-=mcount;\
+    list.size=pow2(list.count);\
+    if(list.count<=list.size){\
         list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
     }
 
 #define LIST_CONNECT(list1,list2,type,id) \
     int licount##id=list1.count;\
     list1.count+=list2.count;\
-    list1.vals=(type*)realloc(list1.vals,list1.count*sizeof(type));\
-    list1.size=list1.count;\
+    if(list1.count>list1.size){\
+        list1.size=pow2(list1.count);\
+        list1.vals=(type*)realloc(list1.vals,list1.size*sizeof(type));\
+    }\
     for(int li=licount##id;li<list1.count;li++){\
         list1.vals[li]=list2.vals[li-licount##id];\
     }
@@ -331,6 +333,7 @@ char*cutPostfix(char*text);
 char*getPostfix(char*text);
 char*cutPath(char*text);
 char*getPath(char*text);
+int pow2(int num);
 void reportMsg(Msg msg);
 void reportError(Parser*parser,char*text,int start);
 void reportWarning(Parser*parser,char*text,int start);
