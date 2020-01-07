@@ -10,3 +10,9 @@
 6. [函数](function.md)
 7. [类](class.md)
 8. [字符串](string.md)
+9. [多文件编程和库](lib.md)
+## 标准库
+1. [元类meta](meta.md)
+2. [List](list.md)
+3. [File](file.md)
+4. [DLL](dll.md)

@@ -333,6 +333,7 @@ char*cutPostfix(char*text);
 char*getPostfix(char*text);
 char*cutPath(char*text);
 char*getPath(char*text);
+/*pow2():求大于等于num的最小２次冪*/
 int pow2(int num);
 void reportMsg(Msg msg);
 void reportError(Parser*parser,char*text,int start);
