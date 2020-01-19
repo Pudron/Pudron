@@ -197,6 +197,7 @@ Module compileAll(char*fileName){
     Env env={NULL,NULL,true,NULL};
     Unit unit=newUnit(0);
     compileBlock(&cp,&unit,env);
+    unit.curPart=-1;
     addCmd(&unit,OPCODE_NOP);
     setModuleUnit(&mod,unit);
     return mod;
@@ -326,11 +327,14 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
         token=nextToken(&cp->parser);
         if(token.type==TOKEN_PARE1){
             count=0;
+            token=nextToken(&cp->parser);
             while(token.type!=TOKEN_PARE2){
+                lastToken(&cp->parser);
                 compileExpression(cp,unit,0,false,msgStart,env);
                 count++;
                 token=nextToken(&cp->parser);
                 if(token.type==TOKEN_COMMA){
+                    nextToken(&cp->parser);
                     continue;
                 }else if(token.type==TOKEN_PARE2){
                     break;
@@ -370,11 +374,14 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
             if(token.type==TOKEN_PARE1){
                 /*method*/
                 int count=0;
+                token=nextToken(&cp->parser);
                 while(token.type!=TOKEN_PARE2){
+                    lastToken(&cp->parser);
                     compileExpression(cp,unit,0,false,msgStart,env);
                     count++;
                     token=nextToken(&cp->parser);
                     if(token.type==TOKEN_COMMA){
+                        token=nextToken(&cp->parser);
                         continue;
                     }else if(token.type==TOKEN_PARE2){
                         break;
@@ -457,15 +464,30 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
         return;
     }
     int opt=-1;
-    for(int i=0;i<OPERAT_INFIX_COUNT;i++){
-        if(operatInfix[i].tokenType==token.type && token.type!=TOKEN_EQUAL){
-            opt=operatInfix[i].opcode;
-            token=nextToken(&cp->parser);
+    switch(token.type){
+        case TOKEN_EQUAL:
+            opt=-1;
+        case TOKEN_ADD_EQUAL:
+            opt=OPCODE_ADD;
             break;
-        }
-    }
-    if(token.type!=TOKEN_EQUAL){
-        compileMsg(MSG_ERROR,cp,"expected assignment operator.",msgStart);
+        case TOKEN_LEFT_EQUAL:
+            opt=OPCODE_LEFT;
+            break;
+        case TOKEN_RIGHT_EQUAL:
+            opt=OPCODE_RIGHT;
+            break;
+        case TOKEN_AND_EQUAL:
+            opt=OPCODE_AND;
+            break;
+        case TOKEN_OR_EQUAL:
+            opt=OPCODE_OR;
+            break;
+        case TOKEN_PERCENT_EQUAL:
+            opt=OPCODE_REM;
+            break;
+        default:
+            compileMsg(MSG_ERROR,cp,"expected assignment operator.",msgStart);
+            break;
     }
     addCmd1(unit,OPCODE_ASSIGN_LEFT,scount);
     while(1){
@@ -483,6 +505,49 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
     }
     addCmd1(unit,OPCODE_ASSIGN_RIGHT,gcount);
     addCmd1(unit,OPCODE_ASSIGN,opt);
+}
+void compileIfState(Compiler*cp,Unit*unit,Env env){
+    Token token;
+    intList endList;
+    LIST_INIT(endList)
+    int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
+    int pt=setPart(cp,unit,msgStart);
+    matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in if statement",msgStart);
+    compileExpression(cp,unit,0,false,msgStart,env);
+    matchToken(&cp->parser,TOKEN_PARE2,"\")\" in if statement",msgStart);
+    addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
+    int jptr=unit->clist.count-1;
+    unit->plist.vals[pt].end=cp->parser.ptr;
+    compileBlock(cp,unit,env);
+    token=nextToken(&cp->parser);
+    while(token.type==TOKEN_ELIF){
+        msgStart=token.start;
+        pt=setPart(cp,unit,msgStart);
+        addCmd1(unit,OPCODE_JUMP,0);
+        LIST_ADD(endList,int,unit->clist.count-1)
+        unit->clist.vals[jptr]=unit->clist.count;
+        matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in elif statement",msgStart);
+        compileExpression(cp,unit,0,false,msgStart,env);
+        matchToken(&cp->parser,TOKEN_PARE2,"\")\" in elif statement",msgStart);
+        unit->plist.vals[pt].end=cp->parser.ptr;
+        addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
+        jptr=unit->clist.count-1;
+        compileBlock(cp,unit,env);
+        token=nextToken(&cp->parser);
+    }
+    if(token.type==TOKEN_ELSE){
+        addCmd1(unit,OPCODE_JUMP,0);
+        LIST_ADD(endList,int,unit->clist.count-1)
+        unit->clist.vals[jptr]=unit->clist.count;
+        compileBlock(cp,unit,env);
+    }else{
+        lastToken(&cp->parser);
+        unit->clist.vals[jptr]=unit->clist.count;
+    }
+    for(int i=0;i<endList.count;i++){
+        unit->clist.vals[endList.vals[i]]=unit->clist.count;
+    }
+    LIST_DELETE(endList)
 }
 void compileBlock(Compiler*cp,Unit*unit,Env env){
     addCmd1(unit,OPCODE_LOAD_FIELD,0);
@@ -508,6 +573,8 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             break;
         }else if(token.type==TOKEN_BRACE2 && !isGlobal){
             break;
+        }else if(token.type==TOKEN_IF){
+            compileIfState(cp,unit,env);
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);

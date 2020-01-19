@@ -3,8 +3,8 @@ const int SYMBOL_COUNT=36;
 const int KEYWORD_COUNT=17;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
-    //{TOKEN_LEFT_EQUAL,"<<=",3},
-    //{TOKEN_RIGHT_EQUAL,">>=",3},
+    {TOKEN_LEFT_EQUAL,"<<=",3},
+    {TOKEN_RIGHT_EQUAL,">>=",3},
     //{TOKEN_DOUBLE_ADD,"++",2},
     //{TOKEN_DOUBLE_SUB,"--",2},
     {TOKEN_GTHAN_EQUAL,">=",2},
@@ -12,13 +12,13 @@ const TokenSymbol symbolList[]={
     {TOKEN_NOT_EQUAL,"!=",2},
     {TOKEN_LEFT,"<<",2},
     {TOKEN_RIGHT,">>",2},
-    /*{TOKEN_ADD_EQUAL,"+=",2},
+    {TOKEN_ADD_EQUAL,"+=",2},
     {TOKEN_SUB_EQUAL,"-=",2},
     {TOKEN_MUL_EQUAL,"*=",2},
     {TOKEN_DIV_EQUAL,"/=",2},
     {TOKEN_AND_EQUAL,"&=",2},
     {TOKEN_OR_EQUAL,"|=",2},
-    {TOKEN_PERCENT_EQUAL,"%=",2},*/
+    {TOKEN_PERCENT_EQUAL,"%=",2},
     {TOKEN_ADD,"+",1},
     {TOKEN_SUB,"-",1},
     {TOKEN_MUL,"*",1},

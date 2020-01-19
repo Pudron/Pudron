@@ -289,7 +289,7 @@ Unit newUnit(int varStart){
     LIST_INIT(unit.flist)
     LIST_INIT(unit.mblist)
     unit.varStart=varStart;
-    unit.curPart=0;
+    unit.curPart=-1;
     return unit;
 }
 void setModuleUnit(Module*mod,Unit unit){
@@ -298,6 +298,7 @@ void setModuleUnit(Module*mod,Unit unit){
     mod->moduleList=unit.mlist;
     mod->partList=unit.plist;
     mod->fieldList=unit.flist;
+    mod->memberList=unit.mblist;
 }
 void setFuncUnit(Func*func,Unit unit){
     func->constList=unit.constList;
@@ -305,6 +306,7 @@ void setFuncUnit(Func*func,Unit unit){
     func->moduleList=unit.mlist;
     func->partList=unit.plist;
     func->fieldList=unit.flist;
+    func->memberList=unit.mblist;
 }
 Unit getModuleUnit(Module mod){
     Unit unit;
@@ -313,6 +315,7 @@ Unit getModuleUnit(Module mod){
     unit.mlist=mod.moduleList;
     unit.plist=mod.partList;
     unit.flist=mod.fieldList;
+    unit.mblist=mod.memberList;
     return unit;
 }
 Unit getFuncUnit(Func func){
@@ -322,6 +325,7 @@ Unit getFuncUnit(Func func){
     unit.mlist=func.moduleList;
     unit.plist=func.partList;
     unit.flist=func.fieldList;
+    unit.mblist=func.memberList;
     return unit;
 }
 void getConstMsg(char*text,Const con){
@@ -349,23 +353,35 @@ void getConstMsg(char*text,Const con){
 void printCmds(Unit unit){
     char temp[50];
     Part part;
+    int c;
     OpcodeMsg opm;
     for(int i=0;i<unit.clist.count;i++){
-        part=unit.plist.vals[unit.clist.vals[i]];
-        opm=opcodeList[unit.clist.vals[++i]];
-        printf("%d(%d:%d):%s",i,part.line,part.column,opm.name);
+        c=unit.clist.vals[i];
+        if(c>=0){
+            part=unit.plist.vals[c];
+            opm=opcodeList[unit.clist.vals[++i]];
+            printf("%d(%d:%d):%s",i-1,part.line,part.column,opm.name);
+        }else{
+            opm=opcodeList[unit.clist.vals[++i]];
+            printf("%d:%s",i-1,opm.name);
+        }
         if(opm.argCount>0){
-            printf(" %d",unit.clist.vals[++i]);
+            c=unit.clist.vals[++i];
+            printf(" %d",c);
             switch(opm.opcode){
                 case OPCODE_LOAD_CONST:
-                    getConstMsg(temp,unit.constList.vals[unit.clist.vals[i]]);
+                    getConstMsg(temp,unit.constList.vals[c]);
                     printf("(%s)",temp);
                     break;
                 case OPCODE_LOAD_MEMBER:
-                    printf("(%s)",unit.mlist.vals[unit.clist.vals[i]].name);
+                    printf("(%s)",unit.mblist.vals[c].name);
                     break;
                 case OPCODE_ASSIGN:
-                    printf("(%s)",opcodeList[unit.clist.vals[i]].name);
+                    if(c<0){
+                        printf("(EQUAL)");
+                    }else{
+                        printf("(%s)",opcodeList[c].name);
+                    }
                     break;
                 default:
                     break;
