@@ -1,1 +1,7 @@
-a.asd(a,b,123);
+while(true){
+    if(flase){
+        break;
+    }
+}else{
+    a=1;
+}

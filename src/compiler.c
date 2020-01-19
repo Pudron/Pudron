@@ -549,6 +549,38 @@ void compileIfState(Compiler*cp,Unit*unit,Env env){
     }
     LIST_DELETE(endList)
 }
+void compileWhileState(Compiler*cp,Unit*unit,Env env){
+    int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
+    int pt=setPart(cp,unit,msgStart);
+    Token token;
+    intList breakList;
+    LIST_INIT(breakList)
+    intList*orblist=env.breakList;
+    env.breakList=&breakList;
+    addCmd(unit,OPCODE_SET_LOOP);
+    matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in while statement",msgStart);
+    int jto=unit->clist.count;
+    compileExpression(cp,unit,0,false,msgStart,env);
+    matchToken(&cp->parser,TOKEN_PARE2,"\")\" in while statement",msgStart);
+    addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
+    int jptr=unit->clist.count-1;
+    unit->plist.vals[pt].end=cp->parser.ptr;
+    compileBlock(cp,unit,env);
+    addCmd1(unit,OPCODE_JUMP,jto);
+    unit->clist.vals[jptr]=unit->clist.count;
+    token=nextToken(&cp->parser);
+    if(token.type==TOKEN_ELSE){
+        env.breakList=orblist;
+        compileBlock(cp,unit,env);
+    }else{
+        lastToken(&cp->parser);
+    }
+    for(int i=0;i<breakList.count;i++){
+        unit->clist.vals[breakList.vals[i]]=unit->clist.count;
+    }
+    addCmd(unit,OPCODE_FREE_LOOP);
+    LIST_DELETE(breakList)
+}
 void compileBlock(Compiler*cp,Unit*unit,Env env){
     addCmd1(unit,OPCODE_LOAD_FIELD,0);
     int fptr=unit->clist.count-1;
@@ -575,6 +607,17 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             break;
         }else if(token.type==TOKEN_IF){
             compileIfState(cp,unit,env);
+        }else if(token.type==TOKEN_WHILE){
+            compileWhileState(cp,unit,env);
+        }else if(token.type==TOKEN_BREAK){
+            if(env.breakList==NULL){
+                compileMsg(MSG_ERROR,cp,"invalid break.",token.start);
+            }
+            int pt=setPart(cp,unit,token.start);
+            token=matchToken(&cp->parser,TOKEN_SEMI,"\";\" after break",token.start);
+            unit->plist.vals[pt].end=token.end;
+            addCmd1(unit,OPCODE_JUMP,0);
+            LIST_ADD((*env.breakList),int,unit->clist.count-1)
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);
