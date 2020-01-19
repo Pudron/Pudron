@@ -1,6 +1,6 @@
 #include"parser.h"
 const int SYMBOL_COUNT=36;
-const int KEYWORD_COUNT=17;
+const int KEYWORD_COUNT=19;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
     {TOKEN_LEFT_EQUAL,"<<=",3},

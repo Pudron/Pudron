@@ -1,7 +1,3 @@
-while(true){
-    if(flase){
-        break;
-    }
-}else{
-    a=1;
+do{
+    a+=1;
 }

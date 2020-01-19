@@ -581,6 +581,28 @@ void compileWhileState(Compiler*cp,Unit*unit,Env env){
     addCmd(unit,OPCODE_FREE_LOOP);
     LIST_DELETE(breakList)
 }
+void compileDoWhileState(Compiler*cp,Unit*unit,Env env){
+    intList breakList;
+    LIST_INIT(breakList)
+    env.breakList=&breakList;
+    addCmd(unit,OPCODE_SET_LOOP);
+    int jto=unit->clist.count;
+    compileBlock(cp,unit,env);
+    int msgStart=cp->parser.ptr;
+    setPart(cp,unit,msgStart);
+    matchToken(&cp->parser,TOKEN_WHILE,"while in do-while statement",msgStart);
+    matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in do-while statement",msgStart);
+    compileExpression(cp,unit,0,false,msgStart,env);
+    matchToken(&cp->parser,TOKEN_PARE2,"\")\" in do-while statement",msgStart);
+    matchToken(&cp->parser,TOKEN_SEMI,"\";\" after do-while statement",msgStart);
+    addCmd(unit,OPCODE_NOT);
+    addCmd1(unit,OPCODE_JUMP_IF_FALSE,jto);
+    for(int i=0;i<breakList.count;i++){
+        unit->clist.vals[breakList.vals[i]]=unit->clist.count;
+    }
+    addCmd(unit,OPCODE_FREE_LOOP);
+    LIST_DELETE(breakList)
+}
 void compileBlock(Compiler*cp,Unit*unit,Env env){
     addCmd1(unit,OPCODE_LOAD_FIELD,0);
     int fptr=unit->clist.count-1;
@@ -609,6 +631,8 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             compileIfState(cp,unit,env);
         }else if(token.type==TOKEN_WHILE){
             compileWhileState(cp,unit,env);
+        }else if(token.type==TOKEN_DO){
+            compileDoWhileState(cp,unit,env);
         }else if(token.type==TOKEN_BREAK){
             if(env.breakList==NULL){
                 compileMsg(MSG_ERROR,cp,"invalid break.",token.start);
