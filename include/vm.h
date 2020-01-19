@@ -34,6 +34,11 @@ typedef HINSTANCE Dllptr;
 #endif
 LIST_DECLARE(Dllptr)
 typedef struct{
+	int deep,index;
+	Value*val;
+}Stack;
+LIST_DECLARE(Stack)
+typedef struct{
 	PartList partList;
     intList clist;
     SymbolList symList;
@@ -55,6 +60,8 @@ typedef struct{
 	intList vlist;
 	DllptrList dllptrList;
 	char*path;
+
+	
 }VM;
 void initVM(VM*vm,Parser parser);
 void exitVM(VM*vm);

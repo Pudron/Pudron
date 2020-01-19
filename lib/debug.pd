@@ -1,8 +1,8 @@
 func printFunction(function){
-    >>LOAD_VAL function;
+    >>LOAD_VAR function;
     >>PRINT_FUNC;
 }
 func printClass(classd){
-    >>LOAD_VAL classd;
+    >>LOAD_VAR classd;
     >>PRINT_CLASS;
 }

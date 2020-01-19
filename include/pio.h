@@ -6,7 +6,7 @@ typedef struct{
     int count;
     int ptr;
 }Bin;
-bool readTextFile(char**text,char*fileName);
-void export(Parser parser,char*outputName);
-void import(Parser*parser,char*fileName);
+char*readTextFile(char*fileName);
+/*void export(Parser parser,char*outputName);
+void import(Parser*parser,char*fileName);*/
 #endif

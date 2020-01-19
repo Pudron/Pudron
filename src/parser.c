@@ -1,10 +1,10 @@
 #include"parser.h"
 const int SYMBOL_COUNT=36;
-const int KEYWORD_COUNT=19;
+const int KEYWORD_COUNT=17;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
-    {TOKEN_LEFT_EQUAL,"<<=",3},
-    {TOKEN_RIGHT_EQUAL,">>=",3},
+    //{TOKEN_LEFT_EQUAL,"<<=",3},
+    //{TOKEN_RIGHT_EQUAL,">>=",3},
     //{TOKEN_DOUBLE_ADD,"++",2},
     //{TOKEN_DOUBLE_SUB,"--",2},
     {TOKEN_GTHAN_EQUAL,">=",2},
@@ -12,13 +12,13 @@ const TokenSymbol symbolList[]={
     {TOKEN_NOT_EQUAL,"!=",2},
     {TOKEN_LEFT,"<<",2},
     {TOKEN_RIGHT,">>",2},
-    {TOKEN_ADD_EQUAL,"+=",2},
+    /*{TOKEN_ADD_EQUAL,"+=",2},
     {TOKEN_SUB_EQUAL,"-=",2},
     {TOKEN_MUL_EQUAL,"*=",2},
     {TOKEN_DIV_EQUAL,"/=",2},
     {TOKEN_AND_EQUAL,"&=",2},
     {TOKEN_OR_EQUAL,"|=",2},
-    {TOKEN_PERCENT_EQUAL,"%=",2},
+    {TOKEN_PERCENT_EQUAL,"%=",2},*/
     {TOKEN_ADD,"+",1},
     {TOKEN_SUB,"-",1},
     {TOKEN_MUL,"*",1},
@@ -63,33 +63,6 @@ const Keyword keywordList[]={
     {TOKEN_LINE,"__LINE__","__行__"},
     {TOKEN_DO,"do","做"}
 };
-const int OPERAT_PREFIX_COUNT=3;
-const Operat operatPrefix[]={
-    {TOKEN_EXCL,OPCODE_NOT,130},
-    {TOKEN_INVERT,OPCODE_INVERT,180},
-    {TOKEN_SUB,OPCODE_SUBS,100}
-};
-const int OPERAT_INFIX_COUNT=OPT_METHOD_COUNT;
-const Operat operatInfix[]={
-    {TOKEN_ADD,OPCODE_ADD,100},
-    {TOKEN_SUB,OPCODE_SUB,100},
-    {TOKEN_MUL,OPCODE_MUL,120},
-    {TOKEN_DIV,OPCODE_DIV,120},
-    {TOKEN_CAND,OPCODE_CAND,30},
-    {TOKEN_COR,OPCODE_COR,30},
-    {TOKEN_AND,OPCODE_AND,150},
-    {TOKEN_OR,OPCODE_OR,150},
-    {TOKEN_EQUAL,OPCODE_EQUAL,50},
-    {TOKEN_NOT_EQUAL,OPCODE_NOT_EQUAL,50},
-    {TOKEN_PERCENT,OPCODE_REM,120},
-    {TOKEN_LEFT,OPCODE_LEFT,160},
-    {TOKEN_RIGHT,OPCODE_RIGHT,160},
-    {TOKEN_GTHAN,OPCODE_GTHAN,50},
-    {TOKEN_LTHAN,OPCODE_LTHAN,50},
-    {TOKEN_GTHAN_EQUAL,OPCODE_GTHAN_EQUAL,50},
-    {TOKEN_LTHAN_EQUAL,OPCODE_LTHAN_EQUAL,50}
-};
-extern OpcodeMsg opcodeList[];
 /*Token*/
 Token getToken(Parser*parser){
     char word[1024];
@@ -162,10 +135,10 @@ Token getToken(Parser*parser){
             if(dat==0){
                 parser->ptr--;
             }else{
-                token.type=TOKEN_FLOAT;
-                token.numf=num;
+                token.type=TOKEN_DOUBLE;
+                token.numd=num;
                 for(int i=0;i<dat;i++){
-                    token.numf/=10;
+                    token.numd/=10;
                 }
             }
         }
@@ -313,8 +286,12 @@ Token getToken(Parser*parser){
                 return token;
             }
         }
+        msg.column=parser->column;
+        msg.line=parser->line;
+        msg.end=parser->ptr;
+        msg.type=MSG_ERROR;
         sprintf(msg.text,"unknown charactor \"%c\".",c);
-        reportError(parser,msg.text,msg.start);
+        reportMsg(msg);
     }
     /*查找关键字*/
     if(token.type==TOKEN_WORD){
@@ -336,12 +313,49 @@ void getAllToken(Parser*parser){
         LIST_ADD(parser->tokenList,Token,token)
     }while(token.type!=TOKEN_END);
     parser->ptr=0;
+    parser->line=1;
+    parser->column=1;
 }
 Token nextToken(Parser*parser){
+    Msg msg;
+    if(parser->curToken+1>=parser->tokenList.count){
+        msg.code=parser->code;
+        msg.fileName=parser->fileName;
+        msg.line=parser->line;
+        msg.column=parser->column;
+        msg.start=0;
+        msg.end=0;
+        msg.type=MSG_ERROR;
+        strcpy(msg.text,"next token overflow");
+        reportMsg(msg);
+    }
     Token token=parser->tokenList.vals[++parser->curToken];
     parser->ptr=token.end;
     parser->line=token.line;
     parser->column=token.column;
+    return token;
+}
+Token lastToken(Parser*parser){
+    Msg msg;
+    if(parser->curToken<0){
+        msg.code=parser->code;
+        msg.fileName=parser->fileName;
+        msg.line=parser->line;
+        msg.column=parser->column;
+        msg.start=0;
+        msg.end=0;
+        msg.type=MSG_ERROR;
+        strcpy(msg.text,"last token overflow");
+        reportMsg(msg);
+    }
+    Token token;
+    parser->curToken--;
+    if(parser->curToken>=0){
+        token=parser->tokenList.vals[parser->curToken];
+        parser->ptr=token.end;
+        parser->line=token.line;
+        parser->column=token.column;
+    }
     return token;
 }
 Token matchToken(Parser*parser,TokenType et,char*str,int start){
@@ -361,6 +375,21 @@ Token matchToken(Parser*parser,TokenType et,char*str,int start){
     return token;
 }
 /*Token end*/
+Parser newParser(char*fileName){
+    Parser parser;
+    parser.fileName=fileName;
+    parser.column=1;
+    parser.line=1;
+    parser.ptr=0;
+    parser.curToken=-1;
+    parser.code=readTextFile(fileName);
+    if(parser.code==NULL){
+        exit(-1);
+    }
+    LIST_INIT(parser.tokenList)
+    return parser;
+}
+/*
 bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
     Token token;
     Symbol symbol;
@@ -454,7 +483,7 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
             }
             symbol.type=SYM_STRING;
             symbol.str=wd;
-            assign.gcmds.code[0]=OPCODE_LOAD_VAL;
+            assign.gcmds.code[0]=OPCODE_LOAD_VAR;
             assign.gcmds.code[1]=addSymbol(parser,symbol);
             assign.gcmds.count=2;
             assign.acmds.code[0]=OPCODE_STORE_VAL;
@@ -565,33 +594,7 @@ bool getValue(Parser*parser,intList*clist,Assign*asi,Env env){
             assign.acmds.code[0]=OPCODE_STORE_INDEX;
             assign.acmds.count=1;
             assign.ncmds.count=0;
-        }/*else if(token.type==TOKEN_DOUBLE_ADD){
-            if(canAssign){
-                if(cmds.code[0]==OPCODE_LOAD_INDEX){
-                    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
-                    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
-                    addCmds(parser,clist,cmds);
-                }else{
-                    addCmd1(parser,clist,OPCODE_STACK_COPY,0);
-                    addCmds(parser,clist,cmds);
-                }
-            }
-            symbol.type=SYM_INT;
-            symbol.num=1;
-            addCmd1(parser,clist,OPCODE_LOAD_CONST,addSymbol(parser,symbol));
-            addCmd(parser,clist,OPCODE_ADD);
-            if(canAssign){
-                if(cmds.code[0]==OPCODE_LOAD_INDEX){
-                    addCmd1(parser,clist,OPCODE_STACK_COPY,2);
-                    addCmd1(parser,clist,OPCODE_STACK_COPY,2);
-                    addCmds(parser,clist,acmds);
-                }else{
-                    addCmd1(parser,clist,OPCODE_STACK_COPY,1);
-                    addCmds(parser,clist,acmds);
-                }
-            }
-            break;
-        }*/else{
+        }else{
             ORI_RET()
             break;
         }
@@ -661,7 +664,7 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
     Assign assign;
     Symbol symbol;
     int opcode=OPCODE_NOP;
-    bool isAssign=false;/*确定是否是赋值表达式*/
+    bool isAssign=false;//确定是否是赋值表达式
     int msgStart=parser->ptr;
     LIST_INIT(assignList,Assign)
     while(1){
@@ -687,7 +690,7 @@ bool getAssignment(Parser*parser,intList*clist,Env env){
         if(env.isClassVarDef){
             return true;
         }
-        /*全部强制创建变量*/
+        //全部强制创建变量
         for(int i=0;i<assignList.count;i++){
             assign=assignList.vals[i];
             symbol.type=SYM_INT;
@@ -1040,7 +1043,7 @@ void getWhileState(Parser*parser,intList*clist,Env env){
     pt=parser->partList.count;
     parser->curPart=pt;
     LIST_ADD(parser->partList,Part,part)
-    addCmd(parser,clist,OPCODE_SET_LOOP);/*用前面的part*/
+    addCmd(parser,clist,OPCODE_SET_LOOP);//用前面的part
     matchToken(parser,TOKEN_PARE1,"\"(\"",msgStart);
     jret=clist->count;
     getExpression(parser,clist,0,env);
@@ -1146,7 +1149,7 @@ void getClass(Parser*parser,intList*clist,Env env){
         while(1){
             token=matchToken(parser,TOKEN_WORD,"a class to extend",msgStart);
             symbol.str=token.word;
-            addCmd1(parser,clist,OPCODE_LOAD_VAL,addSymbol(parser,symbol));
+            addCmd1(parser,clist,OPCODE_LOAD_VAR,addSymbol(parser,symbol));
             addCmd1(parser,clist,OPCODE_EXTEND_CLASS,parser->classList.count);
             token=nextToken(parser);
             if(token.type==TOKEN_BRACE1){
@@ -1365,7 +1368,7 @@ void getDowhileState(Parser*parser,intList*clist,Env env){
     pt=parser->partList.count;
     parser->curPart=pt;
     LIST_ADD(parser->partList,Part,part)
-    addCmd(parser,clist,OPCODE_SET_LOOP);/*用前面的part*/
+    addCmd(parser,clist,OPCODE_SET_LOOP);//用前面的part
     jret=clist->count;
     getBlock(parser,clist,env);
     parser->curPart=pt;
@@ -1387,4 +1390,4 @@ void getDowhileState(Parser*parser,intList*clist,Env env){
     }
     addCmd(parser,clist,OPCODE_FREE_LOOP);
     LIST_DELETE(breakList)
-}
+}*/

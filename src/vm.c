@@ -389,7 +389,7 @@ inline static void loadVal(VM*vm,int arg,int curPart){
     Symbol symbol=vm->symList.vals[arg+vm->curModule.symBasis];
     char temp[50];
     if(symbol.type!=SYM_STRING){
-        reportVMError(vm,"LOAD_VAL:symbol type must be string.",curPart);
+        reportVMError(vm,"LOAD_VAR:symbol type must be string.",curPart);
     }
     bool isFound=false;
     if(vm->curVar>=0){
@@ -1429,7 +1429,7 @@ void execute(VM*vm,intList clist){
             case OPCODE_LOAD_CONST:
                 loadConst(vm,clist.vals[++i],curPart);
                 break;
-            case OPCODE_LOAD_VAL:
+            case OPCODE_LOAD_VAR:
                 loadVal(vm,clist.vals[++i],curPart);
                 break;
             case OPCODE_LOAD_ATTR:

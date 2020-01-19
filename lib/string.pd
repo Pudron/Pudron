@@ -3,15 +3,15 @@ class string{
     func operator+(val){
         str;
         str=copyVar();
-        >>LOAD_VAL str;
-        >>LOAD_VAL val;
+        >>LOAD_VAR str;
+        >>LOAD_VAR val;
         >>STR_FORMAT;
-        >>LOAD_VAL str;
+        >>LOAD_VAR str;
         >>RETURN;
     }
     func operator=(str){
-        >>LOAD_VAL this;
-        >>LOAD_VAL str;
+        >>LOAD_VAR this;
+        >>LOAD_VAR str;
         >>STR_COMPARE;
         >>RETURN;
     }
@@ -23,11 +23,11 @@ func print(text){
     str;
     str="\0";
     for(i,argVar){
-        >>LOAD_VAL str;
-        >>LOAD_VAL i;
+        >>LOAD_VAR str;
+        >>LOAD_VAR i;
         >>STR_FORMAT;
     }
-    >>LOAD_VAL str;
+    >>LOAD_VAR str;
     >>PRINT;
 }
 func input(){

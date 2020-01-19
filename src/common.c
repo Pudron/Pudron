@@ -1,49 +1,49 @@
 #include"common.h"
 /*严格按照索引顺序排列*/
 const OpcodeMsg opcodeList[]={
-    {OPCODE_NOP,"NOP",false,false},
-    {OPCODE_ADD,"ADD",false,false},
-    {OPCODE_SUB,"SUB",false,false},
-    {OPCODE_MUL,"MUL",false,false},
-    {OPCODE_DIV,"DIV",false,false},
-    {OPCODE_AND,"AND",false,false},
-    {OPCODE_OR,"OR",false,false},
-    {OPCODE_CAND,"CAND",false,false},
-    {OPCODE_COR,"COR",false,false},
-    {OPCODE_LEFT,"LEFT",false,false},
-    {OPCODE_RIGHT,"RIGHT",false,false},
-    {OPCODE_EQUAL,"EQUAL",false,false},
-    {OPCODE_GTHAN,"GTHAN",false,false},
-    {OPCODE_LTHAN,"LTHAN",false,false},
-    {OPCODE_NOT_EQUAL,"NOT_EQUAL",false,false},
-    {OPCODE_GTHAN_EQUAL,"GTHAN_EQUAL",false,false},
-    {OPCODE_LTHAN_EQUAL,"LTHAN_EQUAL",false,false},
-    {OPCODE_REM,"REM",false,false},
-    {OPCODE_INVERT,"INVERT",false,false},
-    {OPCODE_NOT,"NOT",false,false},
-    {OPCODE_SUBS,"SUBS",false,false},
-    {OPCODE_LOAD_CONST,"LOAD_CONST",true,true},
-    {OPCODE_LOAD_VAL,"LOAD_VAL",true,true},
-    {OPCODE_LOAD_ATTR,"LOAD_ATTR",true,true},
-    {OPCODE_LOAD_INDEX,"LOAD_INDEX",false,false},
-    {OPCODE_STORE_VAL,"STORE_VAL",true,true},
-    {OPCODE_STORE_ATTR,"STORE_ATTR",true,true},
-    {OPCODE_STORE_INDEX,"STORE_INDEX",false,false},
-    {OPCODE_PUSH_VAL,"PUSH_VAL",true,true},
-    {OPCODE_STACK_COPY,"STACK_COPY",true,false},
-    {OPCODE_POP_VAR,"POP_VAR",true,false},
-    {OPCODE_POP_STACK,"POP_STACK",true,false},
-    {OPCODE_JUMP,"JUMP",true,false},
-    {OPCODE_JUMP_IF_FALSE,"JUMP_IF_FALSE",true,false},
-    {OPCODE_SET_FIELD,"SET_FIELD",false,false},
-    {OPCODE_FREE_FIELD,"FREE_FIELD",false,false},
-    {OPCODE_SET_LOOP,"SET_LOOP",false,false},
-    {OPCODE_FREE_LOOP,"FREE_LOOP",false,false},
-    {OPCODE_CALL_FUNCTION,"CALL_FUNCTION",true,false},
-    {OPCODE_CALL_METHOD,"CALL_METHOD",true,false},
-    {OPCODE_RETURN,"RETURN",false,false},
-    {OPCODE_ENABLE_FUNCTION,"ENABLE_FUNCTION",true,false},
-    {OPCODE_MAKE_OBJECT,"MAKE_OBJECT",true,false},
+    {OPCODE_NOP,"NOP",0},
+    {OPCODE_ADD,"ADD",0},
+    {OPCODE_SUB,"SUB",0},
+    {OPCODE_MUL,"MUL",0},
+    {OPCODE_DIV,"DIV",0},
+    {OPCODE_AND,"AND",0},
+    {OPCODE_OR,"OR",0},
+    {OPCODE_CAND,"CAND",0},
+    {OPCODE_COR,"COR",0},
+    {OPCODE_LEFT,"LEFT",0},
+    {OPCODE_RIGHT,"RIGHT",0},
+    {OPCODE_EQUAL,"EQUAL",0},
+    {OPCODE_GTHAN,"GTHAN",0},
+    {OPCODE_LTHAN,"LTHAN",0},
+    {OPCODE_NOT_EQUAL,"NOT_EQUAL",0},
+    {OPCODE_GTHAN_EQUAL,"GTHAN_EQUAL",0},
+    {OPCODE_LTHAN_EQUAL,"LTHAN_EQUAL",0},
+    {OPCODE_REM,"REM",0},
+    {OPCODE_INVERT,"INVERT",0},
+    {OPCODE_NOT,"NOT",0},
+    {OPCODE_SUBS,"SUBS",0},
+    {OPCODE_LOAD_CONST,"LOAD_CONST",1},
+    {OPCODE_LOAD_VAR,"LOAD_VAR",1},
+    {OPCODE_LOAD_ATTR,"LOAD_ATTR",1},
+    {OPCODE_LOAD_MEMBER,"LOAD_MEMBER",1},
+    {OPCODE_LOAD_SUBSCRIPT,"LOAD_SUBSCRIPT",0},
+    {OPCODE_STACK_COPY,"STACK_COPY",1},
+    {OPCODE_PUSH_STACK,"PUSH_STACK",1},
+    {OPCODE_POP_STACK,"POP_STACK",1},
+    {OPCODE_JUMP,"JUMP",1},
+    {OPCODE_JUMP_IF_FALSE,"JUMP_IF_FALSE",1},
+    {OPCODE_LOAD_FIELD,"LOAD_FIELD",1},
+    {OPCODE_FREE_FIELD,"FREE_FIELD",1},
+    {OPCODE_SET_LOOP,"SET_LOOP",0},
+    {OPCODE_FREE_LOOP,"FREE_LOOP",0},
+    {OPCODE_CALL_FUNCTION,"CALL_FUNCTION",1},
+    //{OPCODE_CALL_METHOD,"CALL_METHOD",true,false},
+    {OPCODE_RETURN,"RETURN",0},
+    {OPCODE_ASSIGN_LEFT,"ASSIGN_LEFT",1},
+    {OPCODE_ASSIGN_RIGHT,"ASSIGN_RIGHT",1},
+    {OPCODE_ASSIGN,"ASSIGN",1},
+    {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",1}
+    /*{OPCODE_MAKE_OBJECT,"MAKE_OBJECT",true,false},
     {OPCODE_EXTEND_CLASS,"EXTEND_CLASS",true,false},
     {OPCODE_ENABLE_CLASS,"ENABLE_CLASS",true,false},
     {OPCODE_SET_MODULE,"SET_MODULE",true,true},
@@ -69,44 +69,28 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_WRITE_TEXT_FILE,"WRITE_TEXT_FILE",false,false},
     {OPCODE_DLL_OPEN,"DLL_OPEN",false,false},
     {OPCODE_DLL_CLOSE,"DLL_CLOSE",false,false},
-    {OPCODE_DLL_EXECUTE,"DLL_EXECUTE",false,false}
+    {OPCODE_DLL_EXECUTE,"DLL_EXECUTE",false,false}*/
 };
-void initParser(Parser*parser,bool isRoot){
-    parser->code=NULL;
-    parser->path=NULL;
-    parser->fileName=NULL;
-    parser->ptr=0;
-    parser->line=1;
-    parser->column=1;
-    parser->curPart=0;
-    parser->curModule=0;
-    parser->curToken=-1;
-    parser->isLib=false;
-    LIST_INIT(parser->tokenList,Token)
-    if(isRoot){
-        LIST_INIT(parser->partList,Part)
-        LIST_INIT(parser->clist,int)
-        LIST_INIT(parser->classList,Class)
-        LIST_INIT(parser->funcList,Func)
-        LIST_INIT(parser->symList,Symbol)
-        LIST_INIT(parser->moduleList,Module)
+void*memManage(void*ptr,size_t size){
+    void*p=realloc(ptr,size);
+    if(p==NULL){
+        fprintf(stderr,"memory error.");
+        exit(-1);
     }
+    return p;
 }
-void freeParser(Parser*parser){
-    parser->code=NULL;
-    parser->fileName=NULL;
-    parser->ptr=0;
-    parser->line=1;
-    parser->column=1;
-    parser->curPart=0;
-    LIST_DELETE(parser->partList)
-    LIST_DELETE(parser->moduleList)
-    LIST_DELETE(parser->funcList)
-    LIST_DELETE(parser->classList)
-    LIST_DELETE(parser->symList)
-    LIST_DELETE(parser->clist)
+int pow2(int num){
+	num+=(num==0);
+	num--;
+	num|=num>>1;
+	num|=num>>2;
+	num|=num>>4;
+	num|=num>>8;
+	num|=num>>16;
+	num++;
+	return num;
 }
-void clistToString(Parser parser,intList clist,char*text,Module module){
+/*void clistToString(Parser parser,intList clist,char*text,Module module){
     int cmd;
     Symbol symbol;
     char temp[50];
@@ -185,7 +169,7 @@ void classToString(Parser parser,char*text){
         strcat(text,temp);
         strcat(text,"Class End\n\n");
     }
-}
+}*/
 char*cutText(char*text,int start,int end){
     char*str;
     int len=end-start;
@@ -266,17 +250,6 @@ char*getPath(char*text){
     path[end+1]='\0';
     return path;
 }
-int pow2(int num){
-	num+=(num==0);
-	num--;
-	num|=num>>1;
-	num|=num>>2;
-	num|=num>>4;
-	num|=num>>8;
-	num|=num>>16;
-	num++;
-	return num;
-}
 void reportMsg(Msg msg){
     char*text,temp[10];
     text=cutText(msg.code,msg.start,msg.end);
@@ -295,64 +268,112 @@ void reportMsg(Msg msg){
         exit(1);
     }
 }
-void reportError(Parser*parser,char*text,int start){
-    Msg msg;
-    msg.code=parser->code;
-    msg.fileName=parser->fileName;
-    msg.type=MSG_ERROR;
-    msg.line=parser->line;
-    msg.column=parser->column;
-    strcpy(msg.text,text);
-    msg.start=start;
-    msg.end=parser->tokenList.vals[parser->curToken].end;
-    reportMsg(msg);
+/*fnv-1a算法*/
+unsigned int hashString(char*str){
+    int len=strlen(str);
+    unsigned int hashCode=2166136261;
+    int idx=0;
+    while(idx<len){
+        hashCode^=str[idx];
+        hashCode*=16777619;
+        idx++;
+    }
+    return hashCode;
 }
-void reportWarning(Parser*parser,char*text,int start){
-    Msg msg;
-    msg.code=parser->code;
-    msg.fileName=parser->fileName;
-    msg.type=MSG_WARNING;
-    msg.line=parser->line;
-    msg.column=parser->column;
-    strcpy(msg.text,text);
-    msg.start=start;
-    msg.end=parser->tokenList.vals[parser->curToken].end;
-    reportMsg(msg);
+Unit newUnit(int varStart){
+    Unit unit;
+    LIST_INIT(unit.constList)
+    LIST_INIT(unit.clist)
+    LIST_INIT(unit.mlist)
+    LIST_INIT(unit.plist)
+    LIST_INIT(unit.flist)
+    LIST_INIT(unit.mblist)
+    unit.varStart=varStart;
+    unit.curPart=0;
+    return unit;
 }
-void addCmd(Parser*parser,intList*clist,int opcode){
-    LIST_ADD((*clist),int,parser->curPart);
-    LIST_ADD((*clist),int,opcode);
+void setModuleUnit(Module*mod,Unit unit){
+    mod->constList=unit.constList;
+    mod->clist=unit.clist;
+    mod->moduleList=unit.mlist;
+    mod->partList=unit.plist;
+    mod->fieldList=unit.flist;
 }
-void addCmd1(Parser*parser,intList*clist,int opcode,int dat){
-    LIST_ADD((*clist),int,parser->curPart);
-    LIST_ADD((*clist),int,opcode);
-    LIST_ADD((*clist),int,dat);
+void setFuncUnit(Func*func,Unit unit){
+    func->constList=unit.constList;
+    func->clist=unit.clist;
+    func->moduleList=unit.mlist;
+    func->partList=unit.plist;
+    func->fieldList=unit.flist;
 }
-void addCmds(Parser*parser,intList*clist,Command cmds){
-    LIST_ADD((*clist),int,parser->curPart);
-    for(int i=0;i<cmds.count;i++){
-        LIST_ADD((*clist),int,cmds.code[i])
+Unit getModuleUnit(Module mod){
+    Unit unit;
+    unit.constList=mod.constList;
+    unit.clist=mod.clist;
+    unit.mlist=mod.moduleList;
+    unit.plist=mod.partList;
+    unit.flist=mod.fieldList;
+    return unit;
+}
+Unit getFuncUnit(Func func){
+    Unit unit;
+    unit.constList=func.constList;
+    unit.clist=func.clist;
+    unit.mlist=func.moduleList;
+    unit.plist=func.partList;
+    unit.flist=func.fieldList;
+    return unit;
+}
+void getConstMsg(char*text,Const con){
+    switch(con.type){
+        case CONST_INT:
+            sprintf(text,"%d",con.num);
+            break;
+        case CONST_DOUBLE:
+            sprintf(text,"%f",con.numd);
+            break;
+        case CONST_STRING:
+            sprintf(text,"%s",con.str);
+            break;
+        case CONST_CLASS:
+            strcpy(text,"class");
+            break;
+        case CONST_FUNCTION:
+            strcpy(text,"function");
+            break;
+        default:
+            strcpy(text,"others");
+            break;
     }
 }
-int addSymbol(Parser*parser,Symbol symbol){
-    Symbol sym;
-    for(int i=0;i<parser->symList.count;i++){
-        sym=parser->symList.vals[i];
-        if(symbol.type==SYM_INT && sym.type==SYM_INT){
-            if(symbol.num==sym.num){
-                return i;
+void printCmds(Unit unit){
+    char temp[50];
+    Part part;
+    OpcodeMsg opm;
+    for(int i=0;i<unit.clist.count;i++){
+        part=unit.plist.vals[unit.clist.vals[i]];
+        opm=opcodeList[unit.clist.vals[++i]];
+        printf("%d(%d:%d):%s",i,part.line,part.column,opm.name);
+        if(opm.argCount>0){
+            printf(" %d",unit.clist.vals[++i]);
+            switch(opm.opcode){
+                case OPCODE_LOAD_CONST:
+                    getConstMsg(temp,unit.constList.vals[unit.clist.vals[i]]);
+                    printf("(%s)",temp);
+                    break;
+                case OPCODE_LOAD_MEMBER:
+                    printf("(%s)",unit.mlist.vals[unit.clist.vals[i]].name);
+                    break;
+                case OPCODE_ASSIGN:
+                    printf("(%s)",opcodeList[unit.clist.vals[i]].name);
+                    break;
+                default:
+                    break;
             }
-        }else if(symbol.type==SYM_FLOAT && sym.type==SYM_FLOAT){
-            if(symbol.numf==sym.numf){
-                return i;
-            }
-        }else if(symbol.type==SYM_STRING && sym.type==SYM_STRING){
-            if(strcmp(sym.str,symbol.str)==0){
-                free(symbol.str);
-                return i;
+            for(int i2=1;i2<opm.argCount;i2++){
+                printf(",%d",unit.clist.vals[++i]);
             }
         }
+        printf("\n");
     }
-    LIST_ADD(parser->symList,Symbol,symbol)
-    return parser->symList.count-1;
 }

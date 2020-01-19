@@ -1,18 +1,18 @@
 #include"pio.h"
-bool readTextFile(char**text,char*fileName){
+char*readTextFile(char*fileName){
     FILE*fp=fopen(fileName,"r");
     if(fp==NULL){
         printf("error:can not open the file \"%s\"!\n",fileName);
-        return false;
+        return NULL;
     }
     fseek(fp,0,SEEK_END);
     int len=ftell(fp);
     rewind(fp);
-    *text=(char*)malloc(len+1);
-    len=fread(*text,1,len,fp);
+    char*text=(char*)malloc(len+1);
+    len=fread(text,1,len,fp);
     fclose(fp);
-    (*text)[len]='\0';
-    return true;
+    text[len]='\0';
+    return text;
 }
 /*当结构体元素顺序改变时，相应的顺序也要改变*/
 #define WRITE_LIST(dat,list,type) \
@@ -28,7 +28,7 @@ bool readTextFile(char**text,char*fileName){
         LIST_ADD(list,type,read##typeName(bin))\
     }
 
-void writeInt(charList*dat,int num){
+/*void writeInt(charList*dat,int num){
     for(int i=0;i<sizeof(int);i++){
         LIST_ADD((*dat),char,num>>((sizeof(int)-i-1)*8))
     } 
@@ -277,7 +277,7 @@ void import(Parser*parser,char*fileName){
     READ_LIST(&bin,parser->moduleList,Module,Module)
     for(int i=begin;i<parser->moduleList.count;i++){
         parser->moduleList.vals[i].funcBasis+=parser->funcList.count;
-        parser->moduleList.vals[i].cmdBasis+=parser->clist.count+3;/*加上后面的SET_MODULE*/
+        parser->moduleList.vals[i].cmdBasis+=parser->clist.count+3;//加上后面的SET_MODULE
         parser->moduleList.vals[i].symBasis+=parser->symList.count;
         parser->moduleList.vals[i].classBasis+=parser->classList.count;
         parser->moduleList.vals[i].partBasis+=parser->partList.count;
@@ -299,4 +299,4 @@ void import(Parser*parser,char*fileName){
             parser->classList.vals[i].methods.vals[i2].moduleID+=moduleID;
         }
     }
-}
+}*/

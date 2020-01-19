@@ -2,28 +2,15 @@
 #include"compiler.h"
 char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "compile and run:pd [file]\n"
-"run pdl file:pd [file]\n"
+"run pdm file:pd [file]\n"
 "argument:\n"
-"-l:make library\n"
+"-m:make module\n"
 "-o [name]:use output file name\n";
-#ifndef RELEASE
-void testToken(Parser*parser){
-    Token token;
-    token=nextToken(parser);
-    while(token.type!=TOKEN_END){
-        if(token.type==TOKEN_WORD || token.type==TOKEN_STRING){
-            printf("%d:%s\n",token.type,token.word);
-        }else if(token.type==TOKEN_INTEGER){
-            printf("%d:%d\n",token.type,token.num);
-        }else if(token.type==TOKEN_FLOAT){
-            printf("%d:%f\n",token.type,token.numf);
-        }else{
-            printf("%d\n",token.type);
-        }
-        token=nextToken(parser);
-    }
+void run(char*fileName){
+    Module mod=compileAll(fileName);
+    Unit unit=getModuleUnit(mod);
+    printCmds(unit);
 }
-#endif
 int main(int argc,char**argv){
     if(argc==1){
         printf("%s",statement);
@@ -31,9 +18,9 @@ int main(int argc,char**argv){
     }
     bool isLib=false,isVersion=false;
     char*fileName=NULL,*outputName=NULL;
-    for(int i=1;i<argc;i++){
+    /*for(int i=1;i<argc;i++){
         if(argv[i][0]=='-'){
-            if(argv[i][1]=='l'){
+            if(argv[i][1]=='m'){
                 isLib=true;
             }else if(argv[i][1]=='o'){
                 i++;
@@ -56,7 +43,8 @@ int main(int argc,char**argv){
             }
             fileName=argv[i];
         }
-    }
+    }*/
+    fileName=argv[1];
     if(fileName==NULL){
         if(isVersion){
             return 0;
@@ -68,7 +56,7 @@ int main(int argc,char**argv){
         printf("error:nothing to output.\n");
         return -1;
     }
-    char*post=getPostfix(fileName);
+    /*char*post=getPostfix(fileName);
     if(strcmp(post,FILE_LIB_POSTFIX)==0){
         if(isLib){
             printf("warning:can not make library again.\n");
@@ -77,6 +65,7 @@ int main(int argc,char**argv){
     }else{
         run(fileName,isLib,outputName);
     }
-    free(post);
+    free(post);*/
+    run(fileName);
     return 0;
 }

@@ -1,38 +1,38 @@
 class meta{
     #没有类变量#
     func resizeVar(size){
-        >>LOAD_VAL this;
-        >>LOAD_VAL size;
+        >>LOAD_VAR this;
+        >>LOAD_VAR size;
         >>RESIZE_VAR;
     }
     func getVarCount(){
-        >>LOAD_VAL this;
+        >>LOAD_VAR this;
         >>GET_VARCOUNT;
         >>RETURN;
     }
     func getClass(){
-        >>LOAD_VAL this;
+        >>LOAD_VAR this;
         >>GET_CLASS;
         >>RETURN;
     }
     func copyVar(){
-        >>LOAD_VAL this;
+        >>LOAD_VAR this;
         >>COPY_OBJECT;
         >>RETURN;
     }
     func getVarBasis(){
-        >>LOAD_VAL this;
+        >>LOAD_VAR this;
         >>GET_VARBASIS;
         >>RETURN;
     }
     func setVarBasis(val){
-        >>LOAD_VAL this;
-        >>LOAD_VAL val;
+        >>LOAD_VAR this;
+        >>LOAD_VAR val;
         >>SET_VARBASIS;
     }
 }
 func exit(value){
-    >>LOAD_VAL value;
+    >>LOAD_VAR value;
     >>EXIT;
 }
 func range(a,b,c){
@@ -40,20 +40,20 @@ func range(a,b,c){
     if(argVar=1){
         a-=1;
         >>LOAD_CONST 0;
-        >>LOAD_VAL a;
+        >>LOAD_VAR a;
         >>LOAD_CONST 1;
         >>MAKE_RANGE;
         >>STORE_VAL result;
     }elif(argVar=2){
-        >>LOAD_VAL a;
-        >>LOAD_VAL b;
+        >>LOAD_VAR a;
+        >>LOAD_VAR b;
         >>LOAD_CONST 1;
         >>MAKE_RANGE;
         >>STORE_VAL result;
     }elif(argVar=3){
-        >>LOAD_VAL a;
-        >>LOAD_VAL b;
-        >>LOAD_VAL c;
+        >>LOAD_VAR a;
+        >>LOAD_VAR b;
+        >>LOAD_VAR c;
         >>MAKE_RANGE;
         >>STORE_VAL result;
     }
