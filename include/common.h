@@ -81,7 +81,7 @@ typedef enum{
     TOKEN_DOUBLE,
     TOKEN_WORD,
     TOKEN_STRING,
-    TOKEN_FUNC,
+    TOKEN_FUNCTION,
     TOKEN_WHILE,
     TOKEN_DO,
     TOKEN_FOR,
@@ -286,23 +286,26 @@ typedef struct{
 LIST_DECLARE(Member)
 struct ModuleDef{
     char*name;
+    /*unit start*/
     ConstList constList;
     intList clist;
     ModuleList moduleList;
     PartList partList;
     FieldList fieldList;
     MemberList memberList;
+    /*unit end*/
 };
 typedef struct{
-    char*name;
     void (*exe)(void);
     VarList argList;
+    /*unit start*/
     ConstList constList;
     intList clist;
     ModuleList moduleList;
     PartList partList;
     FieldList fieldList;
     MemberList memberList;
+    /*unit end*/
 }Func;
 typedef struct{
     char*name;

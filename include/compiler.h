@@ -22,6 +22,4 @@ typedef struct{
     VarList vlist;
 }Compiler;
 Module compileAll(char*fileName);
-Operat compileExpression(Compiler*cp,Unit*unit,int level,bool isAssign,int msgStart,Env env);
-void compileBlock(Compiler*cp,Unit*unit,Env env);
 #endif

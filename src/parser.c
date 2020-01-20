@@ -43,7 +43,7 @@ const TokenSymbol symbolList[]={
     {TOKEN_COLON,":",1}
 };
 const Keyword keywordList[]={
-    {TOKEN_FUNC,"func","函数"},
+    {TOKEN_FUNCTION,"function","函数"},
     {TOKEN_WHILE,"while","当"},
     {TOKEN_FOR,"for","循环"},
     {TOKEN_BREAK,"break","结束"},

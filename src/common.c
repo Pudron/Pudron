@@ -330,6 +330,7 @@ Unit getFuncUnit(Func func){
     return unit;
 }
 void getConstMsg(char*text,Const con){
+    int i;
     switch(con.type){
         case CONST_INT:
             sprintf(text,"%d",con.num);
@@ -344,7 +345,15 @@ void getConstMsg(char*text,Const con){
             strcpy(text,"class");
             break;
         case CONST_FUNCTION:
-            strcpy(text,"function");
+            strcpy(text,"function(");
+            for(i=0;i<con.func.argList.count;i++){
+                strcat(text,con.func.argList.vals[i].name);
+                if(i==con.func.argList.count-1){
+                    strcat(text,")");
+                }else{
+                    strcat(text,",");
+                }
+            }
             break;
         default:
             strcpy(text,"others");

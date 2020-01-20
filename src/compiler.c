@@ -149,6 +149,8 @@ void direct(char*fileName){
     initVM(&vm,parser);
     execute(&vm,vm.clist);
 }*/
+Operat compileExpression(Compiler*cp,Unit*unit,int level,bool isAssign,int msgStart,Env env);
+void compileBlock(Compiler*cp,Unit*unit,Env env);
 void addCmd(Unit*unit,int opcode){
     LIST_ADD(unit->clist,int,unit->curPart);
     LIST_ADD(unit->clist,int,opcode);
@@ -274,6 +276,52 @@ int setPart(Compiler*cp,Unit*unit,int start){
     LIST_ADD(unit->plist,Part,part)
     return unit->curPart;
 }
+Func compileFunction(Compiler*cp,Env env){
+    env.breakList=NULL;
+    Func func;
+    Token token;
+    Unit funit=newUnit(cp->vlist.count);
+    func.exe=NULL;
+    LIST_INIT(func.argList)
+    int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
+    Var var;
+    var.isRef=false;
+    if(env.class!=NULL){
+        var.name="this";
+        var.hashName=hashString(var.name);
+        LIST_ADD(func.argList,Var,var)
+    }
+    matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in function definition",msgStart);
+    token=nextToken(&cp->parser);
+    if(token.type!=TOKEN_PARE2){
+        bool needArg=false;
+        lastToken(&cp->parser);
+        while(token.type!=TOKEN_PARE2 || needArg){
+            token=matchToken(&cp->parser,TOKEN_WORD,"argument in function definition",msgStart);
+            var.name=token.word;
+            var.hashName=hashString(var.name);
+            LIST_ADD(func.argList,Var,var)
+            token=nextToken(&cp->parser);
+            if(token.type==TOKEN_COMMA){
+                needArg=true;
+            }else{
+                needArg=false;
+            }
+        }
+    }
+    /*可以在执行的时候搞*/
+    /*var.name="argList";
+    var.hashName=hashString(var.name);
+    LIST_ADD(func.argList,Var,var)*/
+    compileBlock(cp,&funit,env);
+    Const con;
+    con.type=CONST_INT;
+    con.num=0;
+    addCmd1(&funit,OPCODE_LOAD_CONST,addConst(&funit,con));
+    addCmd(&funit,OPCODE_RETURN);
+    setFuncUnit(&func,funit);
+    return func;
+}
 void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
     Token token=nextToken(&cp->parser);
     if(token.type==TOKEN_INTEGER){
@@ -362,6 +410,12 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
         if(count>=0){
             addCmd1(unit,OPCODE_CALL_FUNCTION,count);
         }
+    }else if(token.type==TOKEN_FUNCTION){
+        Const con;
+        Func func=compileFunction(cp,env);
+        con.type=CONST_FUNCTION;
+        con.func=func;
+        addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
     }else{
         compileMsg(MSG_ERROR,cp,"expected an expression.",msgStart);
     }
@@ -683,6 +737,9 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             unit->plist.vals[pt].end=token.end;
             addCmd1(unit,OPCODE_JUMP,0);
             LIST_ADD((*env.breakList),int,unit->clist.count-1)
+        }else if(token.type==TOKEN_RETURN){
+            compileExpression(cp,unit,0,false,token.start,env);
+            addCmd(unit,OPCODE_RETURN);
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);
