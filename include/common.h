@@ -138,7 +138,7 @@ typedef enum{
     TOKEN_LINE
 }TokenType;
 #define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 41
+#define OPCODE_COUNT 44
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -191,6 +191,7 @@ typedef enum{
     OPCODE_ASSIGN,/*arg:operation type(-1 is normal assignment)*/
 
     OPCODE_MAKE_ARRAY,
+    OPCODE_GET_FOR_INDEX
     /*OPCODE_MAKE_OBJECT,
     OPCODE_EXTEND_CLASS,
     OPCODE_ENABLE_CLASS,

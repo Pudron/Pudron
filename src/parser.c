@@ -1,6 +1,6 @@
 #include"parser.h"
 const int SYMBOL_COUNT=36;
-const int KEYWORD_COUNT=19;
+const int KEYWORD_COUNT=18;
 const TokenSymbol symbolList[]={
     /*多字符运算符放前面*/
     {TOKEN_LEFT_EQUAL,"<<=",3},
@@ -60,7 +60,6 @@ const Keyword keywordList[]={
     {TOKEN_INCLUDE,"include","包括"},
     {TOKEN_TRUE,"true","真"},
     {TOKEN_FALSE,"false","假"},
-    {TOKEN_LINE,"__LINE__","__行__"},
     {TOKEN_DO,"do","做"}
 };
 /*Token*/

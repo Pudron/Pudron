@@ -603,6 +603,45 @@ void compileDoWhileState(Compiler*cp,Unit*unit,Env env){
     addCmd(unit,OPCODE_FREE_LOOP);
     LIST_DELETE(breakList)
 }
+void compileForState(Compiler*cp,Unit*unit,Env env){
+    intList breakList,*orblist;
+    orblist=env.breakList;
+    LIST_INIT(breakList)
+    env.breakList=&breakList;
+    int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
+    int pt=setPart(cp,unit,msgStart);
+    Const con;
+    Token token;
+    addCmd(unit,OPCODE_SET_LOOP);
+    matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in for statement",msgStart);
+    compileExpression(cp,unit,0,false,msgStart,env);
+    matchToken(&cp->parser,TOKEN_COMMA,"\",\" in for statement",msgStart);
+    compileExpression(cp,unit,0,false,msgStart,env);
+    token=matchToken(&cp->parser,TOKEN_PARE2,"\")\" in for statement",msgStart);
+    unit->plist.vals[pt].end=token.end;
+    con.type=CONST_INT;
+    con.num=0;
+    addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));/*as index*/
+    int jto=unit->clist.count;
+    addCmd(unit,OPCODE_GET_FOR_INDEX);
+    addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
+    int jptr=unit->clist.count-1;
+    compileBlock(cp,unit,env);
+    addCmd1(unit,OPCODE_JUMP,jto);
+    unit->clist.vals[jptr]=unit->clist.count;
+    token=nextToken(&cp->parser);
+    if(token.type==TOKEN_ELSE){
+        env.breakList=orblist;
+        compileBlock(cp,unit,env);
+    }else{
+        lastToken(&cp->parser);
+    }
+    for(int i=0;i<breakList.count;i++){
+        unit->clist.vals[breakList.vals[i]]=unit->clist.count;
+    }
+    addCmd(unit,OPCODE_FREE_LOOP);
+    LIST_DELETE(breakList)
+}
 void compileBlock(Compiler*cp,Unit*unit,Env env){
     addCmd1(unit,OPCODE_LOAD_FIELD,0);
     int fptr=unit->clist.count-1;
@@ -633,6 +672,8 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             compileWhileState(cp,unit,env);
         }else if(token.type==TOKEN_DO){
             compileDoWhileState(cp,unit,env);
+        }else if(token.type==TOKEN_FOR){
+            compileForState(cp,unit,env);
         }else if(token.type==TOKEN_BREAK){
             if(env.breakList==NULL){
                 compileMsg(MSG_ERROR,cp,"invalid break.",token.start);
