@@ -20,6 +20,7 @@ typedef struct{
 typedef struct{
     Parser parser;
     VarList vlist;
+    char*path;
 }Compiler;
 Module compileAll(char*fileName);
 #endif
