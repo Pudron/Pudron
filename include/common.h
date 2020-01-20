@@ -311,7 +311,7 @@ typedef struct{
     char*name;
     uint hashName;
     NameList var;
-    Func initFunc;
+    Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
     int optID[OPT_METHOD_COUNT];
     int initID,destroyID;
 }Class;

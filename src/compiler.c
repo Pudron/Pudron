@@ -290,6 +290,7 @@ Func compileFunction(Compiler*cp,Env env){
         var.name="this";
         var.hashName=hashString(var.name);
         LIST_ADD(func.argList,Var,var)
+        LIST_ADD(cp->vlist,Var,var)
     }
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in function definition",msgStart);
     token=nextToken(&cp->parser);
@@ -301,6 +302,7 @@ Func compileFunction(Compiler*cp,Env env){
             var.name=token.word;
             var.hashName=hashString(var.name);
             LIST_ADD(func.argList,Var,var)
+            LIST_ADD(cp->vlist,Var,var)
             token=nextToken(&cp->parser);
             if(token.type==TOKEN_COMMA){
                 needArg=true;
@@ -309,10 +311,10 @@ Func compileFunction(Compiler*cp,Env env){
             }
         }
     }
-    /*可以在执行的时候搞*/
-    /*var.name="argList";
+    var.name="argList";
     var.hashName=hashString(var.name);
-    LIST_ADD(func.argList,Var,var)*/
+    //LIST_ADD(func.argList,Var,var)
+    LIST_ADD(cp->vlist,Var,var)
     compileBlock(cp,&funit,env);
     Const con;
     con.type=CONST_INT;
@@ -320,7 +322,86 @@ Func compileFunction(Compiler*cp,Env env){
     addCmd1(&funit,OPCODE_LOAD_CONST,addConst(&funit,con));
     addCmd(&funit,OPCODE_RETURN);
     setFuncUnit(&func,funit);
+    LIST_REDUCE(cp->vlist,Var,cp->vlist.count-funit.varStart)
     return func;
+}
+Class compileClass(Compiler*cp){
+    Class class;
+    Token token;
+    Var var;
+    char temp[50];
+    Env env={&class,NULL,false,NULL};
+    Unit unit=newUnit(cp->vlist.count);
+    class.initFunc.exe=NULL;
+    class.name=NULL;
+    class.hashName=0;
+    class.initID=-1;
+    class.destroyID=-1;
+    memset(class.optID,-1,OPT_METHOD_COUNT+1);
+    LIST_INIT(class.initFunc.argList)
+    var.name="this";
+    var.hashName=hashString(var.name);
+    LIST_ADD(class.initFunc.argList,Var,var)
+    LIST_ADD(cp->vlist,Var,var)
+    LIST_INIT(class.var)
+    int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
+    matchToken(&cp->parser,TOKEN_BRACE1,"\"{\" in class definition",msgStart);
+    bool needVar=false;
+    int pt;
+    while(1){
+        token=nextToken(&cp->parser);
+        msgStart=token.start;
+        if(token.type==TOKEN_BRACE2 && !needVar){
+            break;
+        }else if(token.type==TOKEN_WORD){
+            LIST_ADD(class.var,Name,token.word)
+            token=nextToken(&cp->parser);
+            if(token.type==TOKEN_PARE1){
+                token=nextToken(&cp->parser);
+                if(token.type==TOKEN_WORD){
+                    if(strcmp(token.word,"init")==0){
+                        class.initID=class.var.count-1;
+                    }else if(strcmp(token.word,"destroy")==0){
+                        class.destroyID=class.var.count-1;
+                    }else{
+                        sprintf(temp,"unknown operation \"%s\".",token.word);
+                        compileMsg(MSG_ERROR,cp,temp,msgStart);
+                    }
+                }else{
+                    bool isFound=false;
+                    for(int i=0;i<OPERAT_INFIX_COUNT;i++){
+                        if(operatInfix[i].tokenType==token.type){
+                            class.optID[operatInfix[i].opcode-1/*minus nop*/]=class.var.count-1;
+                            isFound=true;
+                            break;
+                        }
+                    }
+                    if(!isFound){
+                        compileMsg(MSG_ERROR,cp,"unknown operation type.",msgStart);
+                    }
+                }
+                matchToken(&cp->parser,TOKEN_PARE2,"\")\" in class operation",msgStart);
+                token=nextToken(&cp->parser);
+            }
+            if(token.type==TOKEN_EQUAL){
+                pt=setPart(cp,&unit,msgStart);
+                compileExpression(cp,&unit,0,false,msgStart,env);
+                token=nextToken(&cp->parser);
+                unit.plist.vals[pt].end=token.end;
+            }
+            if(token.type==TOKEN_COMMA){
+                needVar=true;
+            }else{
+                lastToken(&cp->parser);
+                needVar=false;
+            }
+        }else{
+            compileMsg(MSG_ERROR,cp,"expected class member",msgStart);
+        }
+    }
+    setFuncUnit(&class.initFunc,unit);
+    LIST_REDUCE(cp->vlist,Var,cp->vlist.count-unit.varStart)
+    return class;
 }
 void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
     Token token=nextToken(&cp->parser);
@@ -415,6 +496,12 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
         Func func=compileFunction(cp,env);
         con.type=CONST_FUNCTION;
         con.func=func;
+        addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
+    }else if(token.type==TOKEN_CLASS){
+        Const con;
+        Class class=compileClass(cp);
+        con.type=CONST_CLASS;
+        con.classd=class;
         addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
     }else{
         compileMsg(MSG_ERROR,cp,"expected an expression.",msgStart);

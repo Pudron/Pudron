@@ -342,7 +342,15 @@ void getConstMsg(char*text,Const con){
             sprintf(text,"%s",con.str);
             break;
         case CONST_CLASS:
-            strcpy(text,"class");
+            strcpy(text,"class{");
+            for(int i=0;i<con.classd.var.count;i++){
+                strcat(text,con.classd.var.vals[i]);
+                if(i==con.classd.var.count-1){
+                    strcat(text,"}");
+                }else{
+                    strcat(text,",");
+                }
+            }
             break;
         case CONST_FUNCTION:
             strcpy(text,"function(");
