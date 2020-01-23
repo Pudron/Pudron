@@ -84,15 +84,38 @@ Compiler newCompiler(Parser parser){
     free(path);
     return compiler;
 }
+void addSTD(Compiler*cp){
+    Var var;
+    var.isRef=false;
+    var.name="int";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
+    var.name="Class";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
+    var.name="Function";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
+    var.name="double";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
+    var.name="string";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
+    var.name="List";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
+}
 Module compileAll(char*fileName){
     Module mod;
     char*n1=cutPath(fileName);
     mod.name=cutPostfix(n1);
     free(n1);
     Compiler cp=newCompiler(newParser(fileName));
+    addSTD(&cp);
     getAllToken(&cp.parser);
     Env env={NULL,NULL,true,NULL};
-    Unit unit=newUnit(0);
+    Unit unit=newUnit(cp.vlist.count);
     compileBlock(&cp,&unit,env);
     unit.curPart=-1;
     addCmd(&unit,OPCODE_NOP);
@@ -206,10 +229,6 @@ Func compileFunction(Compiler*cp,Env env){
             }
         }
     }
-    var.name="argList";
-    var.hashName=hashString(var.name);
-    //LIST_ADD(func.argList,Var,var)
-    LIST_ADD(cp->vlist,Var,var)
     compileBlock(cp,&funit,env);
     Const con;
     con.type=CONST_INT;
@@ -238,7 +257,7 @@ Class compileClass(Compiler*cp){
     var.hashName=hashString(var.name);
     LIST_ADD(class.initFunc.argList,Var,var)
     LIST_ADD(cp->vlist,Var,var)
-    LIST_INIT(class.var)
+    LIST_INIT(class.varList)
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
     matchToken(&cp->parser,TOKEN_BRACE1,"\"{\" in class definition",msgStart);
     bool needVar=false;
@@ -249,15 +268,18 @@ Class compileClass(Compiler*cp){
         if(token.type==TOKEN_BRACE2 && !needVar){
             break;
         }else if(token.type==TOKEN_WORD){
-            LIST_ADD(class.var,Name,token.word)
+            var.name=token.word;
+            var.isRef=false;
+            var.hashName=hashString(var.name);
+            LIST_ADD(class.varList,Var,var)
             token=nextToken(&cp->parser);
             if(token.type==TOKEN_PARE1){
                 token=nextToken(&cp->parser);
                 if(token.type==TOKEN_WORD){
                     if(strcmp(token.word,"init")==0){
-                        class.initID=class.var.count-1;
+                        class.initID=class.varList.count-1;
                     }else if(strcmp(token.word,"destroy")==0){
-                        class.destroyID=class.var.count-1;
+                        class.destroyID=class.varList.count-1;
                     }else{
                         sprintf(temp,"unknown operation \"%s\".",token.word);
                         compileMsg(MSG_ERROR,cp,temp,msgStart);
@@ -266,7 +288,7 @@ Class compileClass(Compiler*cp){
                     bool isFound=false;
                     for(int i=0;i<OPERAT_INFIX_COUNT;i++){
                         if(operatInfix[i].tokenType==token.type){
-                            class.optID[operatInfix[i].opcode-1/*minus nop*/]=class.var.count-1;
+                            class.optID[operatInfix[i].opcode-1/*minus nop*/]=class.varList.count-1;
                             isFound=true;
                             break;
                         }
@@ -371,8 +393,8 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
         }
         bool isFound=false;
         if(env.class!=NULL){
-            for(int i=0;i<env.class->var.count;i++){
-                if(strcmp(name,env.class->var.vals[i])){
+            for(int i=0;i<env.class->varList.count;i++){
+                if(strcmp(name,env.class->varList.vals[i].name)){
                     isFound=true;
                     addCmd1(unit,OPCODE_LOAD_VAR,getVar(cp,unit,"this",env));
                     addCmd1(unit,OPCODE_LOAD_ATTR,i);
@@ -398,6 +420,16 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
         con.type=CONST_CLASS;
         con.classd=class;
         addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
+    }else if(token.type==TOKEN_ARG){
+        token=nextToken(&cp->parser);
+        if(token.type==TOKEN_BRACKET1){
+            compileExpression(cp,unit,0,false,msgStart,env);
+            matchToken(&cp->parser,TOKEN_BRACKET2,"\"]\" after arg subscript",msgStart);
+            addCmd(unit,OPCODE_LOAD_STACK);
+        }else{
+            lastToken(&cp->parser);
+            addCmd(unit,OPCODE_LOAD_ARG_COUNT);
+        }
     }else{
         compileMsg(MSG_ERROR,cp,"expected an expression.",msgStart);
     }
@@ -435,7 +467,7 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
             }
         }else if(token.type==TOKEN_BRACKET1){
             compileExpression(cp,unit,0,false,msgStart,env);
-            matchToken(&cp->parser,TOKEN_BRACKET2,"\"]\" in expression",msgStart);
+            matchToken(&cp->parser,TOKEN_BRACKET2,"\"]\" after subscript",msgStart);
             addCmd(unit,OPCODE_LOAD_SUBSCRIPT);
         }else{
             lastToken(&cp->parser);

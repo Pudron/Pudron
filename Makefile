@@ -3,9 +3,9 @@ vpath %.c src
 vpath %.o build/objs
 PLATFORM ?= LINUX
 CC=gcc
-CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM)
+CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM) -DDEBUG
 LIBS=-ldl
-OBJS=main.o common.o pio.o parser.o compiler.o
+OBJS=main.o common.o pio.o parser.o compiler.o vm.o core.o
 ifeq ($(PLATFORM),LINUX)
 	EXE=./
 else

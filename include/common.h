@@ -66,14 +66,6 @@ typedef enum{
     true
 }bool;
 
-#define STD_CLASS_COUNT 7
-#define CLASS_INT 0
-#define CLASS_CLASS 1
-#define CLASS_FUNCTION 2
-#define CLASS_META 3
-#define CLASS_DOUBLE 4
-#define CLASS_STRING 5
-
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,
@@ -135,10 +127,10 @@ typedef enum{
     TOKEN_INCLUDE,
     TOKEN_TRUE,
     TOKEN_FALSE,
-    TOKEN_LINE
+    TOKEN_ARG
 }TokenType;
 #define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 44
+#define OPCODE_COUNT 46
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -191,7 +183,9 @@ typedef enum{
     OPCODE_ASSIGN,/*arg:operation type(-1 is normal assignment)*/
 
     OPCODE_MAKE_ARRAY,
-    OPCODE_GET_FOR_INDEX
+    OPCODE_GET_FOR_INDEX,
+    OPCODE_LOAD_STACK,/*以当前unit的start为基准*/
+    OPCODE_LOAD_ARG_COUNT
     /*OPCODE_MAKE_OBJECT,
     OPCODE_EXTEND_CLASS,
     OPCODE_ENABLE_CLASS,
@@ -295,8 +289,10 @@ struct ModuleDef{
     MemberList memberList;
     /*unit end*/
 };
+typedef struct VMDef VM;
+typedef struct UnitDef Unit;
 typedef struct{
-    void (*exe)(void);
+    void (*exe)(VM*,Unit*);
     VarList argList;
     /*unit start*/
     ConstList constList;
@@ -310,7 +306,7 @@ typedef struct{
 typedef struct{
     char*name;
     uint hashName;
-    NameList var;
+    VarList varList;
     Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
     int optID[OPT_METHOD_COUNT];
     int initID,destroyID;
@@ -333,7 +329,6 @@ struct ConstDef{
 };
 typedef struct ObjectDef{
     Class*class;
-    uint hashName;
     union{
         int num;
         double numd;
@@ -345,7 +340,7 @@ typedef struct ObjectDef{
     int varCount;
     int refCount;
 }Object;
-typedef struct{
+struct UnitDef{
     ConstList constList;
     intList clist;
     ModuleList mlist;
@@ -355,7 +350,7 @@ typedef struct{
     int varStart;
     int curPart;
     int ptr;
-}Unit;
+};
 typedef struct{
     Opcode opcode;
     char*name;

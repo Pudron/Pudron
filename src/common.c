@@ -43,7 +43,9 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_ASSIGN_RIGHT,"ASSIGN_RIGHT",1},
     {OPCODE_ASSIGN,"ASSIGN",1},
     {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",1},
-    {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",0}
+    {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",0},
+    {OPCODE_LOAD_STACK,"LOAD_STACK",0},
+    {OPCODE_LOAD_ARG_COUNT,"LOAD_ARG_COUNT",0}
     /*{OPCODE_MAKE_OBJECT,"MAKE_OBJECT",true,false},
     {OPCODE_EXTEND_CLASS,"EXTEND_CLASS",true,false},
     {OPCODE_ENABLE_CLASS,"ENABLE_CLASS",true,false},
@@ -211,6 +213,7 @@ Unit newUnit(int varStart){
     LIST_INIT(unit.mblist)
     unit.varStart=varStart;
     unit.curPart=-1;
+    unit.ptr=0;
     return unit;
 }
 void setModuleUnit(Module*mod,Unit unit){
