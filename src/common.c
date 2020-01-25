@@ -28,7 +28,7 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_LOAD_MEMBER,"LOAD_MEMBER",1},
     {OPCODE_LOAD_SUBSCRIPT,"LOAD_SUBSCRIPT",0},
     {OPCODE_STACK_COPY,"STACK_COPY",1},
-    {OPCODE_PUSH_STACK,"PUSH_STACK",1},
+    //{OPCODE_PUSH_STACK,"PUSH_STACK",1},
     {OPCODE_POP_STACK,"POP_STACK",1},
     {OPCODE_JUMP,"JUMP",1},
     {OPCODE_JUMP_IF_FALSE,"JUMP_IF_FALSE",1},
@@ -39,8 +39,10 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_CALL_FUNCTION,"CALL_FUNCTION",1},
     //{OPCODE_CALL_METHOD,"CALL_METHOD",true,false},
     {OPCODE_RETURN,"RETURN",0},
-    {OPCODE_ASSIGN_LEFT,"ASSIGN_LEFT",1},
-    {OPCODE_ASSIGN_RIGHT,"ASSIGN_RIGHT",1},
+    {OPCODE_INVERT_ORDER,"INVERT_ORDER",1},
+    //{OPCODE_ASSIGN_LEFT,"ASSIGN_LEFT",1},
+    //{OPCODE_ASSIGN_RIGHT,"ASSIGN_RIGHT",1},
+    {OPCODE_SET_ASSIGN_COUNT,"SET_ASSIGN_COUNT",1},
     {OPCODE_ASSIGN,"ASSIGN",1},
     {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",1},
     {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",0},
@@ -266,9 +268,9 @@ void getConstMsg(char*text,Const con){
             break;
         case CONST_CLASS:
             strcpy(text,"class{");
-            for(int i=0;i<con.classd.var.count;i++){
-                strcat(text,con.classd.var.vals[i]);
-                if(i==con.classd.var.count-1){
+            for(int i=0;i<con.classd.varList.count;i++){
+                strcat(text,con.classd.varList.vals[i].name);
+                if(i==con.classd.varList.count-1){
                     strcat(text,"}");
                 }else{
                     strcat(text,",");

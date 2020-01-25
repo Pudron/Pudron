@@ -90,13 +90,13 @@ void addSTD(Compiler*cp){
     var.name="int";
     var.hashName=hashString(var.name);
     LIST_ADD(cp->vlist,Var,var)
+    var.name="double";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
     var.name="Class";
     var.hashName=hashString(var.name);
     LIST_ADD(cp->vlist,Var,var)
     var.name="Function";
-    var.hashName=hashString(var.name);
-    LIST_ADD(cp->vlist,Var,var)
-    var.name="double";
     var.hashName=hashString(var.name);
     LIST_ADD(cp->vlist,Var,var)
     var.name="string";
@@ -251,6 +251,7 @@ Class compileClass(Compiler*cp){
     class.hashName=0;
     class.initID=-1;
     class.destroyID=-1;
+    class.subID=-1;
     memset(class.optID,-1,OPT_METHOD_COUNT+1);
     LIST_INIT(class.initFunc.argList)
     var.name="this";
@@ -268,6 +269,7 @@ Class compileClass(Compiler*cp){
         if(token.type==TOKEN_BRACE2 && !needVar){
             break;
         }else if(token.type==TOKEN_WORD){
+            pt=setPart(cp,&unit,msgStart);
             var.name=token.word;
             var.isRef=false;
             var.hashName=hashString(var.name);
@@ -280,6 +282,8 @@ Class compileClass(Compiler*cp){
                         class.initID=class.varList.count-1;
                     }else if(strcmp(token.word,"destroy")==0){
                         class.destroyID=class.varList.count-1;
+                    }else if(strcmp(token.word,"subscript")==0){
+                        class.subID=class.varList.count-1;
                     }else{
                         sprintf(temp,"unknown operation \"%s\".",token.word);
                         compileMsg(MSG_ERROR,cp,temp,msgStart);
@@ -301,11 +305,15 @@ Class compileClass(Compiler*cp){
                 token=nextToken(&cp->parser);
             }
             if(token.type==TOKEN_EQUAL){
-                pt=setPart(cp,&unit,msgStart);
                 compileExpression(cp,&unit,0,false,msgStart,env);
                 token=nextToken(&cp->parser);
-                unit.plist.vals[pt].end=token.end;
+            }else{
+                Const con;
+                con.type=CONST_INT;
+                con.num=0;
+                addCmd1(&unit,OPCODE_LOAD_CONST,addConst(&unit,con));
             }
+            unit.plist.vals[pt].end=token.end;
             if(token.type==TOKEN_COMMA){
                 needVar=true;
             }else{
@@ -517,7 +525,7 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
     Token token;
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken+1].start;
     int pt=setPart(cp,unit,msgStart);
-    int scount=0,gcount=0;
+    int scount=0;
     while(1){
         compileExpression(cp,unit,0,true,msgStart,env);
         scount++;
@@ -535,8 +543,18 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
     switch(token.type){
         case TOKEN_EQUAL:
             opt=-1;
+            break;
         case TOKEN_ADD_EQUAL:
             opt=OPCODE_ADD;
+            break;
+        case TOKEN_SUB_EQUAL:
+            opt=OPCODE_SUB;
+            break;
+        case TOKEN_MUL_EQUAL:
+            opt=OPCODE_MUL;
+            break;
+        case TOKEN_DIV_EQUAL:
+            opt=OPCODE_DIV;
             break;
         case TOKEN_LEFT_EQUAL:
             opt=OPCODE_LEFT;
@@ -557,22 +575,31 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
             compileMsg(MSG_ERROR,cp,"expected assignment operator.",msgStart);
             break;
     }
-    addCmd1(unit,OPCODE_ASSIGN_LEFT,scount);
+    if(scount>1){
+        addCmd1(unit,OPCODE_INVERT_ORDER,scount);
+    }
+    int gcount=0;
     while(1){
         compileExpression(cp,unit,0,false,msgStart,env);
         gcount++;
         token=nextToken(&cp->parser);
         if(token.type==TOKEN_COMMA){
+            addCmd1(unit,OPCODE_ASSIGN,opt);
             continue;
         }else if(token.type==TOKEN_SEMI){
+            if(gcount<scount){
+                addCmd1(unit,OPCODE_SET_ASSIGN_COUNT,scount-gcount+1);
+            }
+            addCmd1(unit,OPCODE_ASSIGN,opt);
             unit->plist.vals[pt].end=token.end;
             break;
         }else{
             compileMsg(MSG_ERROR,cp,"expected \";\" or \",\" in assignment.",msgStart);
         }
     }
-    addCmd1(unit,OPCODE_ASSIGN_RIGHT,gcount);
-    addCmd1(unit,OPCODE_ASSIGN,opt);
+    if(gcount>scount){
+        compileMsg(MSG_ERROR,cp,"too many assignment.",msgStart);
+    }
 }
 void compileIfState(Compiler*cp,Unit*unit,Env env){
     Token token;
@@ -680,10 +707,10 @@ void compileForState(Compiler*cp,Unit*unit,Env env){
     int pt=setPart(cp,unit,msgStart);
     Const con;
     Token token;
-    addCmd(unit,OPCODE_SET_LOOP);
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in for statement",msgStart);
     compileExpression(cp,unit,0,false,msgStart,env);
     matchToken(&cp->parser,TOKEN_COMMA,"\",\" in for statement",msgStart);
+    addCmd(unit,OPCODE_SET_LOOP);
     compileExpression(cp,unit,0,false,msgStart,env);
     token=matchToken(&cp->parser,TOKEN_PARE2,"\")\" in for statement",msgStart);
     unit->plist.vals[pt].end=token.end;

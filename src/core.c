@@ -1,4 +1,5 @@
 #include"core.h"
+#include"vm.h"
 void vmError(VM*vm,char*text){
     Msg msg;
     Part part=vm->part;
@@ -27,6 +28,7 @@ Class newClass(char*name){
     memset(class.optID,-1,OPT_METHOD_COUNT+1);
     class.initID=-1;
     class.destroyID=-1;
+    class.subID=-1;
     class.initFunc=newFunc();
     return class;
 }
@@ -38,18 +40,32 @@ bool compareClassStd(VM*vm,Object*obj,int class){
 }
 Object*newObjectStd(VM*vm,int class){
     Class*classd=&vm->stdclass[class];
-    Object*obj=(Object*)malloc(sizeof(Object));
+    Object*obj=NULL;
+    obj=(Object*)malloc(sizeof(Object));
     obj->class=classd;
     obj->varCount=classd->varList.count;
     obj->objs=(obj->varCount>0)?((Object**)malloc(sizeof(Object*)*obj->varCount)):NULL;
     obj->refCount=1;
+    if(class==CLASS_STRING){
+        obj->str=(char*)memManage(obj->str,1);
+        obj->str[0]='\0';
+    }
     return obj;
 }
-void reduceRef(Object*obj){
+void reduceRef(VM*vm,Object*obj){
     obj->refCount--;
     if(obj->refCount<=0){
+        if(obj->class->subID>=0){
+            obj->refCount=2;
+            Object*rt=obj->objs[obj->class->subID];
+            if(!compareClassStd(vm,rt,CLASS_FUNCTION)){
+                vmError(vm,"expected destroy method.");
+            }
+            PUSH(obj);
+            callFunction(vm,rt->func,1);
+        }
         for(int i=0;i<obj->varCount;i++){
-            reduceRef(obj->objs[i]);
+            reduceRef(vm,obj->objs[i]);
         }
         if(obj->varCount>0){
             free(obj->objs);
@@ -104,94 +120,84 @@ void addClassFunc(Class*class,char*name,void*exe,int optID){
     LIST_ADD(class->varList,Var,var)
     if(optID>=1){
         class->optID[optID-1]=class->varList.count-1;
+    }else if(optID==ID_INIT){
+        class->initID=class->varList.count-1;
+    }else if(optID==ID_DESTROY){
+        class->destroyID=class->varList.count-1;
+    }else if(optID==ID_SUBSCRIPT){
+        class->subID=class->varList.count-1;
     }
     Const con;
     con.type=CONST_FUNCTION;
     con.func=func;
     LIST_ADD(class->initFunc.constList,Const,con)
 }
-/*#define INT_FUNC_BIT_DEF(name,opt) \
-    FUNC_DEF(name){\
-        Object*obj=POP();\
-        Object*this=POP();\
-        Object*result=NULL;\
-        if(compareClassStd(vm,obj,CLASS_INT)){\
-            result=newObjectStd(vm,CLASS_INT);\
-            result->num=this->num opt obj->num;\
-        }else{\
-            PD_ERROR("unsupported operation for int.");\
-        }\
-        reduceRef(obj);\
-        reduceRef(this);\
-        PD_RETURN(result);\
+void addClassInt(Class*class,char*name,int num){
+    Var var={false,name,hashString(name)};
+    LIST_ADD(class->varList,Var,var)
+    Const con;
+    con.type=CONST_INT;
+    con.num=num;
+    LIST_ADD(class->initFunc.constList,Const,con)
+}
+void addSubObj(Object*parent,Object*child){
+    parent->varCount++;
+    parent->objs=(Object**)memManage(parent->objs,parent->varCount*sizeof(Object*));
+    parent->objs[parent->varCount-1]=child;
+}
+FUNC_DEF(string_create){
+    char temp[50];
+    Object*obj,*this=ARG(0);
+    for(int i=1;i<ARGC;i++){
+        obj=ARG(i);
+        if(compareClassStd(vm,obj,CLASS_INT)){
+            sprintf(temp,"%d",obj->num);
+            this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
+            strcat(this->str,temp);
+        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){
+            sprintf(temp,"%f",obj->numd);
+            this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
+            strcat(this->str,temp);
+        }else if(compareClassStd(vm,obj,CLASS_STRING)){
+            this->str=(char*)memManage(this->str,strlen(this->str)+strlen(obj->str)+1);
+            strcat(this->str,obj->str);
+        }else{
+            PD_ERROR("expected string,int or double when creating string.");
+        }
     }
-#define INT_FUNC_DEF(name,opt) \
-    FUNC_DEF(name){\
-        Object*obj=POP();\
-        Object*this=POP();\
-        Object*result=NULL;\
-        if(compareClassStd(vm,obj,CLASS_INT)){\
-            result=newObjectStd(vm,CLASS_INT);\
-            result->num=this->num opt obj->num;\
-        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){\
-            result=newObjectStd(vm,CLASS_DOUBLE);\
-            result->numd=(double)this->num opt obj->numd;\
-        }else{\
-            PD_ERROR("unsupported operation for int.");\
-        }\
-        reduceRef(obj);\
-        reduceRef(this);\
-        PD_RETURN(result);\
+    STRING_LENGTH(this)=strlen(this->str);
+}
+FUNC_DEF(string_add){
+    Object*this=ARG(0),*obj=ARG(1);
+    Object*str=newObjectStd(vm,CLASS_STRING);
+    str->str=(char*)memManage(str->str,strlen(this->str)+strlen(obj->str)+1);
+    sprintf(str->str,"%s%s",this->str,obj->str);
+    STRING_LENGTH(this)=strlen(this->str);
+    PD_RETURN(str);
+}
+FUNC_DEF(list_create){
+    Object*this=ARG(0);
+    for(int i=0;i<ARGC;i++){
+        addSubObj(this,ARG(i));
+        LIST_COUNT(this)++;
     }
-INT_FUNC_DEF(INT_ADD,+)
-INT_FUNC_DEF(INT_SUB,-)
-INT_FUNC_DEF(INT_MUL,*)
-INT_FUNC_DEF(INT_DIV,/)
-INT_FUNC_BIT_DEF(INT_AND,&)
-INT_FUNC_BIT_DEF(INT_OR,|)
-INT_FUNC_DEF(INT_CAND,&&)
-INT_FUNC_DEF(INT_COR,||)
-INT_FUNC_BIT_DEF(INT_LEFT,<<)
-INT_FUNC_BIT_DEF(INT_RIGHT,>>)
-INT_FUNC_DEF(INT_EQUAL,==)
-INT_FUNC_DEF(INT_GTHAN,>)
-INT_FUNC_DEF(INT_LTHAN,<)
-INT_FUNC_DEF(INT_NOT_EQUAL,!=)
-INT_FUNC_DEF(INT_GTHAN_EQUAL,>=)
-INT_FUNC_DEF(INT_LTHAN_EQUAL,<=)
-INT_FUNC_BIT_DEF(INT_REM,%)
-#define DOUBLE_FUNC_DEF(name,opt) \
-    FUNC_DEF(name){\
-        Object*obj=POP();\
-        Object*this=POP();\
-        Object*result=NULL;\
-        if(compareClassStd(vm,obj,CLASS_INT)){\
-            result=newObjectStd(vm,CLASS_DOUBLE);\
-            result->num=this->numd opt obj->num;\
-        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){\
-            result=newObjectStd(vm,CLASS_DOUBLE);\
-            result->num=this->numd opt obj->numd;\
-        }else{\
-            PD_ERROR("unsupported operation for double.");\
-        }\
-        reduceRef(obj);\
-        reduceRef(this);\
-        PD_RETURN(result);\
+}
+FUNC_DEF(list_add){
+    Object*this=ARG(0);
+    addSubObj(this,ARG(1));
+    LIST_COUNT(this)++;
+}
+FUNC_DEF(list_subscript){
+    Object*this=ARG(0),*obj=ARG(1);
+    if(!compareClassStd(vm,obj,CLASS_INT)){
+        vmError(vm,"expected int when calling List subscript.");
     }
-DOUBLE_FUNC_DEF(DOUBLE_ADD,+)
-DOUBLE_FUNC_DEF(DOUBLE_SUB,-)
-DOUBLE_FUNC_DEF(DOUBLE_MUL,*)
-DOUBLE_FUNC_DEF(DOUBLE_DIV,/)
-DOUBLE_FUNC_DEF(DOUBLE_CAND,&&)
-DOUBLE_FUNC_DEF(DOUBLE_COR,||)
-DOUBLE_FUNC_DEF(DOUBLE_EQUAL,==)
-DOUBLE_FUNC_DEF(DOUBLE_GTHAN,>)
-DOUBLE_FUNC_DEF(DOUBLE_LTHAN,<)
-DOUBLE_FUNC_DEF(DOUBLE_NOT_EQUAL,!=)
-DOUBLE_FUNC_DEF(DOUBLE_GTHAN_EQUAL,>=)
-DOUBLE_FUNC_DEF(DOUBLE_LTHAN_EQUAL,<=)
-#define ADD_INT_FUNC(name) addClassFunc(&class,#name,INT_##name,OPCODE_##name)
-#define ADD_DOUBLE_FUNC(name) addClassFunc(&class,#name,DOUBLE_##name,OPCODE_##name)*/
+    Object*rt=this->objs[LIST_VAR_COUNT+obj->num];
+    rt->refCount++;
+    reduceRef(vm,this);
+    reduceRef(vm,obj);
+    PD_RETURN(rt);
+}
 void makeSTD(VM*vm){
     Class class;
     /*int definition*/
@@ -204,4 +210,30 @@ void makeSTD(VM*vm){
     class.initFunc=newFunc();
     class.initFunc.exe=NULL;
     vm->stdclass[CLASS_DOUBLE]=class;
+    /*class definition*/
+    class=newClass("Class");
+    class.initFunc=newFunc();
+    class.initFunc.exe=NULL;
+    vm->stdclass[CLASS_CLASS]=class;
+    /*function definition*/
+    class=newClass("Function");
+    class.initFunc=newFunc();
+    class.initFunc.exe=NULL;
+    vm->stdclass[CLASS_FUNCTION]=class;
+    /*string definition*/
+    class=newClass("string");
+    class.initFunc=newFunc();
+    class.initFunc.exe=std_init;
+    addClassInt(&class,"length",0);
+    addClassFunc(&class,"string_create",string_create,ID_INIT);
+    addClassFunc(&class,"add",string_add,OPCODE_ADD);
+    vm->stdclass[CLASS_STRING]=class;
+    /*List definition*/
+    class=newClass("List");
+    class.initFunc=newFunc();
+    class.initFunc.exe=std_init;
+    addClassInt(&class,"count",0);
+    addClassFunc(&class,"add",list_add,-1);
+    addClassFunc(&class,"list_subscript",list_subscript,ID_SUBSCRIPT);
+    vm->stdclass[CLASS_LIST]=class;
 }

@@ -130,7 +130,7 @@ typedef enum{
     TOKEN_ARG
 }TokenType;
 #define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 46
+#define OPCODE_COUNT 45
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -163,7 +163,7 @@ typedef enum{
     //OPCODE_PUSH_VAL,
     OPCODE_STACK_COPY,
     //OPCODE_POP_VAR,/*参数为数量*/
-    OPCODE_PUSH_STACK,/*arg:count*/
+    //OPCODE_PUSH_STACK,/*arg:count*/
     OPCODE_POP_STACK,/*参数为数量*/
     OPCODE_JUMP,
     OPCODE_JUMP_IF_FALSE,
@@ -177,10 +177,11 @@ typedef enum{
     //OPCODE_CALL_ATTR,/*类内部访问*/
     OPCODE_RETURN,
     //OPCODE_ENABLE_FUNCTION,/*顺便把函数变量入栈*/
-
-    OPCODE_ASSIGN_LEFT,/*arg:count*/
-    OPCODE_ASSIGN_RIGHT,/*arg:count*/
-    OPCODE_ASSIGN,/*arg:operation type(-1 is normal assignment)*/
+    OPCODE_INVERT_ORDER,/*arg:count,倒序*/
+    //OPCODE_ASSIGN_LEFT,/*arg:count*/
+    //OPCODE_ASSIGN_RIGHT,/*arg:count*/
+    OPCODE_SET_ASSIGN_COUNT,/*set asc*/
+    OPCODE_ASSIGN,/*arg:operation type(-1 is normal assignment),顺便把asc设为1*/
 
     OPCODE_MAKE_ARRAY,
     OPCODE_GET_FOR_INDEX,
@@ -309,7 +310,7 @@ typedef struct{
     VarList varList;
     Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
     int optID[OPT_METHOD_COUNT];
-    int initID,destroyID;
+    int initID,destroyID,subID;
 }Class;
 struct ConstDef{
     enum{
@@ -350,6 +351,7 @@ struct UnitDef{
     int varStart;
     int curPart;
     int ptr;
+    int argc;
 };
 typedef struct{
     Opcode opcode;
