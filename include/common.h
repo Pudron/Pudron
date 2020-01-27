@@ -340,6 +340,7 @@ typedef struct ObjectDef{
     struct ObjectDef**objs;
     int varCount;
     int refCount;
+    bool isInit;/*用于标记初始化对象*/
 }Object;
 struct UnitDef{
     ConstList constList;

@@ -14,6 +14,8 @@ VM newVM(){
     vm.stackCount=0;
     vm.ptr=0;
     LIST_INIT(vm.loopList)
+    LIST_INIT(vm.plist)
+    makeSTD(&vm);
     return vm;
 }
 void popStack(VM*vm,int num){
@@ -25,7 +27,7 @@ void popStack(VM*vm,int num){
 }
 void callFunction(VM*vm,Func func,int argc){
     Unit unit=getFuncUnit(func);
-    unit.varStart=vm->stackCount-argc-1;
+    unit.varStart=vm->stackCount-argc;
     unit.argc=argc;
     int loopc=vm->loopList.count;
     int nc;
@@ -39,7 +41,7 @@ void callFunction(VM*vm,Func func,int argc){
     }
     /*为参数变量重命名*/
     nc=unit.varStart+func.argList.count;
-    for(int i=unit.varStart;i<=nc;i++){
+    for(int i=unit.varStart;i<nc;i++){
         vm->stack[i].hashName=func.argList.vals[i].hashName;
     }
     if(func.exe!=NULL){
@@ -62,8 +64,11 @@ void callClass(VM*vm,Class*class,int argc){
     obj->varCount=class->varList.count;
     obj->refCount=1;
     obj->objs=NULL;
-    obj->objs=(Object**)memManage(obj->objs,obj->varCount*sizeof(Object*));
-    callFunction(vm,class->initFunc,0);
+    obj->isInit=true;
+    if(obj->varCount>0){
+        obj->objs=(Object**)memManage(obj->objs,obj->varCount*sizeof(Object*));
+    }
+    callFunction(vm,class->initFunc,-obj->varCount);
     checkStack(obj->varCount);
     for(int i=obj->varCount-1;i>=0;i--){
         obj->objs[i]=POP();
@@ -73,7 +78,7 @@ void callClass(VM*vm,Class*class,int argc){
         /*塞this到参数前*/
         vm->stackCount++;
         for(int i=0;i<argc;i++){
-            vm->stack[vm->stackCount-2-i]=vm->stack[vm->stackCount-1-i];
+            vm->stack[vm->stackCount-1-i]=vm->stack[vm->stackCount-2-i];
         }
         vm->stack[vm->stackCount-1-argc].obj=obj;
         Object*cf=obj->objs[class->initID];
@@ -96,15 +101,22 @@ void invertOrder(VM*vm,int count){
         vm->stack[vm->stackCount-count+i]=st;
     }
 }
-Object copyObject(Object*obj){
+Object copyObject(VM*vm,Object*obj,int refCount){
     Object val=*obj;
     val.objs=NULL;
-    val.refCount=1;
+    /*refCount与前面保持一致，可能别的地方还在引用*/
+    val.refCount=refCount;
+    val.isInit=false;
+    if(compareClassStd(vm,obj,CLASS_STRING)){
+        val.str=NULL;
+        val.str=(char*)memManage(val.str,strlen(obj->str)+1);
+        strcpy(val.str,obj->str);
+    }
     val.objs=(val.varCount>0)?(Object**)memManage(val.objs,val.varCount*sizeof(Object*)):NULL;
     for(int i=0;i<val.varCount;i++){
         val.objs[i]=NULL;
         val.objs[i]=(Object*)memManage(val.objs[i],sizeof(Object));
-        *(val.objs[i])=*(obj->objs[i]);
+        *(val.objs[i])=copyObject(vm,obj->objs[i],1);
     }
     return val;
 }
@@ -223,23 +235,66 @@ void exeOpt(VM*vm,int opcode){
         reduceRef(vm,a);
     }
 }
+/*只删除现有数据，保持指针有效*/
+void delObj(VM*vm,Object*obj){
+    if(obj->class->destroyID>=0){
+        obj->refCount=2;
+        Object*rt=obj->objs[obj->class->destroyID];
+        if(!compareClassStd(vm,rt,CLASS_FUNCTION)){
+            vmError(vm,"expected destroy method.");
+        }
+        PUSH(obj);
+        callFunction(vm,rt->func,1);
+        reduceRef(vm,POP());
+    }
+    if(compareClassStd(vm,obj,CLASS_STRING)){
+        free(obj->str);
+    }
+    for(int i=0;i<obj->varCount;i++){
+        reduceRef(vm,obj->objs[i]);
+    }
+    if(obj->varCount>0){
+        free(obj->objs);
+    }
+}
 void assign(VM*vm,int astype,int asc){
     checkStack(asc+1);
     Object*obj=POP();
-    Object*val;
-    obj->refCount++;
+    Object*val,*obj2;
+    int hashName,refCount;
     for(int i=0;i<asc;i++){
         if(astype==-1){
+            hashName=vm->stack[vm->stackCount-1].hashName;
             val=POP();
-            *val=copyObject(obj);
+            refCount=val->refCount;
+            delObj(vm,val);
+            if(obj->isInit){
+                *val=*obj;
+                val->isInit=false;
+            }else{
+                *val=copyObject(vm,obj,refCount);
+            }
+            if(compareClassStd(vm,val,CLASS_CLASS)){
+                val->classd->hashName=hashName;
+            }
         }else{
+            obj->refCount++;
             val=vm->stack[vm->stackCount-1].obj;
+            refCount=val->refCount;
+            val->refCount++;
             PUSH(obj);
             exeOpt(vm,astype);
-            *val=copyObject(POP());
+            delObj(vm,val);
+            obj2=POP();
+            *val=copyObject(vm,obj2,refCount);
+            reduceRef(vm,obj2);
         }
     }
-    reduceRef(vm,obj);
+    if(astype==-1 && obj->isInit){
+        free(obj);
+    }else{
+        reduceRef(vm,obj);
+    }
 }
 #define EXE_OPT_PREFIX(opt) \
     this=POP();\
@@ -251,15 +306,21 @@ void assign(VM*vm,int astype,int asc){
         obj->numd= opt this->numd;\
     }else{\
         vmError(vm,"unsupported prefix operation.");\
-    }
+    }\
+    PUSH(obj);\
+    reduceRef(vm,this);
 void execute(VM*vm,Unit*unit){
     char temp[50];
     int c=0;
     Object*obj=NULL,*this=NULL;
     int asc=1;
     for(int i=0;i<unit->clist.count;i++){
-        vm->part=unit->plist.vals[i];
+        c=unit->clist.vals[i];
+        if(c>=0){
+            vm->part=unit->plist.vals[c];
+        }
         vm->ptr=i;
+        //printf("cmd:%d\n",i);
         c=unit->clist.vals[++i];
         switch(c){
             case OPCODE_NOP:
@@ -291,6 +352,8 @@ void execute(VM*vm,Unit*unit){
                 }else{
                     vmError(vm,"unsupported prefix operation.");
                 }
+                PUSH(obj);
+                reduceRef(vm,this);
                 break;
             case OPCODE_NOT:
                 EXE_OPT_PREFIX(!)
@@ -345,6 +408,12 @@ void execute(VM*vm,Unit*unit){
                 }
                 callFunction(vm,obj->func,2);
                 break;
+            case OPCODE_STACK_COPY:{
+                Stack st=vm->stack[vm->stackCount-unit->clist.vals[++i]-1];
+                st.obj->refCount++;
+                vm->stack[vm->stackCount++]=st;
+                break;
+            }
             case OPCODE_POP_STACK:
                 popStack(vm,unit->clist.vals[++i]);
                 break;
@@ -365,12 +434,30 @@ void execute(VM*vm,Unit*unit){
                 break;
             case OPCODE_LOAD_FIELD:{
                 Stack st;
+                Var var;
                 VarList vlist=unit->flist.vals[unit->clist.vals[++i]].varList;
                 for(int i2=0;i2<vlist.count;i2++){
-                    obj=newObjectStd(vm,CLASS_INT);
-                    obj->num=0;
-                    st.hashName=vlist.vals[i2].hashName;
-                    st.obj=obj;
+                    var=vlist.vals[i2];
+                    st.hashName=var.hashName;
+                    if(var.isRef){
+                        bool isFound=false;
+                        for(int i3=unit->varStart-1;i3>=0;i3--){
+                            if(vm->stack[i3].hashName==var.hashName){
+                                isFound=true;
+                                st.obj=vm->stack[i3].obj;
+                                st.obj->refCount++;
+                                break;
+                            }
+                        }
+                        if(!isFound){
+                            sprintf(temp,"unfound upvalue \"%s\".",var.name);
+                            vmError(vm,temp);
+                        }
+                    }else{
+                        obj=newObjectStd(vm,CLASS_INT);
+                        obj->num=0;
+                        st.obj=obj;
+                    }
                     vm->stack[vm->stackCount++]=st;
                 }
                 break;
@@ -391,14 +478,16 @@ void execute(VM*vm,Unit*unit){
                 break;
             case OPCODE_CALL_FUNCTION:
                 obj=POP();
+                LIST_ADD(vm->plist,Part,vm->part)
                 c=unit->clist.vals[++i];
                 if(compareClassStd(vm,obj,CLASS_FUNCTION)){
                     callFunction(vm,obj->func,c);
                 }else if(compareClassStd(vm,obj,CLASS_CLASS)){
-                    callClass(vm,obj->class,c);
+                    callClass(vm,obj->classd,c);
                 }else{
                     vmError(vm,"expected a function or class.");
                 }
+                LIST_SUB(vm->plist,Part)
                 reduceRef(vm,obj);
                 break;
             case OPCODE_RETURN:

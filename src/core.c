@@ -9,7 +9,12 @@ void vmError(VM*vm,char*text){
     msg.column=part.column;
     msg.start=part.start;
     msg.end=part.end;
+    msg.type=MSG_ERROR;
     strcpy(msg.text,text);
+    for(int i=0;i<vm->plist.count;i++){
+        part=vm->plist.vals[i];
+        printf("from:%s:%d:%d:\n",part.fileName,part.line,part.column);
+    }
     reportMsg(msg);
 }
 Func newFunc(){
@@ -46,23 +51,33 @@ Object*newObjectStd(VM*vm,int class){
     obj->varCount=classd->varList.count;
     obj->objs=(obj->varCount>0)?((Object**)malloc(sizeof(Object*)*obj->varCount)):NULL;
     obj->refCount=1;
-    if(class==CLASS_STRING){
+    obj->isInit=true;
+    if(compareClassStd(vm,obj,CLASS_STRING)){
         obj->str=(char*)memManage(obj->str,1);
         obj->str[0]='\0';
+    }
+    callFunction(vm,classd->initFunc,-obj->varCount);
+    for(int i=obj->varCount-1;i>=0;i--){
+        obj->objs[i]=POP();
     }
     return obj;
 }
 void reduceRef(VM*vm,Object*obj){
     obj->refCount--;
     if(obj->refCount<=0){
-        if(obj->class->subID>=0){
+        //puts("destroy\n");
+        if(obj->class->destroyID>=0){
             obj->refCount=2;
-            Object*rt=obj->objs[obj->class->subID];
+            Object*rt=obj->objs[obj->class->destroyID];
             if(!compareClassStd(vm,rt,CLASS_FUNCTION)){
                 vmError(vm,"expected destroy method.");
             }
             PUSH(obj);
             callFunction(vm,rt->func,1);
+            reduceRef(vm,POP());
+        }
+        if(compareClassStd(vm,obj,CLASS_STRING)){
+            free(obj->str);
         }
         for(int i=0;i<obj->varCount;i++){
             reduceRef(vm,obj->objs[i]);
@@ -88,7 +103,8 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             break;
         case CONST_STRING:
             obj=newObjectStd(vm,CLASS_STRING);
-            obj->str=(char*)malloc(strlen(con.str)+1);
+            obj->str=NULL;
+            obj->str=(char*)memManage(obj->str,strlen(con.str)+1);
             strcpy(obj->str,con.str);
             break;
         case CONST_FUNCTION:
@@ -97,7 +113,7 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             break;
         case CONST_CLASS:
             obj=newObjectStd(vm,CLASS_CLASS);
-            obj->classd=&con.classd;
+            obj->classd=&unit->constList.vals[index].classd;
             break;
         default:
             sprintf(temp,"unknown constant type:%d.",con.type);
@@ -175,6 +191,18 @@ FUNC_DEF(string_add){
     STRING_LENGTH(this)=strlen(this->str);
     PD_RETURN(str);
 }
+FUNC_DEF(string_subscript){
+    Object*this=ARG(0),*obj=ARG(1);
+    if(!compareClassStd(vm,obj,CLASS_INT)){
+        vmError(vm,"expected int when calling string subscript.");
+    }
+    Object*sto=newObjectStd(vm,CLASS_INT);
+    if(sto->num>strlen(this->str)){
+        PD_ERROR("string overflow");
+    }
+    sto->num=this->str[obj->num];
+    PD_RETURN(sto);
+}
 FUNC_DEF(list_create){
     Object*this=ARG(0);
     for(int i=0;i<ARGC;i++){
@@ -194,12 +222,31 @@ FUNC_DEF(list_subscript){
     }
     Object*rt=this->objs[LIST_VAR_COUNT+obj->num];
     rt->refCount++;
-    reduceRef(vm,this);
-    reduceRef(vm,obj);
     PD_RETURN(rt);
+}
+FUNC_DEF(print_stack){
+    Object*obj;
+    for(int i=0;i<vm->stackCount;i++){
+        printf("stack%d:",i);
+        obj=vm->stack[i].obj;
+        if(compareClassStd(vm,obj,CLASS_INT)){
+            printf("int:%d\n",obj->num);
+        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){
+            printf("int:%f\n",obj->numd);
+        }else if(compareClassStd(vm,obj,CLASS_CLASS)){
+            printf("class\n");
+        }else if(compareClassStd(vm,obj,CLASS_FUNCTION)){
+            printf("function\n");
+        }else if(compareClassStd(vm,obj,CLASS_STRING)){
+            printf("string:%s\n",obj->str);
+        }else{
+            printf("others\n");
+        }
+    }
 }
 void makeSTD(VM*vm){
     Class class;
+    Stack st;
     /*int definition*/
     class=newClass("int");
     class.initFunc=newFunc();
@@ -227,6 +274,7 @@ void makeSTD(VM*vm){
     addClassInt(&class,"length",0);
     addClassFunc(&class,"string_create",string_create,ID_INIT);
     addClassFunc(&class,"add",string_add,OPCODE_ADD);
+    addClassFunc(&class,"subscript",string_subscript,ID_SUBSCRIPT);
     vm->stdclass[CLASS_STRING]=class;
     /*List definition*/
     class=newClass("List");
@@ -236,4 +284,34 @@ void makeSTD(VM*vm){
     addClassFunc(&class,"add",list_add,-1);
     addClassFunc(&class,"list_subscript",list_subscript,ID_SUBSCRIPT);
     vm->stdclass[CLASS_LIST]=class;
+    /*add to stack*/
+    st.hashName=hashString("int");
+    st.obj=newObjectStd(vm,CLASS_CLASS);
+    st.obj->classd=&vm->stdclass[CLASS_INT];
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("double");
+    st.obj=newObjectStd(vm,CLASS_CLASS);
+    st.obj->classd=&vm->stdclass[CLASS_DOUBLE];
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("Class");
+    st.obj=newObjectStd(vm,CLASS_CLASS);
+    st.obj->classd=&vm->stdclass[CLASS_CLASS];
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("Function");
+    st.obj=newObjectStd(vm,CLASS_CLASS);
+    st.obj->classd=&vm->stdclass[CLASS_FUNCTION];
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("string");
+    st.obj=newObjectStd(vm,CLASS_CLASS);
+    st.obj->classd=&vm->stdclass[CLASS_STRING];
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("List");
+    st.obj=newObjectStd(vm,CLASS_CLASS);
+    st.obj->classd=&vm->stdclass[CLASS_LIST];
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("print_stack");
+    st.obj=newObjectStd(vm,CLASS_FUNCTION);
+    st.obj->func=newFunc();
+    st.obj->func.exe=print_stack;
+    vm->stack[vm->stackCount++]=st;
 }

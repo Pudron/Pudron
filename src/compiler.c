@@ -105,6 +105,9 @@ void addSTD(Compiler*cp){
     var.name="List";
     var.hashName=hashString(var.name);
     LIST_ADD(cp->vlist,Var,var)
+    var.name="print_stack";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
 }
 Module compileAll(char*fileName){
     Module mod;
@@ -324,6 +327,7 @@ Class compileClass(Compiler*cp){
             compileMsg(MSG_ERROR,cp,"expected class member",msgStart);
         }
     }
+    class.initFunc.argList.count=-class.varList.count;
     setFuncUnit(&class.initFunc,unit);
     LIST_REDUCE(cp->vlist,Var,cp->vlist.count-unit.varStart)
     return class;
@@ -402,7 +406,7 @@ void gete(Compiler*cp,Unit*unit,int msgStart,Env env){
         bool isFound=false;
         if(env.class!=NULL){
             for(int i=0;i<env.class->varList.count;i++){
-                if(strcmp(name,env.class->varList.vals[i].name)){
+                if(strcmp(name,env.class->varList.vals[i].name)==0){
                     isFound=true;
                     addCmd1(unit,OPCODE_LOAD_VAR,getVar(cp,unit,"this",env));
                     addCmd1(unit,OPCODE_LOAD_ATTR,i);
@@ -490,7 +494,6 @@ Operat compileExpression(Compiler*cp,Unit*unit,int level,bool isAssign,int msgSt
     for(int i=0;i<OPERAT_PREFIX_COUNT;i++){
         if(token.type==operatPrefix[i].tokenType){
             opt=operatPrefix[i];
-            level=opt.level;
             isFound=true;
             break;
         }
@@ -781,6 +784,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
         }else if(token.type==TOKEN_RETURN){
             compileExpression(cp,unit,0,false,token.start,env);
             addCmd(unit,OPCODE_RETURN);
+            matchToken(&cp->parser,TOKEN_SEMI,"\";\" after returning",token.start);
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);

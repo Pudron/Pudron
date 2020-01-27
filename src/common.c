@@ -254,47 +254,48 @@ Unit getFuncUnit(Func func){
     unit.mblist=func.memberList;
     return unit;
 }
-void getConstMsg(char*text,Const con){
+void printConstMsg(Const con){
     int i;
     switch(con.type){
         case CONST_INT:
-            sprintf(text,"%d",con.num);
+            printf("(%d)",con.num);
             break;
         case CONST_DOUBLE:
-            sprintf(text,"%f",con.numd);
+            printf("(%f)",con.numd);
             break;
         case CONST_STRING:
-            sprintf(text,"%s",con.str);
+            printf("(%s)",con.str);
             break;
         case CONST_CLASS:
-            strcpy(text,"class{");
+            printf("(class{");
             for(int i=0;i<con.classd.varList.count;i++){
-                strcat(text,con.classd.varList.vals[i].name);
-                if(i==con.classd.varList.count-1){
-                    strcat(text,"}");
-                }else{
-                    strcat(text,",");
+                printf(con.classd.varList.vals[i].name);
+                if(i!=con.classd.varList.count-1){
+                    printf(",");
                 }
             }
+            printf("}initFunc{\n");
+            printCmds(getFuncUnit(con.classd.initFunc));
+            printf("})");
             break;
         case CONST_FUNCTION:
-            strcpy(text,"function(");
+            printf("(function(");
             for(i=0;i<con.func.argList.count;i++){
-                strcat(text,con.func.argList.vals[i].name);
-                if(i==con.func.argList.count-1){
-                    strcat(text,")");
-                }else{
-                    strcat(text,",");
+                printf(con.func.argList.vals[i].name);
+                if(i!=con.func.argList.count-1){
+                    printf(",");
                 }
             }
+            printf("){\n");
+            printCmds(getFuncUnit(con.func));
+            printf("})");
             break;
         default:
-            strcpy(text,"others");
+            printf("(others)");
             break;
     }
 }
 void printCmds(Unit unit){
-    char temp[50];
     Part part;
     int c;
     OpcodeMsg opm;
@@ -313,8 +314,7 @@ void printCmds(Unit unit){
             printf(" %d",c);
             switch(opm.opcode){
                 case OPCODE_LOAD_CONST:
-                    getConstMsg(temp,unit.constList.vals[c]);
-                    printf("(%s)",temp);
+                    printConstMsg(unit.constList.vals[c]);
                     break;
                 case OPCODE_LOAD_MEMBER:
                     printf("(%s)",unit.mblist.vals[c].name);
@@ -326,6 +326,20 @@ void printCmds(Unit unit){
                         printf("(%s)",opcodeList[c].name);
                     }
                     break;
+                case OPCODE_LOAD_FIELD:{
+                    VarList vlist=unit.flist.vals[c].varList;
+                    printf("(");
+                    for(int i2=0;i2<vlist.count;i2++){
+                        printf("%d:%s",i2,vlist.vals[i2].name);
+                        if(vlist.vals[i2].isRef){
+                            printf("[ref]");
+                        }
+                        if(i2<vlist.count-1){
+                            printf(",");
+                        }
+                    }
+                    printf(")");
+                }
                 default:
                     break;
             }

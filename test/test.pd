@@ -1,1 +1,2 @@
-arg[0];
+t="asd";
+print_stack();

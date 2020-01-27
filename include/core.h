@@ -20,6 +20,7 @@ struct VMDef{
     intList loopList;
     Part part;
     int ptr;
+    PartList plist;
 };
 #define ID_INIT -2
 #define ID_DESTROY -3
@@ -39,4 +40,5 @@ bool compareClassStd(VM*vm,Object*obj,int class);
 Object*newObjectStd(VM*vm,int class);
 void reduceRef(VM*vm,Object*obj);
 Object*loadConst(VM*vm,Unit*unit,int index);
+void makeSTD(VM*vm);
 #endif
