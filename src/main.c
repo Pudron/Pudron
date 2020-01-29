@@ -11,7 +11,7 @@ void run(char*fileName){
     Module mod=compileAll(fileName);
     Unit unit=getModuleUnit(mod);
     printCmds(unit);
-    VM vm=newVM();
+    VM vm=newVM(fileName);
     unit.varStart=vm.stackCount;
     execute(&vm,&unit);
 }

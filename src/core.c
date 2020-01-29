@@ -43,6 +43,25 @@ bool compareClassStd(VM*vm,Object*obj,int class){
     }
     return false;
 }
+void callInitFunc(VM*vm,Class*class,Object*obj){
+    Unit unit=getFuncUnit(class->initFunc);
+    unit.varStart=vm->stackCount;
+    obj->refCount++;
+    PUSH(obj);
+    vm->stack[vm->stackCount-1].hashName=hashString("this");
+    if(class->initFunc.exe!=NULL){
+        class->initFunc.exe(vm,&unit);
+    }else{
+        execute(vm,&unit);
+    }
+    for(int i=obj->varCount-1;i>=0;i--){
+        obj->objs[i]=POP();
+    }
+    if(unit.flist.count>0){
+        popStack(vm,unit.flist.vals[0].varList.count);
+    }
+    popStack(vm,1);/*pop this*/
+}
 Object*newObjectStd(VM*vm,int class){
     Class*classd=&vm->stdclass[class];
     Object*obj=NULL;
@@ -52,14 +71,12 @@ Object*newObjectStd(VM*vm,int class){
     obj->objs=(obj->varCount>0)?((Object**)malloc(sizeof(Object*)*obj->varCount)):NULL;
     obj->refCount=1;
     obj->isInit=true;
+    obj->num=0;
     if(compareClassStd(vm,obj,CLASS_STRING)){
         obj->str=(char*)memManage(obj->str,1);
         obj->str[0]='\0';
     }
-    callFunction(vm,classd->initFunc,-obj->varCount);
-    for(int i=obj->varCount-1;i>=0;i--){
-        obj->objs[i]=POP();
-    }
+    callInitFunc(vm,classd,obj);
     return obj;
 }
 void reduceRef(VM*vm,Object*obj){
@@ -122,7 +139,7 @@ Object*loadConst(VM*vm,Unit*unit,int index){
     }
     return obj;
 }
-FUNC_DEF(std_init){
+FUNC_DEF(std_init)
     Object*obj;
     for(int i=0;i<unit->constList.count;i++){
         obj=loadConst(vm,unit,i);
@@ -161,7 +178,7 @@ void addSubObj(Object*parent,Object*child){
     parent->objs=(Object**)memManage(parent->objs,parent->varCount*sizeof(Object*));
     parent->objs[parent->varCount-1]=child;
 }
-FUNC_DEF(string_create){
+FUNC_DEF(string_create)
     char temp[50];
     Object*obj,*this=ARG(0);
     for(int i=1;i<ARGC;i++){
@@ -171,7 +188,7 @@ FUNC_DEF(string_create){
             this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
             strcat(this->str,temp);
         }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){
-            sprintf(temp,"%f",obj->numd);
+            sprintf(temp,"%lf",obj->numd);
             this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
             strcat(this->str,temp);
         }else if(compareClassStd(vm,obj,CLASS_STRING)){
@@ -182,16 +199,16 @@ FUNC_DEF(string_create){
         }
     }
     STRING_LENGTH(this)=strlen(this->str);
-}
-FUNC_DEF(string_add){
+FUNC_END()
+FUNC_DEF(string_add)
     Object*this=ARG(0),*obj=ARG(1);
     Object*str=newObjectStd(vm,CLASS_STRING);
     str->str=(char*)memManage(str->str,strlen(this->str)+strlen(obj->str)+1);
     sprintf(str->str,"%s%s",this->str,obj->str);
     STRING_LENGTH(this)=strlen(this->str);
     PD_RETURN(str);
-}
-FUNC_DEF(string_subscript){
+FUNC_END()
+FUNC_DEF(string_subscript)
     Object*this=ARG(0),*obj=ARG(1);
     if(!compareClassStd(vm,obj,CLASS_INT)){
         vmError(vm,"expected int when calling string subscript.");
@@ -202,20 +219,20 @@ FUNC_DEF(string_subscript){
     }
     sto->num=this->str[obj->num];
     PD_RETURN(sto);
-}
-FUNC_DEF(list_create){
+FUNC_END()
+FUNC_DEF(list_create)
     Object*this=ARG(0);
     for(int i=0;i<ARGC;i++){
         addSubObj(this,ARG(i));
         LIST_COUNT(this)++;
     }
-}
-FUNC_DEF(list_add){
+FUNC_END()
+FUNC_DEF(list_add)
     Object*this=ARG(0);
     addSubObj(this,ARG(1));
     LIST_COUNT(this)++;
-}
-FUNC_DEF(list_subscript){
+FUNC_END()
+FUNC_DEF(list_subscript)
     Object*this=ARG(0),*obj=ARG(1);
     if(!compareClassStd(vm,obj,CLASS_INT)){
         vmError(vm,"expected int when calling List subscript.");
@@ -223,8 +240,8 @@ FUNC_DEF(list_subscript){
     Object*rt=this->objs[LIST_VAR_COUNT+obj->num];
     rt->refCount++;
     PD_RETURN(rt);
-}
-FUNC_DEF(print_stack){
+FUNC_END()
+FUNC_DEF(print_stack)
     Object*obj;
     for(int i=0;i<vm->stackCount;i++){
         printf("stack%d:",i);
@@ -232,18 +249,35 @@ FUNC_DEF(print_stack){
         if(compareClassStd(vm,obj,CLASS_INT)){
             printf("int:%d\n",obj->num);
         }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){
-            printf("int:%f\n",obj->numd);
+            printf("int:%lf\n",obj->numd);
         }else if(compareClassStd(vm,obj,CLASS_CLASS)){
             printf("class\n");
         }else if(compareClassStd(vm,obj,CLASS_FUNCTION)){
             printf("function\n");
         }else if(compareClassStd(vm,obj,CLASS_STRING)){
             printf("string:%s\n",obj->str);
+        }else if(compareClassStd(vm,obj,CLASS_LIST)){
+            printf("List:%d\n",obj->varCount-LIST_VAR_COUNT);
         }else{
             printf("others\n");
         }
     }
-}
+FUNC_END()
+FUNC_DEF(mprint)
+    Object*obj;
+    for(int i=0;i<ARGC;i++){
+        obj=ARG(i);
+        if(compareClassStd(vm,obj,CLASS_INT)){
+            printf("%d",obj->num);
+        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){
+            printf("%lf",obj->numd);
+        }else if(compareClassStd(vm,obj,CLASS_STRING)){
+            printf(obj->str);
+        }else{
+            vmError(vm,"unsupported print type.");
+        }
+    }
+FUNC_END()
 void makeSTD(VM*vm){
     Class class;
     Stack st;
@@ -313,5 +347,10 @@ void makeSTD(VM*vm){
     st.obj=newObjectStd(vm,CLASS_FUNCTION);
     st.obj->func=newFunc();
     st.obj->func.exe=print_stack;
+    vm->stack[vm->stackCount++]=st;
+    st.hashName=hashString("print");
+    st.obj=newObjectStd(vm,CLASS_FUNCTION);
+    st.obj->func=newFunc();
+    st.obj->func.exe=mprint;
     vm->stack[vm->stackCount++]=st;
 }

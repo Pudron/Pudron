@@ -108,6 +108,9 @@ void addSTD(Compiler*cp){
     var.name="print_stack";
     var.hashName=hashString(var.name);
     LIST_ADD(cp->vlist,Var,var)
+    var.name="print";
+    var.hashName=hashString(var.name);
+    LIST_ADD(cp->vlist,Var,var)
 }
 Module compileAll(char*fileName){
     Module mod;
@@ -247,7 +250,9 @@ Class compileClass(Compiler*cp){
     Token token;
     Var var;
     char temp[50];
-    Env env={&class,NULL,false,NULL};
+    Field field;
+    LIST_INIT(field.varList)
+    Env env={&class,NULL,false,&field};
     Unit unit=newUnit(cp->vlist.count);
     class.initFunc.exe=NULL;
     class.name=NULL;
@@ -266,6 +271,7 @@ Class compileClass(Compiler*cp){
     matchToken(&cp->parser,TOKEN_BRACE1,"\"{\" in class definition",msgStart);
     bool needVar=false;
     int pt;
+    addCmd1(&unit,OPCODE_LOAD_FIELD,0);
     while(1){
         token=nextToken(&cp->parser);
         msgStart=token.start;
@@ -327,7 +333,7 @@ Class compileClass(Compiler*cp){
             compileMsg(MSG_ERROR,cp,"expected class member",msgStart);
         }
     }
-    class.initFunc.argList.count=-class.varList.count;
+    LIST_ADD(unit.flist,Field,field)
     setFuncUnit(&class.initFunc,unit);
     LIST_REDUCE(cp->vlist,Var,cp->vlist.count-unit.varStart)
     return class;

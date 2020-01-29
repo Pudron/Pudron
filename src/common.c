@@ -261,7 +261,7 @@ void printConstMsg(Const con){
             printf("(%d)",con.num);
             break;
         case CONST_DOUBLE:
-            printf("(%f)",con.numd);
+            printf("(%lf)",con.numd);
             break;
         case CONST_STRING:
             printf("(%s)",con.str);

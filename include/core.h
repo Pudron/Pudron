@@ -27,7 +27,8 @@ struct VMDef{
 #define ID_SUBSCRIPT -4
 #define PUSH(objt) vm->stack[vm->stackCount].hashName=hashString("_pd_stack_");vm->stack[vm->stackCount++].obj=objt
 #define POP() vm->stack[--vm->stackCount].obj
-#define FUNC_DEF(name) void name(VM*vm,Unit*unit)
+#define FUNC_DEF(name) void name(VM*vm,Unit*unit){
+#define FUNC_END() PUSH(newObjectStd(vm,CLASS_INT));return;}
 #define PD_ERROR(text) vmError(vm,text)
 #define PD_RETURN(obj) PUSH(obj);return
 #define ARG(index) vm->stack[unit->varStart+index].obj
@@ -41,4 +42,5 @@ Object*newObjectStd(VM*vm,int class);
 void reduceRef(VM*vm,Object*obj);
 Object*loadConst(VM*vm,Unit*unit,int index);
 void makeSTD(VM*vm);
+void callInitFunc(VM*vm,Class*class,Object*obj);
 #endif

@@ -37,9 +37,13 @@ pd:$(OBJS)
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o build/objs/$@
 
-.PHNOY:test
+.PHONY:test
 test:test/test.pd
 	$(EXE)build/pudron/pd test/test.pd
+
+.PHONY:debug
+debug:build/pudron/pd test/test.pd
+	gdb --args build/pudron/pd test/test.pd
 
 .PHONY:clean
 clean:

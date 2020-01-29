@@ -9,20 +9,24 @@
 #define ASSERT(condition,message,...)
 #endif
 #define checkStack(num) ASSERT(vm->stackCount<num,"%d:expected %d slots but only %d slots in stack.",vm->ptr,num,vm->stackCount)
-VM newVM(){
+VM newVM(char*fileName){
     VM vm;
     vm.stackCount=0;
     vm.ptr=0;
+    vm.part.fileName=fileName;
+    vm.part.code=NULL;
+    vm.part.line=0;
+    vm.part.column=0;
+    vm.part.start=0;
+    vm.part.end=0;
     LIST_INIT(vm.loopList)
     LIST_INIT(vm.plist)
     makeSTD(&vm);
     return vm;
 }
 void popStack(VM*vm,int num){
-    Object*obj;
     for(int i=0;i<num;i++){
-        obj=POP();
-        reduceRef(vm,obj);
+        reduceRef(vm,POP());
     }
 }
 void callFunction(VM*vm,Func func,int argc){
@@ -46,8 +50,9 @@ void callFunction(VM*vm,Func func,int argc){
     }
     if(func.exe!=NULL){
         func.exe(vm,&unit);
+    }else{
+        execute(vm,&unit);
     }
-    execute(vm,&unit);
     Object*rt=POP();
     Object*obj;
     LIST_REDUCE(vm->loopList,int,vm->loopList.count-loopc)
@@ -68,11 +73,8 @@ void callClass(VM*vm,Class*class,int argc){
     if(obj->varCount>0){
         obj->objs=(Object**)memManage(obj->objs,obj->varCount*sizeof(Object*));
     }
-    callFunction(vm,class->initFunc,-obj->varCount);
-    checkStack(obj->varCount);
-    for(int i=obj->varCount-1;i>=0;i--){
-        obj->objs[i]=POP();
-    }
+    /*execute initFunc*/
+    callInitFunc(vm,class,obj);
     if(class->initID>=0){
         obj->refCount++;
         /*塞this到参数前*/
@@ -310,7 +312,7 @@ void assign(VM*vm,int astype,int asc){
     PUSH(obj);\
     reduceRef(vm,this);
 void execute(VM*vm,Unit*unit){
-    char temp[50];
+    char temp[64];
     int c=0;
     Object*obj=NULL,*this=NULL;
     int asc=1;
@@ -426,8 +428,8 @@ void execute(VM*vm,Unit*unit){
                 if(!compareClassStd(vm,obj,CLASS_INT)){
                     vmError(vm,"expected condition value.");
                 }
+                i++;
                 if(!obj->num){
-                    i++;
                     i=unit->clist.vals[i]-1;
                 }
                 reduceRef(vm,obj);
@@ -510,6 +512,7 @@ void execute(VM*vm,Unit*unit){
                 for(int i2=0;i2<c;i2++){
                     this->objs[this->varCount-1-i]=POP();
                 }
+                LIST_COUNT(this)=c;
                 PUSH(this);
                 break;
             }
@@ -527,12 +530,14 @@ void execute(VM*vm,Unit*unit){
                 Object*rt=newObjectStd(vm,CLASS_INT);
                 if(sum->num<LIST_COUNT(array)){
                     *ind=array[array->class->varList.count+(sum->num++)];
+                    ind->refCount=2;
                     rt->num=true;
                 }else{
                     popStack(vm,3);
                     rt->num=false;
                 }
                 PUSH(rt);
+                break;
             }
             case OPCODE_LOAD_STACK:
                 obj=POP();
