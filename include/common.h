@@ -358,6 +358,7 @@ struct UnitDef{
     ModuleList mlist;
     PartList plist;
     FieldList flist;
+    NameList nlist;
     int varStart;
     int curPart;
     int ptr;

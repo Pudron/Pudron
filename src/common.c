@@ -212,7 +212,6 @@ Unit newUnit(int varStart){
     LIST_INIT(unit.mlist)
     LIST_INIT(unit.plist)
     LIST_INIT(unit.flist)
-    LIST_INIT(unit.mblist)
     unit.varStart=varStart;
     unit.curPart=-1;
     unit.ptr=0;
@@ -224,7 +223,6 @@ void setModuleUnit(Module*mod,Unit unit){
     mod->moduleList=unit.mlist;
     mod->partList=unit.plist;
     mod->fieldList=unit.flist;
-    mod->memberList=unit.mblist;
 }
 void setFuncUnit(Func*func,Unit unit){
     func->constList=unit.constList;
@@ -232,7 +230,6 @@ void setFuncUnit(Func*func,Unit unit){
     func->moduleList=unit.mlist;
     func->partList=unit.plist;
     func->fieldList=unit.flist;
-    func->memberList=unit.mblist;
 }
 Unit getModuleUnit(Module mod){
     Unit unit;
@@ -241,7 +238,6 @@ Unit getModuleUnit(Module mod){
     unit.mlist=mod.moduleList;
     unit.plist=mod.partList;
     unit.flist=mod.fieldList;
-    unit.mblist=mod.memberList;
     return unit;
 }
 Unit getFuncUnit(Func func){
@@ -251,7 +247,6 @@ Unit getFuncUnit(Func func){
     unit.mlist=func.moduleList;
     unit.plist=func.partList;
     unit.flist=func.fieldList;
-    unit.mblist=func.memberList;
     return unit;
 }
 void printConstMsg(Const con){
@@ -317,7 +312,7 @@ void printCmds(Unit unit){
                     printConstMsg(unit.constList.vals[c]);
                     break;
                 case OPCODE_LOAD_MEMBER:
-                    printf("(%s)",unit.mblist.vals[c].name);
+                    printf("(%s)","member");
                     break;
                 case OPCODE_ASSIGN:
                     if(c<0){
