@@ -3,19 +3,19 @@
 #include"common.h"
 #include"compiler.h"
 typedef struct{
-    TokenType type;
+    Tokentype type;
     char text[4];
     char len;
 }TokenSymbol;
 typedef struct{
-    TokenType type;
+    Tokentype type;
     char name[MAX_WORD_LENGTH];
     char other[MAX_WORD_LENGTH];
 }Keyword;
 Token nextToken(Parser*parser);
 Token lastToken(Parser*parser);
 void getAllToken(Parser*parser);
-Token matchToken(Parser*parser,TokenType et,char*str,int start);
+Token matchToken(Parser*parser,Tokentype et,char*str,int start);
 Parser newParser(char*fileName);
 /*bool getValue(Parser*parser,intList*clist,Assign*asi,Env env);
 Operat getExpression(Parser*parser,intList*clist,int level,Env env);

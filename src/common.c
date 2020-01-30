@@ -350,3 +350,58 @@ void printCmds(Unit unit){
         printf("\n");
     }
 }
+void expandHashList(HashList*hl,int size){
+    HashSlot hs;
+    hs.name=NULL;
+    hs.isUsed=false;
+    hs.nextSlot=-1;
+    size=pow2(size);
+    hl->slot=(HashSlot*)memManage(hl->slot,size);
+    while(hl->capacity<size){
+        hl->slot[hl->capacity++]=hs;
+    }
+}
+HashList newHashList(){
+    HashList hl;
+    hl.capacity=1;
+    hl.slot=NULL;
+    expandHashList(&hl,1);
+    return hl;
+}
+int hashAdd(HashList*hl,char*name){
+    uint hashCode=hashString(name);
+    int c=hashCode%hl->capacity;
+    int x;
+    if(hl->slot[c].isUsed){
+        while(hl->slot[c].nextSlot>=0){
+            c=hl->slot[c].nextSlot;
+        }
+        bool isFound=false;
+        for(x=c+1;x<hl->capacity;x++){
+            if(!hl->slot[x].isUsed){
+                isFound=true;
+                break;
+            }
+        }
+        if(!isFound){
+            x=hl->capacity;
+            expandHashList(hl,hl->capacity+1);
+        }
+    }else{
+        x=c;
+    }
+    hl->slot[x].name=name;
+    hl->slot[x].isUsed=true;
+    return x;
+}
+/*未找到则返回-1*/
+int hashGet(HashList*hl,char*name){
+    int c=hashString(name);
+    while(strcmp(hl->slot[c].name,name)!=0){
+        c=hl->slot[c].nextSlot;
+        if(c<0){
+            return -1;
+        }
+    }
+    return c;
+}

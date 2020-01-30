@@ -358,7 +358,7 @@ Token lastToken(Parser*parser){
     }
     return token;
 }
-Token matchToken(Parser*parser,TokenType et,char*str,int start){
+Token matchToken(Parser*parser,Tokentype et,char*str,int start){
     Token token=nextToken(parser);
     Msg msg;
     if(token.type!=et){

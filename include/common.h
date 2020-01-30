@@ -128,7 +128,7 @@ typedef enum{
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_ARG
-}TokenType;
+}Tokentype;
 #define OPT_METHOD_COUNT 17
 #define OPCODE_COUNT 45
 typedef enum{
@@ -226,7 +226,7 @@ LIST_DECLARE(uint)
 typedef char* Name;
 LIST_DECLARE(Name);
 typedef struct{
-    TokenType type;
+    Tokentype type;
     union{
         int num;
         double numd;
@@ -306,7 +306,6 @@ typedef struct{
 }Func;
 typedef struct{
     char*name;
-    uint hashName;
     VarList varList;
     Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
     int optID[OPT_METHOD_COUNT];
@@ -328,7 +327,18 @@ struct ConstDef{
         Class classd;
     };
 };
-typedef struct ObjectDef{
+typedef struct ObjectDef Object;
+typedef struct{
+    char*name;
+    int nextSlot;
+    bool isUsed;
+    Object*obj;
+}HashSlot;
+typedef struct{
+    int capacity;
+    HashSlot*slot;
+}HashList;
+struct ObjectDef{
     Class*class;
     union{
         int num;
@@ -337,18 +347,17 @@ typedef struct ObjectDef{
         Func func;
         Class*classd;
     };
-    struct ObjectDef**objs;
+    HashList member;
     int varCount;
     int refCount;
     bool isInit;/*用于标记初始化对象*/
-}Object;
+};
 struct UnitDef{
     ConstList constList;
     intList clist;
     ModuleList mlist;
     PartList plist;
     FieldList flist;
-    MemberList mblist;
     int varStart;
     int curPart;
     int ptr;
@@ -359,7 +368,6 @@ typedef struct{
     char*name;
     int argCount;
 }OpcodeMsg;
-
 void*memManage(void*ptr,size_t size);
 char*cutText(char*text,int start,int end);
 char*cutPostfix(char*text);

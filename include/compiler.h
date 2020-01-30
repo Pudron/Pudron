@@ -3,7 +3,7 @@
 #include"parser.h"
 #include"pio.h"
 typedef struct{
-    TokenType tokenType;
+    Tokentype tokenType;
     Opcode opcode;
     int level;
 }Operat;
