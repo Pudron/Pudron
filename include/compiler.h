@@ -15,6 +15,7 @@ typedef struct{
 typedef struct{
     Class*classDef;
     intList*breakList;
+    int jumpTo;/*用于continue,-1则为无循环*/
     bool isGlobal;
 }Env;
 typedef struct{

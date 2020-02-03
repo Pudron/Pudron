@@ -311,24 +311,32 @@ void addClassInt(Class*class,char*name,int num){
 FUNC_DEF(string_create)
     char temp[50];
     Object*obj,*this=loadVar(vm,unit,"this");
-    for(int i=1;i<ARGC;i++){
-        obj=ARG(i);
-        if(compareClassStd(vm,obj,CLASS_INT)){
-            sprintf(temp,"%d",obj->num);
-            this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
-            strcat(this->str,temp);
-        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){
-            sprintf(temp,"%lf",obj->numd);
-            this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
-            strcat(this->str,temp);
-        }else if(compareClassStd(vm,obj,CLASS_STRING)){
-            this->str=(char*)memManage(this->str,strlen(this->str)+strlen(obj->str)+1);
-            strcat(this->str,obj->str);
-        }else{
-            PD_ERROR("expected string,int or double when creating string.");
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*cnt=loadMember(vm,argv,"count",true);
+    Object*len=loadMember(vm,this,"length",true);
+    for(int i=0;i<cnt->num;i++){
+        obj=argv->subObj[i];
+        switch(obj->type){
+            case OBJECT_INT:
+                sprintf(temp,"%d",obj->num);
+                this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
+                strcat(this->str,temp);
+                break;
+            case OBJECT_DOUBLE:
+                sprintf(temp,"%lf",obj->numd);
+                this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
+                strcat(this->str,temp);
+                break;
+            case OBJECT_STRING:
+                this->str=(char*)memManage(this->str,strlen(this->str)+strlen(obj->str)+1);
+                strcat(this->str,obj->str);
+                break;
+            default:
+                vmError(vm,"expected string,int or double when creating string.");
+                break;
         }
     }
-    STRING_LENGTH(this)=strlen(this->str);
+    len->num=strlen(this->str);
 FUNC_END()
 FUNC_DEF(string_add)
     Object*this=ARG(0),*obj=ARG(1);
@@ -384,6 +392,16 @@ FUNC_DEF(list_subscript)
     reduceRef(vm,unit,this);
     PUSH(rt);
     return;
+FUNC_END()
+FUNC_DEF(list_destroy)
+    Object*this=loadVar(vm,unit,"this");
+    Object*cnt=loadMember(vm,this,"count",true);
+    for(int i=0;i<cnt->num;i++){
+        reduceRef(vm,unit,this->subObj[i]);
+    }
+    free(this->subObj);
+    reduceRef(vm,unit,cnt);
+    reduceRef(vm,unit,this);
 FUNC_END()
 FUNC_DEF(print_stack)
     Object*obj;
@@ -444,4 +462,10 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_INIT,list_create,0);
     addClassFunc(&class,"add",list_add,1,"element");
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
+    addClassFunc(&class,METHOD_NAME_DESTROY,list_destroy,0);
+    pstd.stdClass[4]=class;
+    hashGet(&pstd.hl,"list",true);
+    class=newClass("string");
+    addClassInt(&class,"length",0);
+
 }

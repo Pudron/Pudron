@@ -93,7 +93,7 @@ Module compileAll(char*fileName,PdSTD pstd){
     free(n1);
     Compiler cp=newCompiler(newParser(fileName));
     getAllToken(&cp.parser);
-    Env env={NULL,NULL,true};
+    Env env={NULL,NULL,-1,true};
     Unit unit=newUnit();
     unit.gvlist=pstd.hl;
     compileBlock(&cp,&unit,env);
@@ -446,7 +446,7 @@ void compileClass(Compiler*cp,Unit*unit){
     Class class;
     Token token;
     Const con;
-    Env env={&class,NULL,false};
+    Env env={&class,NULL,-1,false};
     Unit funit=newUnit();
     funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     class.initFunc.exe=NULL;
@@ -573,6 +573,7 @@ void compileWhileState(Compiler*cp,Unit*unit,Env env){
     env.breakList=&breakList;
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in while statement",msgStart);
     int jto=unit->clist.count;
+    env.jumpTo=jto;
     compileExpression(cp,unit,0,false,msgStart,env);
     matchToken(&cp->parser,TOKEN_PARE2,"\")\" in while statement",msgStart);
     addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
@@ -598,6 +599,7 @@ void compileDoWhileState(Compiler*cp,Unit*unit,Env env){
     LIST_INIT(breakList)
     env.breakList=&breakList;
     int jto=unit->clist.count;
+    env.jumpTo=jto;
     compileBlock(cp,unit,env);
     int msgStart=cp->parser.ptr;
     setPart(cp,unit,msgStart);
@@ -632,6 +634,7 @@ void compileForState(Compiler*cp,Unit*unit,Env env){
     con.num=0;
     addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));/*as index*/
     int jto=unit->clist.count;
+    env.jumpTo=jto;
     addCmd(unit,OPCODE_GET_FOR_INDEX);
     addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
     int jptr=unit->clist.count-1;
@@ -686,6 +689,14 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             unit->plist.vals[pt].end=token.end;
             addCmd1(unit,OPCODE_JUMP,0);
             LIST_ADD((*env.breakList),int,unit->clist.count-1)
+        }else if(token.type==TOKEN_CONTINUE){
+            if(env.jumpTo<0){
+                compileMsg(MSG_ERROR,cp,"invalid continue.",token.start);
+            }
+            int pt=setPart(cp,unit,token.start);
+            token=matchToken(&cp->parser,TOKEN_SEMI,"\";\" after break",token.start);
+            unit->plist.vals[pt].end=token.end;
+            addCmd1(unit,OPCODE_JUMP,env.jumpTo);
         }else if(token.type==TOKEN_RETURN){
             compileExpression(cp,unit,0,false,token.start,env);
             addCmd(unit,OPCODE_RETURN);
