@@ -21,6 +21,7 @@ VM newVM(char*fileName){
     vm.part.end=0;
     LIST_INIT(vm.loopList)
     LIST_INIT(vm.plist)
+    vm.this=NULL;
     makeSTD(&vm);
     return vm;
 }

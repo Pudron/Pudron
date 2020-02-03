@@ -2,45 +2,50 @@
 #define _PD_CORE_H_
 #include"common.h"
 #define MAX_STACK 1024
-#define STD_CLASS_COUNT 6
-#define CLASS_INT 0
-#define CLASS_DOUBLE 1
-#define CLASS_CLASS 2
-#define CLASS_FUNCTION 3
-#define CLASS_STRING 4
-#define CLASS_LIST 5
-typedef struct{
-    int hashName;
-    Object*obj;
-}Stack;
+
 struct VMDef{
-    Class stdclass[STD_CLASS_COUNT];
     int stackCount;
-    Stack stack[MAX_STACK];
     intList loopList;
     Part part;
     int ptr;
     PartList plist;
+    Object*stack[MAX_STACK];
+    Object*this;
 };
-#define ID_INIT -2
-#define ID_DESTROY -3
-#define ID_SUBSCRIPT -4
-#define PUSH(objt) vm->stack[vm->stackCount].hashName=hashString("_pd_stack_");vm->stack[vm->stackCount++].obj=objt
-#define POP() vm->stack[--vm->stackCount].obj
+/*注意：argv不包括this和argv*/
+#define PUSH(objt) vm->stack[vm->stackCount++]=objt
+#define POP() vm->stack[--vm->stackCount]
 #define FUNC_DEF(name) void name(VM*vm,Unit*unit){
-#define FUNC_END() PUSH(newObjectStd(vm,CLASS_INT));return;}
-#define PD_ERROR(text) vmError(vm,text)
-#define PD_RETURN(obj) PUSH(obj);return
-#define ARG(index) vm->stack[unit->varStart+index].obj
-#define ARGC unit->argc
-#define STRING_LENGTH(obj) obj->objs[0]->num
-#define LIST_VAR_COUNT 3
-#define LIST_COUNT(obj) obj->objs[0]->num 
-void vmError(VM*vm,char*text);
-bool compareClassStd(VM*vm,Object*obj,int class);
-Object*newObjectStd(VM*vm,int class);
-void reduceRef(VM*vm,Object*obj);
+#define FUNC_END() PUSH(newIntObject(0));return;}
+
+#define METHOD_NAME_INIT "opInit"
+#define METHOD_NAME_DESTROY "opDestroy"
+#define METHOD_NAME_SUBSCRIPT "opSubscript"
+#define METHOD_NAME_ADD "opAdd"
+#define METHOD_NAME_SUB "opSub"
+#define METHOD_NAME_MUL "opMul"
+#define METHOD_NAME_DIV "opDiv"
+#define METHOD_NAME_AND "opAnd"
+#define METHOD_NAME_OR "opOr"
+#define METHOD_NAME_CAND "opCand"
+#define METHOD_NAME_COR "opCor"
+#define METHOD_NAME_LEFT "opLeft"
+#define METHOD_NAME_RIGHT "opRight"
+#define METHOD_NAME_EQUAL "opEqual"
+#define METHOD_NAME_GTHAN "opGthan"
+#define METHOD_NAME_LTHAN "opLthan"
+#define METHOD_NAME_REM "opRem"
+
+void vmError(VM*vm,char*text,...);
+void reduceRef(VM*vm,Unit*unit,Object*obj);
 Object*loadConst(VM*vm,Unit*unit,int index);
-void makeSTD(VM*vm);
-void callInitFunc(VM*vm,Class*class,Object*obj);
+PdSTD makeSTD();
+/*loadMember():当confirm为true时，未找到成员则报错，否则返回NULL*/
+Object*loadMember(VM*vm,Object*this,char*name,bool confirm);
+Object*loadVar(VM*vm,Unit*unit,char*name);
+Object*newObject(char type);
+Object*newIntObject(int num);
+Object*newDoubleObject(double numd);
+Object*newClassObject(Class class);
+Object*newFuncObject(Func func);
 #endif

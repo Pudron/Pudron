@@ -24,57 +24,22 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_SUBS,"SUBS",0},
     {OPCODE_LOAD_CONST,"LOAD_CONST",1},
     {OPCODE_LOAD_VAR,"LOAD_VAR",1},
-    {OPCODE_LOAD_ATTR,"LOAD_ATTR",1},
     {OPCODE_LOAD_MEMBER,"LOAD_MEMBER",1},
     {OPCODE_LOAD_SUBSCRIPT,"LOAD_SUBSCRIPT",0},
     {OPCODE_STACK_COPY,"STACK_COPY",1},
-    //{OPCODE_PUSH_STACK,"PUSH_STACK",1},
     {OPCODE_POP_STACK,"POP_STACK",1},
     {OPCODE_JUMP,"JUMP",1},
     {OPCODE_JUMP_IF_FALSE,"JUMP_IF_FALSE",1},
-    {OPCODE_LOAD_FIELD,"LOAD_FIELD",1},
-    {OPCODE_FREE_FIELD,"FREE_FIELD",1},
-    {OPCODE_SET_LOOP,"SET_LOOP",0},
-    {OPCODE_FREE_LOOP,"FREE_LOOP",0},
     {OPCODE_CALL_FUNCTION,"CALL_FUNCTION",1},
-    //{OPCODE_CALL_METHOD,"CALL_METHOD",true,false},
     {OPCODE_RETURN,"RETURN",0},
     {OPCODE_INVERT_ORDER,"INVERT_ORDER",1},
-    //{OPCODE_ASSIGN_LEFT,"ASSIGN_LEFT",1},
-    //{OPCODE_ASSIGN_RIGHT,"ASSIGN_RIGHT",1},
     {OPCODE_SET_ASSIGN_COUNT,"SET_ASSIGN_COUNT",1},
     {OPCODE_ASSIGN,"ASSIGN",1},
     {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",1},
     {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",0},
-    {OPCODE_LOAD_STACK,"LOAD_STACK",0},
-    {OPCODE_LOAD_ARG_COUNT,"LOAD_ARG_COUNT",0}
-    /*{OPCODE_MAKE_OBJECT,"MAKE_OBJECT",true,false},
-    {OPCODE_EXTEND_CLASS,"EXTEND_CLASS",true,false},
-    {OPCODE_ENABLE_CLASS,"ENABLE_CLASS",true,false},
-    {OPCODE_SET_MODULE,"SET_MODULE",true,true},
-    {OPCODE_RETURN_MODULE,"RETURN_MODULE",false,false},
-    {OPCODE_PRINT_STACK,"PRINT_STACK",false,false},
-    {OPCODE_PRINT_VAR,"PRINT_VAR",false,false},
-    {OPCODE_PRINT_FUNC,"PRINT_FUNC",false,false},
-    {OPCODE_PRINT_CLASS,"PRINT_CLASS",false,false},
-    {OPCODE_GET_VARCOUNT,"GET_VARCOUNT",false,false},
-    {OPCODE_RESIZE_VAR,"RESIZE_VAR",false,false},
-    {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",true,false},
-    {OPCODE_GET_CLASS,"GET_CLASS",false,false},
-    {OPCODE_GET_VARBASIS,"GET_VARBASIS",false,false},
-    {OPCODE_SET_VARBASIS,"SET_VARBASIS",false,false},
-    {OPCODE_EXIT,"EXIT",false,false},
-    {OPCODE_MAKE_RANGE,"MAKE_RANGE",false,false},
-    {OPCODE_COPY_OBJECT,"COPY_OBJECT",false,false},
-    {OPCODE_STR_FORMAT,"STR_FORMAT",false,false},
-    {OPCODE_PRINT,"PRINT",false,false},
-    {OPCODE_INPUT,"INPUT",false,false},
-    {OPCODE_STR_COMPARE,"STR_COMPARE",false,false},
-    {OPCODE_READ_TEXT_FILE,"READ_TEXT_FILE",false,false},
-    {OPCODE_WRITE_TEXT_FILE,"WRITE_TEXT_FILE",false,false},
-    {OPCODE_DLL_OPEN,"DLL_OPEN",false,false},
-    {OPCODE_DLL_CLOSE,"DLL_CLOSE",false,false},
-    {OPCODE_DLL_EXECUTE,"DLL_EXECUTE",false,false}*/
+    {OPCODE_LOAD_METHOD,"LOAD_METHOD",1},
+    {OPCODE_CALL_METHOD,"CALL_METHOD",1},
+    {OPCODE_CLASS_EXTEND,"CLASS_EXTEND",1}
 };
 void*memManage(void*ptr,size_t size){
     void*p=realloc(ptr,size);
@@ -205,14 +170,14 @@ unsigned int hashString(char*str){
     }
     return hashCode;
 }
-Unit newUnit(int varStart){
+Unit newUnit(){
     Unit unit;
     LIST_INIT(unit.constList)
     LIST_INIT(unit.clist)
     LIST_INIT(unit.mlist)
     LIST_INIT(unit.plist)
-    LIST_INIT(unit.flist)
-    unit.varStart=varStart;
+    LIST_INIT(unit.nlist)
+    unit.lvlist=newHashList();
     unit.curPart=-1;
     unit.ptr=0;
     return unit;
@@ -222,14 +187,16 @@ void setModuleUnit(Module*mod,Unit unit){
     mod->clist=unit.clist;
     mod->moduleList=unit.mlist;
     mod->partList=unit.plist;
-    mod->fieldList=unit.flist;
+    mod->lvlist=unit.lvlist;
+    mod->nlist=unit.nlist;
 }
 void setFuncUnit(Func*func,Unit unit){
     func->constList=unit.constList;
     func->clist=unit.clist;
     func->moduleList=unit.mlist;
     func->partList=unit.plist;
-    func->fieldList=unit.flist;
+    func->lvlist=unit.lvlist;
+    func->nlist=unit.nlist;
 }
 Unit getModuleUnit(Module mod){
     Unit unit;
@@ -237,7 +204,8 @@ Unit getModuleUnit(Module mod){
     unit.clist=mod.clist;
     unit.mlist=mod.moduleList;
     unit.plist=mod.partList;
-    unit.flist=mod.fieldList;
+    unit.lvlist=mod.lvlist;
+    unit.nlist=mod.nlist;
     return unit;
 }
 Unit getFuncUnit(Func func){
@@ -246,10 +214,16 @@ Unit getFuncUnit(Func func){
     unit.clist=func.clist;
     unit.mlist=func.moduleList;
     unit.plist=func.partList;
-    unit.flist=func.fieldList;
+    unit.lvlist=func.lvlist;
+    unit.nlist=func.nlist;
     return unit;
 }
-void printConstMsg(Const con){
+void printBlanks(int count){
+    while(count--){
+        printf("    ");
+    }
+}
+void printConstMsg(Const con,int blankCount){
     int i;
     switch(con.type){
         case CONST_INT:
@@ -262,27 +236,39 @@ void printConstMsg(Const con){
             printf("(%s)",con.str);
             break;
         case CONST_CLASS:
-            printf("(class{");
-            for(int i=0;i<con.classd.varList.count;i++){
-                printf(con.classd.varList.vals[i].name);
-                if(i!=con.classd.varList.count-1){
+            printf("(class %s",con.class.name);
+            /*if(con.class.parentList.count>1){
+                printf(":");
+                for(int i=0;i<con.class.parentList.count;i++){
+                    printf("%s",con.class.parentList.vals[i].name);
+                    if(i!=con.class.parentList.count-1){
+                        printf(",");
+                    }
+                }
+            }*/
+            printf("{");
+            for(int i=0;i<con.class.varList.count;i++){
+                printf(con.class.varList.vals[i]);
+                if(i!=con.class.varList.count-1){
                     printf(",");
                 }
             }
             printf("}initFunc{\n");
-            printCmds(getFuncUnit(con.classd.initFunc));
+            printCmds(getFuncUnit(con.class.initFunc),blankCount+1);
+            printBlanks(blankCount);
             printf("})");
             break;
         case CONST_FUNCTION:
-            printf("(function(");
-            for(i=0;i<con.func.argList.count;i++){
-                printf(con.func.argList.vals[i].name);
-                if(i!=con.func.argList.count-1){
+            printf("(function %s(",con.func.name);
+            for(i=0;i<con.func.argCount;i++){
+                printf(con.func.nlist.vals[i]);
+                if(i!=con.func.argCount-1){
                     printf(",");
                 }
             }
             printf("){\n");
-            printCmds(getFuncUnit(con.func));
+            printCmds(getFuncUnit(con.func),blankCount+1);
+            printBlanks(blankCount);
             printf("})");
             break;
         default:
@@ -290,11 +276,12 @@ void printConstMsg(Const con){
             break;
     }
 }
-void printCmds(Unit unit){
+void printCmds(Unit unit,int blankCount){
     Part part;
     int c;
     OpcodeMsg opm;
     for(int i=0;i<unit.clist.count;i++){
+        printBlanks(blankCount);
         c=unit.clist.vals[i];
         if(c>=0){
             part=unit.plist.vals[c];
@@ -309,10 +296,13 @@ void printCmds(Unit unit){
             printf(" %d",c);
             switch(opm.opcode){
                 case OPCODE_LOAD_CONST:
-                    printConstMsg(unit.constList.vals[c]);
+                    printConstMsg(unit.constList.vals[c],blankCount);
                     break;
+                case OPCODE_LOAD_VAR:
                 case OPCODE_LOAD_MEMBER:
-                    printf("(%s)","member");
+                case OPCODE_LOAD_METHOD:
+                case OPCODE_CLASS_EXTEND:
+                    printf("(%s)",unit.nlist.vals[c]);
                     break;
                 case OPCODE_ASSIGN:
                     if(c<0){
@@ -321,20 +311,7 @@ void printCmds(Unit unit){
                         printf("(%s)",opcodeList[c].name);
                     }
                     break;
-                case OPCODE_LOAD_FIELD:{
-                    VarList vlist=unit.flist.vals[c].varList;
-                    printf("(");
-                    for(int i2=0;i2<vlist.count;i2++){
-                        printf("%d:%s",i2,vlist.vals[i2].name);
-                        if(vlist.vals[i2].isRef){
-                            printf("[ref]");
-                        }
-                        if(i2<vlist.count-1){
-                            printf(",");
-                        }
-                    }
-                    printf(")");
-                }
+                
                 default:
                     break;
             }
@@ -350,53 +327,81 @@ void expandHashList(HashList*hl,int size){
     hs.name=NULL;
     hs.isUsed=false;
     hs.nextSlot=-1;
+    hs.obj=NULL;
     size=pow2(size);
-    hl->slot=(HashSlot*)memManage(hl->slot,size);
+    hl->slot=(HashSlot*)memManage(hl->slot,size*sizeof(HashSlot));
     while(hl->capacity<size){
         hl->slot[hl->capacity++]=hs;
     }
 }
 HashList newHashList(){
     HashList hl;
-    hl.capacity=1;
+    hl.capacity=0;
     hl.slot=NULL;
     expandHashList(&hl,1);
     return hl;
 }
-int hashAdd(HashList*hl,char*name){
-    uint hashCode=hashString(name);
-    int c=hashCode%hl->capacity;
-    int x;
-    if(hl->slot[c].isUsed){
-        while(hl->slot[c].nextSlot>=0){
-            c=hl->slot[c].nextSlot;
-        }
-        bool isFound=false;
-        for(x=c+1;x<hl->capacity;x++){
-            if(!hl->slot[x].isUsed){
-                isFound=true;
-                break;
-            }
-        }
-        if(!isFound){
-            x=hl->capacity;
-            expandHashList(hl,hl->capacity+1);
-        }
-    }else{
-        x=c;
-    }
-    hl->slot[x].name=name;
-    hl->slot[x].isUsed=true;
-    return x;
-}
 /*未找到则返回-1*/
-int hashGet(HashList*hl,char*name){
-    int c=hashString(name);
+int hashGet(HashList*hl,char*name,bool isAdd){
+    int c=hashString(name)%hl->capacity;
+    int x;
+    if(!hl->slot[c].isUsed){
+        if(!isAdd){
+            return -1;
+        }
+        hl->slot[c].isUsed=true;
+        hl->slot[c].name=name;
+        return c;
+    }
     while(strcmp(hl->slot[c].name,name)!=0){
+        x=c;
         c=hl->slot[c].nextSlot;
         if(c<0){
-            return -1;
+            if(!isAdd){
+                return -1;
+            }
+            for(int i=0;i<hl->capacity;i++){
+                if(!hl->slot[i].isUsed){
+                    hl->slot[i].isUsed=true;
+                    hl->slot[i].name=name;
+                    hl->slot[x].nextSlot=i;
+                    return i;
+                }
+            }
+            c=hl->capacity;
+            expandHashList(hl,hl->capacity+1);
+            hl->slot[c].isUsed=true;
+            hl->slot[c].name=name;
+            hl->slot[x].nextSlot=c;
+            return c;
         }
     }
     return c;
+}
+HashList hashCopy(HashList hl){
+    HashList hl2=newHashList();
+    hl2.capacity=hl.capacity;
+    hl2.slot=(HashSlot*)memManage(hl2.slot,hl2.capacity*sizeof(HashSlot));
+    memcpy(hl2.slot,hl.slot,hl.capacity*sizeof(HashSlot));
+    return hl2;
+}
+HashList hashMerge(HashList hl1,HashList hl2){
+    HashList hl=hashCopy(hl1);
+    int c;
+    for(int i=0;i<hl2.capacity;i++){
+        if(hl2.slot[i].isUsed){
+            c=hashGet(&hl,hl2.slot[i].name,true);
+            hl.slot[c].obj=hl2.slot[i].obj;
+        }
+    }
+    return hl;
+}
+int addName(NameList*nlist,char*name){
+    for(int i=0;i<nlist->count;i++){
+        if(strcmp(nlist->vals[i],name)==0){
+            return i;
+        }
+    }
+    LIST_ADD((*nlist),Name,name)
+    return nlist->count-1;
 }

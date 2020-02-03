@@ -1,6 +1,7 @@
 #include"common.h"
 #include"compiler.h"
-#include"vm.h"
+#include"core.h"
+//#include"vm.h"
 char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "compile and run:pd [file]\n"
 "run pdm file:pd [file]\n"
@@ -8,12 +9,10 @@ char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "-m:make module\n"
 "-o [name]:use output file name\n";
 void run(char*fileName){
-    Module mod=compileAll(fileName);
+    PdSTD pstd=makeSTD();
+    Module mod=compileAll(fileName,pstd);
     Unit unit=getModuleUnit(mod);
-    printCmds(unit);
-    VM vm=newVM(fileName);
-    unit.varStart=vm.stackCount;
-    execute(&vm,&unit);
+    printCmds(unit,0);
 }
 int main(int argc,char**argv){
     if(argc==1){

@@ -43,7 +43,7 @@ const TokenSymbol symbolList[]={
     {TOKEN_COLON,":",1}
 };
 const Keyword keywordList[]={
-    {TOKEN_FUNCTION,"function","函数"},
+    {TOKEN_FUNC,"func","函数"},
     {TOKEN_WHILE,"while","当"},
     {TOKEN_FOR,"for","循环"},
     {TOKEN_BREAK,"break","结束"},
@@ -60,8 +60,7 @@ const Keyword keywordList[]={
     {TOKEN_INCLUDE,"include","包括"},
     {TOKEN_TRUE,"true","真"},
     {TOKEN_FALSE,"false","假"},
-    {TOKEN_DO,"do","做"},
-    {TOKEN_ARG,"arg","参数"}
+    {TOKEN_DO,"do","做"}
 };
 /*Token*/
 Token getToken(Parser*parser){

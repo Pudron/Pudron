@@ -3,6 +3,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<stdarg.h>
 
 #define MAX_WORD_LENGTH 128
 #define FILE_POSTFIX ".pd"
@@ -10,6 +11,8 @@
 #define FILE_SIGN 5201314
 #define VERSION 1
 #define VERSION_MIN 1
+#define STD_CLASS_COUNT 6
+#define STD_FUNC_COUNT 2
 
 /*List Operations*/
 //#define LIST_UNIT_SIZE 10
@@ -49,7 +52,7 @@
     list.count-=mcount;\
     list.size=pow2(list.count);\
     if(list.count<=list.size){\
-        list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+        list.vals=(type*)memManage(list.vals,sizeof(type)*list.size);\
     }
 
 #define LIST_CONNECT(list1,list2,type) \
@@ -59,6 +62,7 @@
         list1.vals=(type*)memManage(list1.vals,list1.size*sizeof(type));\
     }\
     memcpy(list1.vals+list2.count,list2.vals,list2.count*sizeof(type));
+
 
 /*bool type*/
 typedef enum{
@@ -73,7 +77,7 @@ typedef enum{
     TOKEN_DOUBLE,
     TOKEN_WORD,
     TOKEN_STRING,
-    TOKEN_FUNCTION,
+    TOKEN_FUNC,
     TOKEN_WHILE,
     TOKEN_DO,
     TOKEN_FOR,
@@ -126,11 +130,9 @@ typedef enum{
     TOKEN_IMPORT,
     TOKEN_INCLUDE,
     TOKEN_TRUE,
-    TOKEN_FALSE,
-    TOKEN_ARG
+    TOKEN_FALSE
 }Tokentype;
-#define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 45
+#define OPCODE_COUNT 39
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -157,67 +159,26 @@ typedef enum{
     
     OPCODE_LOAD_CONST,
     OPCODE_LOAD_VAR,
-    OPCODE_LOAD_ATTR,/*类内部访问*/
     OPCODE_LOAD_MEMBER,
     OPCODE_LOAD_SUBSCRIPT,
-    //OPCODE_PUSH_VAL,
     OPCODE_STACK_COPY,
-    //OPCODE_POP_VAR,/*参数为数量*/
-    //OPCODE_PUSH_STACK,/*arg:count*/
     OPCODE_POP_STACK,/*参数为数量*/
     OPCODE_JUMP,
     OPCODE_JUMP_IF_FALSE,
-    OPCODE_LOAD_FIELD,
-    OPCODE_FREE_FIELD,
-    OPCODE_SET_LOOP,
-    OPCODE_FREE_LOOP,
 
     OPCODE_CALL_FUNCTION,
-    //OPCODE_CALL_METHOD,/*arg:index,count*/
-    //OPCODE_CALL_ATTR,/*类内部访问*/
     OPCODE_RETURN,
-    //OPCODE_ENABLE_FUNCTION,/*顺便把函数变量入栈*/
     OPCODE_INVERT_ORDER,/*arg:count,倒序*/
-    //OPCODE_ASSIGN_LEFT,/*arg:count*/
-    //OPCODE_ASSIGN_RIGHT,/*arg:count*/
     OPCODE_SET_ASSIGN_COUNT,/*set asc*/
     OPCODE_ASSIGN,/*arg:operation type(-1 is normal assignment),顺便把asc设为1*/
 
     OPCODE_MAKE_ARRAY,
     OPCODE_GET_FOR_INDEX,
-    OPCODE_LOAD_STACK,/*以当前unit的start为基准*/
-    OPCODE_LOAD_ARG_COUNT
-    /*OPCODE_MAKE_OBJECT,
-    OPCODE_EXTEND_CLASS,
-    OPCODE_ENABLE_CLASS,
+    
+    OPCODE_LOAD_METHOD,/*不POP前面的对象*/
+    OPCODE_CALL_METHOD,/*创建对象环境*/
 
-    OPCODE_SET_MODULE,
-    OPCODE_RETURN_MODULE,
-
-    OPCODE_PRINT_STACK,
-    OPCODE_PRINT_VAR,
-    OPCODE_PRINT_FUNC,
-    OPCODE_PRINT_CLASS,
-
-    OPCODE_GET_VARCOUNT,
-    OPCODE_RESIZE_VAR,
-    OPCODE_GET_CLASS,
-    OPCODE_GET_VARBASIS,
-    OPCODE_SET_VARBASIS,
-    OPCODE_EXIT,
-
-    OPCODE_MAKE_RANGE,
-    OPCODE_COPY_OBJECT,
-    OPCODE_STR_FORMAT,
-    OPCODE_PRINT,
-    OPCODE_INPUT,
-    OPCODE_STR_COMPARE,
-    OPCODE_READ_TEXT_FILE,
-    OPCODE_WRITE_TEXT_FILE,
-
-    OPCODE_DLL_OPEN,
-    OPCODE_DLL_CLOSE,
-    OPCODE_DLL_EXECUTE*/
+    OPCODE_CLASS_EXTEND/*继承*/
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
@@ -251,16 +212,6 @@ typedef struct{
 }Part;
 LIST_DECLARE(Part)
 typedef struct{
-    bool isRef;
-    char*name;
-    int hashName;
-}Var;
-LIST_DECLARE(Var)
-typedef struct{
-    VarList varList;
-}Field;
-LIST_DECLARE(Field)
-typedef struct{
     int code[10];
     int count;
 }Command;
@@ -274,11 +225,17 @@ typedef struct ModuleDef Module;
 typedef struct ConstDef Const;
 LIST_DECLARE(Const)
 LIST_DECLARE(Module)
+typedef struct ObjectDef Object;
 typedef struct{
     char*name;
-    int hashName;
-}Member;
-LIST_DECLARE(Member)
+    int nextSlot;
+    bool isUsed;
+    Object*obj;
+}HashSlot;
+typedef struct{
+    int capacity;
+    HashSlot*slot;
+}HashList;
 struct ModuleDef{
     char*name;
     /*unit start*/
@@ -286,31 +243,35 @@ struct ModuleDef{
     intList clist;
     ModuleList moduleList;
     PartList partList;
-    FieldList fieldList;
-    MemberList memberList;
+    HashList lvlist;
+    NameList nlist;
     /*unit end*/
 };
 typedef struct VMDef VM;
 typedef struct UnitDef Unit;
 typedef struct{
+    char*name;
     void (*exe)(VM*,Unit*);
-    VarList argList;
+    int argCount;/*nlist的前argCount个名字皆为参数*/
     /*unit start*/
     ConstList constList;
     intList clist;
     ModuleList moduleList;
     PartList partList;
-    FieldList fieldList;
-    MemberList memberList;
+    HashList lvlist;
+    NameList nlist;
     /*unit end*/
 }Func;
-typedef struct{
+typedef struct ClassDef Class;
+LIST_DECLARE(Class)
+struct ClassDef{
+    /*确定对象类型时用字符串来确定,创建标准对象只能通过常量方式*/
     char*name;
-    VarList varList;
+    ClassList parentList;
+    HashList memberList;
+    NameList varList;/*成员名字,调用initFunc时有用*/
     Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
-    int optID[OPT_METHOD_COUNT];
-    int initID,destroyID,subID;
-}Class;
+};
 struct ConstDef{
     enum{
         CONST_INT,
@@ -324,31 +285,29 @@ struct ConstDef{
         double numd;
         char*str;
         Func func;
-        Class classd;
+        Class class;
     };
 };
-typedef struct ObjectDef Object;
-typedef struct{
-    char*name;
-    int nextSlot;
-    bool isUsed;
-    Object*obj;
-}HashSlot;
-typedef struct{
-    int capacity;
-    HashSlot*slot;
-}HashList;
 struct ObjectDef{
-    Class*class;
+    enum{
+        OBJECT_INT,
+        OBJECT_DOUBLE,
+        OBJECT_CLASS,
+        OBJECT_FUNCTION,
+        OBJECT_STRING,
+        OBJECT_LIST,
+        OBJECT_OTHERS
+    }type;
+    NameList classNameList;
     union{
         int num;
         double numd;
         char*str;
         Func func;
-        Class*classd;
+        Class class;
+        Object**subObj;/*用于list*/
     };
     HashList member;
-    int varCount;
     int refCount;
     bool isInit;/*用于标记初始化对象*/
 };
@@ -357,18 +316,22 @@ struct UnitDef{
     intList clist;
     ModuleList mlist;
     PartList plist;
-    FieldList flist;
-    NameList nlist;
-    int varStart;
+    HashList gvlist;/*global variables(include upvalues)*/
+    HashList lvlist;/*local variables*/
+    NameList nlist;/*namespace*/
     int curPart;
     int ptr;
-    int argc;
 };
 typedef struct{
     Opcode opcode;
     char*name;
     int argCount;
 }OpcodeMsg;
+typedef struct{
+    HashList hl;
+    Class stdClass[STD_CLASS_COUNT];
+    Func stdFunc[STD_FUNC_COUNT];
+}PdSTD;
 void*memManage(void*ptr,size_t size);
 char*cutText(char*text,int start,int end);
 char*cutPostfix(char*text);
@@ -379,10 +342,16 @@ char*getPath(char*text);
 int pow2(int num);
 void reportMsg(Msg msg);
 unsigned int hashString(char*str);
-Unit newUnit(int varStart);
+Unit newUnit();
 void setModuleUnit(Module*mod,Unit unit);
 void setFuncUnit(Func*func,Unit unit);
 Unit getModuleUnit(Module mod);
 Unit getFuncUnit(Func func);
-void printCmds(Unit unit);
+void printCmds(Unit unit,int blankCount);
+int addName(NameList*nlist,char*name);
+int hashGet(HashList*hl,char*name,bool isAdd);
+HashList newHashList();
+void expandHashList(HashList*hl,int size);
+HashList hashMerge(HashList hl1,HashList hl2);
+HashList hashCopy(HashList hl);
 #endif

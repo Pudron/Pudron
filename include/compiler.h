@@ -2,6 +2,7 @@
 #define _PD_COMPILER_H_
 #include"parser.h"
 #include"pio.h"
+#include"core.h"
 typedef struct{
     Tokentype tokenType;
     Opcode opcode;
@@ -12,15 +13,13 @@ typedef struct{
 *Func,Module:Unit
 *Block:Env*/
 typedef struct{
-    Class*class;
+    Class*classDef;
     intList*breakList;
     bool isGlobal;
-    Field*field;
 }Env;
 typedef struct{
     Parser parser;
-    VarList vlist;
     char*path;
 }Compiler;
-Module compileAll(char*fileName);
+Module compileAll(char*fileName,PdSTD pstd);
 #endif

@@ -5,14 +5,16 @@ PLATFORM ?= WINDOWS
 CC=gcc
 CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM) -DDEBUG
 LIBS=
-OBJS=main.o common.o pio.o parser.o compiler.o vm.o core.o
+OBJS=main.o common.o pio.o parser.o compiler.o
 ifeq ($(PLATFORM),LINUX)
 	EXE=./
 	/ =$(strip /)
 	LIBS+=-ldl
+	PD_FILE=pd
 else
 	EXE=
 	/ =$(strip \)
+	PD_FILE=pd.exe
 endif
 ifneq (build$/objs,$(wildcard build$/objs))
 	MKD1=mkdir build$/objs
@@ -45,7 +47,7 @@ test:test$/test.pd
 	$(EXE)build$/pudron$/pd test$/test.pd
 
 .PHONY:debug
-debug:build$/pudron$/pd test$/test.pd
+debug:build$/pudron$/$(PD_FILE) test$/test.pd
 	gdb --args build$/pudron$/pd test$/test.pd
 
 .PHONY:clean

@@ -1,6 +1,6 @@
 #include"core.h"
 #include"vm.h"
-void vmError(VM*vm,char*text){
+void vmError(VM*vm,char*text,...){
     Msg msg;
     Part part=vm->part;
     msg.fileName=part.fileName;
@@ -10,18 +10,21 @@ void vmError(VM*vm,char*text){
     msg.start=part.start;
     msg.end=part.end;
     msg.type=MSG_ERROR;
-    strcpy(msg.text,text);
+    va_list valist;
+    va_start(valist,text);
+    vsprintf(msg.text,text,valist);
     for(int i=0;i<vm->plist.count;i++){
         part=vm->plist.vals[i];
         printf("from:%s:%d:%d:\n",part.fileName,part.line,part.column);
     }
+    va_end(valist);
     reportMsg(msg);
 }
 Func newFunc(){
     Func func;
     func.exe=NULL;
     LIST_INIT(func.argList)
-    Unit unit=newUnit(0);
+    Unit unit=newUnit();
     setFuncUnit(&func,unit);
     return func;
 }
@@ -62,6 +65,17 @@ void callInitFunc(VM*vm,Class*class,Object*obj){
     }
     popStack(vm,1);/*pop this*/
 }
+void callFunction(VM*vm,Func func,int argc){
+
+}
+bool callMethod(VM*vm,Object*this,char*name){
+    Object*obj=loadMember(vm,this,name,false);
+    if(obj==NULL){
+        return false;
+    }
+    confirmObjectType(vm,obj,OBJECT_FUNCTION);
+
+}
 Object*newObjectStd(VM*vm,int class){
     Class*classd=&vm->stdclass[class];
     Object*obj=NULL;
@@ -79,31 +93,121 @@ Object*newObjectStd(VM*vm,int class){
     callInitFunc(vm,classd,obj);
     return obj;
 }
-void reduceRef(VM*vm,Object*obj){
+void confirmObjectType(VM*vm,Object*obj,char type){
+    if(obj->type!=type){
+        switch(type){
+            case OBJECT_INT:
+                vmError(vm,"expected an int type object.");
+                break;
+            case OBJECT_DOUBLE:
+                vmError(vm,"expected a double type object.");
+                break;
+            case OBJECT_FUNCTION:
+                vmError(vm,"expected a Func type object.");
+                break;
+            case OBJECT_CLASS:
+                vmError(vm,"expected a Class type object.");
+                break;
+            case OBJECT_LIST:
+                vmError(vm,"expected a list type object.");
+                break;
+            case OBJECT_STRING:
+                vmError(vm,"expected a string type object.");
+                break;
+            default:
+                vmError(vm,"object type do not equal.");
+                break;
+        }
+    }
+}
+void setLocal(VM*vm,Unit*unit,char*name,Object*obj){
+    int index=hashGet(&unit->lvlist,name,false);
+    if(index<0){
+        vmError(vm,"local variable \"%s\" no found.",name);
+    }
+    unit->lvlist.slot[index].obj=obj;
+}
+void freeHashList(VM*vm,Unit*unit,HashList*hl){
+    Object*obj;
+    for(int i=0;i<hl->capacity;i++){
+        obj=hl->slot[i].obj;
+        if(obj!=NULL){
+            reduceRef(vm,unit,obj);
+        }
+    }
+}
+void reduceRef(VM*vm,Unit*unit,Object*obj){
     obj->refCount--;
     if(obj->refCount<=0){
-        //puts("destroy\n");
-        if(obj->class->destroyID>=0){
+        Object*dobj=loadMember(vm,obj,METHOD_NAME_DESTROY,false);
+        if(dobj!=NULL){
             obj->refCount=2;
-            Object*rt=obj->objs[obj->class->destroyID];
-            if(!compareClassStd(vm,rt,CLASS_FUNCTION)){
-                vmError(vm,"expected destroy method.");
-            }
-            PUSH(obj);
-            callFunction(vm,rt->func,1);
-            reduceRef(vm,POP());
-        }
-        if(compareClassStd(vm,obj,CLASS_STRING)){
-            free(obj->str);
-        }
-        for(int i=0;i<obj->varCount;i++){
-            reduceRef(vm,obj->objs[i]);
-        }
-        if(obj->varCount>0){
-            free(obj->objs);
+            confirmObjectType(vm,dobj,OBJECT_FUNCTION);
+            Unit funit=getFuncUnit(dobj->func);
+            funit.lvlist=hashCopy(funit.lvlist);
+            funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
+            setLocal(vm,unit,"this",obj);
+            execute(vm,&funit);
+            reduceRef(vm,unit,POP());
+            freeHashList(vm,unit,&funit.lvlist);
+            free(funit.gvlist.slot);
         }
         free(obj);
     }
+}
+Object*newObject(char type){
+    Object*obj=NULL;
+    obj=(Object*)memManage(obj,sizeof(Object));
+    obj->type=type;
+    obj->member=newHashList();
+    obj->refCount=1;
+    obj->isInit=true;
+    LIST_INIT(obj->classNameList);
+    return obj;
+}
+Object*newIntObject(int num){
+    Object*obj=NULL;
+    obj=newObject(OBJECT_INT);
+    LIST_ADD(obj->classNameList,Name,"int");
+    obj->num=num;
+    return obj;
+}
+Object*newDoubleObject(double numd){
+    Object*obj=NULL;
+    obj=newObject(OBJECT_DOUBLE);
+    LIST_ADD(obj->classNameList,Name,"double");
+    obj->numd=numd;
+    return obj;
+}
+Object*newClassObject(Class class){
+    Object*obj=NULL;
+    obj=newObject(OBJECT_CLASS);
+    LIST_ADD(obj->classNameList,Name,"Class");
+    obj->class=class;
+    return obj;
+}
+Object*newFuncObject(Func func){
+    Object*obj=NULL;
+    obj=newObject(OBJECT_FUNCTION);
+    LIST_ADD(obj->classNameList,Name,"Func");
+    obj->func=func;
+    return obj;
+}
+Func newFunc(char*name){
+    Func func;
+    Unit unit=newUnit();
+    func.name=name;
+    func.exe=NULL;
+    func.argCount=0;
+    setFuncUnit(&func,unit);
+}
+Class newClass(char*name){
+    Class class;
+    class.name=name;
+    LIST_INIT(class.parentList)
+    class.memberList=newHashList();
+    LIST_INIT(class.varList)
+    class.initFunc=newFunc();
 }
 Object*loadConst(VM*vm,Unit*unit,int index){
     Object*obj=NULL;
@@ -111,12 +215,10 @@ Object*loadConst(VM*vm,Unit*unit,int index){
     Const con=unit->constList.vals[index];
     switch(con.type){
         case CONST_INT:
-            obj=newObjectStd(vm,CLASS_INT);
-            obj->num=con.num;
+            obj=newIntObject(con.num);
             break;
         case CONST_DOUBLE:
-            obj=newObjectStd(vm,CLASS_DOUBLE);
-            obj->numd=con.numd;
+            obj=newDoubleObject(con.numd);
             break;
         case CONST_STRING:
             obj=newObjectStd(vm,CLASS_STRING);
@@ -125,18 +227,49 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             strcpy(obj->str,con.str);
             break;
         case CONST_FUNCTION:
-            obj=newObjectStd(vm,CLASS_FUNCTION);
-            obj->func=con.func;
+            obj=newFuncObject(con.func);
             break;
         case CONST_CLASS:
-            obj=newObjectStd(vm,CLASS_CLASS);
-            obj->classd=&unit->constList.vals[index].classd;
+            obj=newClassObject(con.class);
             break;
         default:
             sprintf(temp,"unknown constant type:%d.",con.type);
             vmError(vm,temp);
             break;
     }
+    return obj;
+}
+Object*loadVar(VM*vm,Unit*unit,char*name){
+    Object*obj;
+    int index=hashGet(&unit->lvlist,name,false);
+    if(index<0){
+        index=hashGet(&unit->gvlist,name,false);
+        if(index<0){
+            vmError(vm,"variable \"%s\" no found.",name);
+        }
+        if(unit->gvlist.slot[index].obj==NULL){
+            unit->gvlist.slot[index].obj=newIntObject(0);
+        }
+        obj=unit->gvlist.slot[index].obj;
+    }else{
+        if(obj=unit->lvlist.slot[index].obj==NULL){
+            obj=unit->lvlist.slot[index].obj=newIntObject(0);
+        }
+        obj=unit->lvlist.slot[index].obj;
+    }
+    obj->refCount++;
+    return obj;
+}
+Object*loadMember(VM*vm,Object*this,char*name,bool confirm){
+    int index=hashGet(&this->member,name,false);
+    if(index<0){
+        if(!confirm){
+            return NULL;
+        }
+        vmError(vm,"member \"%s\" in class \"%s\" no found.",name,this->classNameList.vals[0]);
+    }
+    Object*obj=this->member.slot[index].obj;
+    obj->refCount++;
     return obj;
 }
 FUNC_DEF(std_init)
@@ -146,41 +279,38 @@ FUNC_DEF(std_init)
         PUSH(obj);
     }
 }
-void addClassFunc(Class*class,char*name,void*exe,int optID){
-    Func func=newFunc();
+void addClassFunc(Class*class,char*name,void*exe,int argCount,...){
+    Func func=newFunc(name);
     func.exe=exe;
-    Var var={false,name,hashString(name)};
-    LIST_ADD(class->varList,Var,var)
-    if(optID>=1){
-        class->optID[optID-1]=class->varList.count-1;
-    }else if(optID==ID_INIT){
-        class->initID=class->varList.count-1;
-    }else if(optID==ID_DESTROY){
-        class->destroyID=class->varList.count-1;
-    }else if(optID==ID_SUBSCRIPT){
-        class->subID=class->varList.count-1;
+    addName(&class->varList,name);
+    hashGet(&class->memberList,name,true);
+    va_list valist;
+    va_start(valist,argCount);
+    char*argName;
+    for(int i=0;i<argCount;i++){
+        argName=va_arg(valist,char*);
+        LIST_ADD(func.nlist,Name,argName)
+        hashGet(&func.lvlist,argName,true);
+        func.argCount++;
     }
+    va_end(valist);
     Const con;
     con.type=CONST_FUNCTION;
     con.func=func;
     LIST_ADD(class->initFunc.constList,Const,con)
 }
 void addClassInt(Class*class,char*name,int num){
-    Var var={false,name,hashString(name)};
-    LIST_ADD(class->varList,Var,var)
+    addName(&class->varList,name);
+    hashGet(&class->memberList,name,true);
     Const con;
     con.type=CONST_INT;
     con.num=num;
     LIST_ADD(class->initFunc.constList,Const,con)
 }
-void addSubObj(Object*parent,Object*child){
-    parent->varCount++;
-    parent->objs=(Object**)memManage(parent->objs,parent->varCount*sizeof(Object*));
-    parent->objs[parent->varCount-1]=child;
-}
+
 FUNC_DEF(string_create)
     char temp[50];
-    Object*obj,*this=ARG(0);
+    Object*obj,*this=loadVar(vm,unit,"this");
     for(int i=1;i<ARGC;i++){
         obj=ARG(i);
         if(compareClassStd(vm,obj,CLASS_INT)){
@@ -221,25 +351,39 @@ FUNC_DEF(string_subscript)
     PD_RETURN(sto);
 FUNC_END()
 FUNC_DEF(list_create)
-    Object*this=ARG(0);
-    for(int i=0;i<ARGC;i++){
-        addSubObj(this,ARG(i));
-        LIST_COUNT(this)++;
+    Object*this=loadVar(vm,unit,"this");
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*obj,*cnt=loadMember(vm,argv,"count",true);
+    this->type=OBJECT_LIST;
+    this->subObj=NULL;
+    this->subObj=(Object**)memManage(this->subObj,cnt->num*sizeof(Object*));
+    for(int i=0;i<cnt->num;i++){
+        this->subObj[i]=argv->subObj[i];
     }
+    reduceRef(vm,unit,cnt);
+    reduceRef(vm,unit,argv);
+    reduceRef(vm,unit,this);
 FUNC_END()
 FUNC_DEF(list_add)
-    Object*this=ARG(0);
-    addSubObj(this,ARG(1));
-    LIST_COUNT(this)++;
+    Object*this=loadVar(vm,unit,"this");
+    Object*element=loadVar(vm,unit,"element");
+    Object*cnt=loadMember(vm,this,"count",true);
+    cnt->num++;
+    this->subObj=(Object**)memManage(this->subObj,cnt->num*sizeof(Object*));
+    this->subObj[cnt->num-1]=element;
+    reduceRef(vm,unit,cnt);
+    reduceRef(vm,unit,this);
 FUNC_END()
 FUNC_DEF(list_subscript)
-    Object*this=ARG(0),*obj=ARG(1);
-    if(!compareClassStd(vm,obj,CLASS_INT)){
-        vmError(vm,"expected int when calling List subscript.");
-    }
-    Object*rt=this->objs[LIST_VAR_COUNT+obj->num];
+    Object*this=loadVar(vm,unit,"this");
+    Object*ind=loadVar(vm,unit,"index");
+    confirmObjectType(vm,ind,OBJECT_INT);
+    Object*rt=this->subObj[ind->num];
     rt->refCount++;
-    PD_RETURN(rt);
+    reduceRef(vm,unit,ind);
+    reduceRef(vm,unit,this);
+    PUSH(rt);
+    return;
 FUNC_END()
 FUNC_DEF(print_stack)
     Object*obj;
@@ -278,79 +422,26 @@ FUNC_DEF(mprint)
         }
     }
 FUNC_END()
-void makeSTD(VM*vm){
+
+PdSTD makeSTD(){
+    PdSTD pstd;
     Class class;
-    Stack st;
-    /*int definition*/
+    pstd.hl=newHashList();
     class=newClass("int");
-    class.initFunc=newFunc();
-    class.initFunc.exe=NULL;
-    vm->stdclass[CLASS_INT]=class;
-    /*double definition*/
+    pstd.stdClass[0]=class;
+    hashGet(&pstd.hl,"int",true);
     class=newClass("double");
-    class.initFunc=newFunc();
-    class.initFunc.exe=NULL;
-    vm->stdclass[CLASS_DOUBLE]=class;
-    /*class definition*/
+    pstd.stdClass[1]=class;
+    hashGet(&pstd.hl,"double",true);
+    class=newClass("Func");
+    pstd.stdClass[2]=class;
+    hashGet(&pstd.hl,"Func",true);
     class=newClass("Class");
-    class.initFunc=newFunc();
-    class.initFunc.exe=NULL;
-    vm->stdclass[CLASS_CLASS]=class;
-    /*function definition*/
-    class=newClass("Function");
-    class.initFunc=newFunc();
-    class.initFunc.exe=NULL;
-    vm->stdclass[CLASS_FUNCTION]=class;
-    /*string definition*/
-    class=newClass("string");
-    class.initFunc=newFunc();
-    class.initFunc.exe=std_init;
-    addClassInt(&class,"length",0);
-    addClassFunc(&class,"string_create",string_create,ID_INIT);
-    addClassFunc(&class,"add",string_add,OPCODE_ADD);
-    addClassFunc(&class,"subscript",string_subscript,ID_SUBSCRIPT);
-    vm->stdclass[CLASS_STRING]=class;
-    /*List definition*/
-    class=newClass("List");
-    class.initFunc=newFunc();
-    class.initFunc.exe=std_init;
+    pstd.stdClass[3]=class;
+    hashGet(&pstd.hl,"Class",true);
+    class=newClass("list");
     addClassInt(&class,"count",0);
-    addClassFunc(&class,"add",list_add,-1);
-    addClassFunc(&class,"list_subscript",list_subscript,ID_SUBSCRIPT);
-    vm->stdclass[CLASS_LIST]=class;
-    /*add to stack*/
-    st.hashName=hashString("int");
-    st.obj=newObjectStd(vm,CLASS_CLASS);
-    st.obj->classd=&vm->stdclass[CLASS_INT];
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("double");
-    st.obj=newObjectStd(vm,CLASS_CLASS);
-    st.obj->classd=&vm->stdclass[CLASS_DOUBLE];
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("Class");
-    st.obj=newObjectStd(vm,CLASS_CLASS);
-    st.obj->classd=&vm->stdclass[CLASS_CLASS];
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("Function");
-    st.obj=newObjectStd(vm,CLASS_CLASS);
-    st.obj->classd=&vm->stdclass[CLASS_FUNCTION];
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("string");
-    st.obj=newObjectStd(vm,CLASS_CLASS);
-    st.obj->classd=&vm->stdclass[CLASS_STRING];
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("List");
-    st.obj=newObjectStd(vm,CLASS_CLASS);
-    st.obj->classd=&vm->stdclass[CLASS_LIST];
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("print_stack");
-    st.obj=newObjectStd(vm,CLASS_FUNCTION);
-    st.obj->func=newFunc();
-    st.obj->func.exe=print_stack;
-    vm->stack[vm->stackCount++]=st;
-    st.hashName=hashString("print");
-    st.obj=newObjectStd(vm,CLASS_FUNCTION);
-    st.obj->func=newFunc();
-    st.obj->func.exe=mprint;
-    vm->stack[vm->stackCount++]=st;
+    addClassFunc(&class,METHOD_NAME_INIT,list_create,0);
+    addClassFunc(&class,"add",list_add,1,"element");
+    addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
 }
