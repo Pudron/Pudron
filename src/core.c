@@ -64,7 +64,10 @@ void freeHashList(VM*vm,Unit*unit,HashList*hl){
     }
     free(hl->slot);
 }
-/*...为参数,若为method,则第一个参数为this,当argc<0时,则后面接ArgList,ArgList会被DELETE*/
+/*
+*...为参数,若为method,则第一个参数为this,当argc=-1时,则后面接ArgList,ArgList会被DELETE,
+*若argc=-2,则只传入this,执行opDestroy()方法,不创建argv,防止无限释放argv
+*/
 void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
     Object*obj;
     Unit funit=getFuncUnit(func);
@@ -73,7 +76,8 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
     va_list valist;
     va_start(valist,argc);
     Object*argv;
-    if(argc<0){
+    int count;
+    if(argc==-1){
         ArgList argList=va_arg(valist,ArgList);
         argc=argList.count;
         argv=newListObject(vm,argc);
@@ -81,15 +85,21 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
             argv->subObj[i]=argList.vals[i];
         }
         LIST_DELETE(argList)
+        setHash(vm,&funit.lvlist,"argv",argv);
+        count=(argc>func.argCount)?func.argCount:argc;
+    }else if(argc==-2){
+        obj=va_arg(valist,Object*);/*this*/
+        setHash(vm,&funit.lvlist,"this",obj);
+        count=0;
     }else{
         argv=newListObject(vm,argc);
         for(int i=0;i<argc;i++){
             argv->subObj[i]=va_arg(valist,Object*);
         }
+        setHash(vm,&funit.lvlist,"argv",argv);
+        count=(argc>func.argCount)?func.argCount:argc;
     }
     va_end(valist);
-    setHash(vm,&funit.lvlist,"argv",argv);
-    int count=(argc>func.argCount)?func.argCount:argc;
     for(int i=0;i<count;i++){
         obj=argv->subObj[i];
         obj->refCount++;
@@ -109,7 +119,7 @@ void delObj(VM*vm,Unit*unit,Object*obj){
     if(dobj!=NULL){
         obj->refCount=2;
         confirmObjectType(vm,dobj,OBJECT_FUNCTION);
-        callFunction(vm,unit,dobj->func,1,obj);
+        callFunction(vm,unit,dobj->func,-2,obj);
         reduceRef(vm,unit,POP());
         reduceRef(vm,unit,dobj);
     }
@@ -294,6 +304,9 @@ void addClassFunc(Class*class,char*name,void*exe,int argCount,...){
     va_list valist;
     va_start(valist,argCount);
     char*argName;
+    func.argCount=1;
+    LIST_ADD(func.nlist,Name,"this")
+    hashGet(&func.lvlist,"this",true);
     for(int i=0;i<argCount;i++){
         argName=va_arg(valist,char*);
         LIST_ADD(func.nlist,Name,argName)
