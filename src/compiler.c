@@ -86,7 +86,7 @@ Compiler newCompiler(Parser parser){
     free(path);
     return compiler;
 }
-Module compileAll(char*fileName,PdSTD pstd){
+Module compileAll(char*fileName){
     Module mod;
     char*n1=cutPath(fileName);
     mod.name=cutPostfix(n1);
@@ -95,7 +95,6 @@ Module compileAll(char*fileName,PdSTD pstd){
     getAllToken(&cp.parser);
     Env env={NULL,NULL,-1,true};
     Unit unit=newUnit();
-    unit.gvlist=pstd.hl;
     compileBlock(&cp,&unit,env);
     unit.curPart=-1;
     addCmd(&unit,OPCODE_NOP);
@@ -183,23 +182,6 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
         }
         addCmd1(unit,OPCODE_MAKE_ARRAY,count);
     }else if(token.type==TOKEN_WORD){
-        bool isFound=false;
-        if(env.classDef!=NULL){
-            if(hashGet(&env.classDef->memberList,token.word,false)>=0){
-                isFound=true;
-            }
-        }
-        if(!isFound){
-            if(hashGet(&unit->gvlist,token.word,false)<0){
-                if(isAssign){
-                    hashGet(&unit->lvlist,token.word,true);
-                }else{
-                    if(hashGet(&unit->lvlist,token.word,false)<0){
-                        compileMsg(MSG_ERROR,cp,"variable \"%s\" no found.",msgStart,token.word);
-                    }
-                }
-            }
-        }
         addCmd1(unit,OPCODE_LOAD_VAR,addName(&unit->nlist,token.word));
         token=nextToken(&cp->parser);
         if(token.type==TOKEN_PARE1){
@@ -256,9 +238,20 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
                 addCmd1(unit,OPCODE_LOAD_MEMBER,addName(&unit->nlist,name));
             }
         }else if(token.type==TOKEN_BRACKET1){
-            compileExpression(cp,unit,0,false,msgStart,env);
-            matchToken(&cp->parser,TOKEN_BRACKET2,"\"]\" after subscript",msgStart);
-            addCmd(unit,OPCODE_LOAD_SUBSCRIPT);
+            int argCount=0;
+            while(1){
+                compileExpression(cp,unit,0,false,msgStart,env);
+                argCount++;
+                token=nextToken(&cp->parser);
+                if(token.type==TOKEN_COMMA){
+                    continue;
+                }else if(token.type==TOKEN_BRACKET2){
+                    break;
+                }else{
+                    compileMsg(MSG_ERROR,cp,"expected \",\" or \"]\" in subscript.",msgStart);
+                }
+            }
+            addCmd1(unit,OPCODE_LOAD_SUBSCRIPT,argCount);
         }else{
             lastToken(&cp->parser);
             break;
@@ -382,11 +375,16 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
         compileMsg(MSG_ERROR,cp,"too many assignment.",msgStart);
     }
 }
+/*不允许重复*/
+void addNameNoRepeat(Compiler*cp,NameList*nlist,char*name,char*message,int msgStart){
+    for(int i=0;i<nlist->count;i++){
+        if(strcmp(name,nlist->vals[i])==0){
+            compileMsg(MSG_ERROR,cp,"the %s \"%s\" has already existed.",msgStart,message,name);
+        }
+    }
+    LIST_ADD((*nlist),Name,name)
+}
 void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
-    #define ARG_ADD(name) \
-        LIST_ADD(funit.nlist,Name,name)\
-        func.argCount++;\
-        hashGet(&funit.lvlist,name,true);
     env.breakList=NULL;
     Func func;
     Token token;
@@ -396,17 +394,11 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
     func.name=token.word;
     func.argCount=0;
     if(isMethod){
-        LIST_ADD(env.classDef->varList,Name,func.name)
+        addNameNoRepeat(cp,&env.classDef->varList,func.name,"member",msgStart);
         hashGet(&env.classDef->memberList,func.name,true);
-        ARG_ADD("this")
-    }else{
-        if(hashGet(&unit->gvlist,func.name,false)<0){
-            hashGet(&unit->lvlist,func.name,true);
-        }
+        LIST_ADD(funit.nlist,Name,"this")
+        func.argCount++;
     }
-    funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
-    func.exe=NULL;
-    ARG_ADD("argv")
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in function definition",msgStart);
     token=nextToken(&cp->parser);
     if(token.type!=TOKEN_PARE2){
@@ -414,7 +406,8 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
         lastToken(&cp->parser);
         while(token.type!=TOKEN_PARE2 || needArg){
             token=matchToken(&cp->parser,TOKEN_WORD,"argument in function definition",msgStart);
-            ARG_ADD(token.word)
+            addNameNoRepeat(cp,&funit.nlist,token.word,"argument",msgStart);
+            func.argCount++;
             token=nextToken(&cp->parser);
             if(token.type==TOKEN_COMMA){
                 needArg=true;
@@ -423,6 +416,7 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
             }
         }
     }
+    func.exe=NULL;
     compileBlock(cp,&funit,env);
     Const con;
     con.type=CONST_INT;
@@ -440,7 +434,6 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
     if(!isMethod){
         addCmd1(unit,OPCODE_ASSIGN,-1);
     }
-    #undef ARG_ADD
 }
 void compileClass(Compiler*cp,Unit*unit){
     Class class;
@@ -448,7 +441,6 @@ void compileClass(Compiler*cp,Unit*unit){
     Const con;
     Env env={&class,NULL,-1,false};
     Unit funit=newUnit();
-    funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     class.initFunc.exe=NULL;
     class.initFunc.name=NULL;
     class.initFunc.argCount=1;
@@ -460,15 +452,12 @@ void compileClass(Compiler*cp,Unit*unit){
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
     token=matchToken(&cp->parser,TOKEN_WORD,"class name",msgStart);
     class.name=token.word;
-    if(hashGet(&unit->gvlist,class.name,false)<0){
-        hashGet(&unit->lvlist,class.name,true);
-    }
     token=nextToken(&cp->parser);
     if(token.type==TOKEN_COLON){
         while(1){
             token=matchToken(&cp->parser,TOKEN_WORD,"class name when extending",msgStart);
             hashGet(&class.memberList,token.word,true);
-            addName(&class.varList,token.word);
+            addNameNoRepeat(cp,&class.varList,token.word,"parent class",msgStart);
             addName(&exdList,token.word);
             token=nextToken(&cp->parser);
             if(token.type!=TOKEN_COMMA){

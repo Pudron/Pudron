@@ -63,7 +63,6 @@
     }\
     memcpy(list1.vals+list2.count,list2.vals,list2.count*sizeof(type));
 
-
 /*bool type*/
 typedef enum{
     false=0,
@@ -270,7 +269,7 @@ struct ClassDef{
     char*name;
     ClassList parentList;
     HashList memberList;
-    NameList varList;/*成员名字,调用initFunc时有用*/
+    NameList varList;/*成员名字,调用initFunc时有用,不包括父类名*/
     Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
 };
 struct ConstDef{
@@ -317,9 +316,9 @@ struct UnitDef{
     intList clist;
     ModuleList mlist;
     PartList plist;
-    HashList gvlist;/*global variables(include upvalues)*/
-    HashList lvlist;/*local variables*/
     NameList nlist;/*namespace*/
+    HashList gvlist;/*global variables(include upvalues),only useful in vm*/
+    HashList lvlist;/*local variables,only useful in vm*/
     int curPart;
     int ptr;
 };

@@ -25,7 +25,7 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_LOAD_CONST,"LOAD_CONST",1},
     {OPCODE_LOAD_VAR,"LOAD_VAR",1},
     {OPCODE_LOAD_MEMBER,"LOAD_MEMBER",1},
-    {OPCODE_LOAD_SUBSCRIPT,"LOAD_SUBSCRIPT",0},
+    {OPCODE_LOAD_SUBSCRIPT,"LOAD_SUBSCRIPT",1},
     {OPCODE_STACK_COPY,"STACK_COPY",1},
     {OPCODE_POP_STACK,"POP_STACK",1},
     {OPCODE_JUMP,"JUMP",1},
@@ -177,7 +177,6 @@ Unit newUnit(){
     LIST_INIT(unit.mlist)
     LIST_INIT(unit.plist)
     LIST_INIT(unit.nlist)
-    unit.lvlist=newHashList();
     unit.curPart=-1;
     unit.ptr=0;
     return unit;
@@ -381,7 +380,7 @@ int hashGet(HashList*hl,char*name,bool isAdd){
 HashList hashCopy(HashList hl){
     HashList hl2=newHashList();
     hl2.capacity=hl.capacity;
-    hl2.slot=(HashSlot*)memManage(hl2.slot,hl2.capacity*sizeof(HashSlot));
+    hl2.slot=(HashSlot*)memManage(NULL,hl2.capacity*sizeof(HashSlot));
     memcpy(hl2.slot,hl.slot,hl.capacity*sizeof(HashSlot));
     return hl2;
 }
