@@ -191,7 +191,7 @@ Func newFunc(char*name){
     func.name=name;
     func.exe=NULL;
     func.argCount=1;
-    hashGet(&func.lvlist,"argv",true);
+    hashGet(&unit.lvlist,"argv",true);
     setFuncUnit(&func,unit);
     return func;
 }
@@ -500,5 +500,7 @@ PdSTD makeSTD(){
     func.exe=mprint;
     pstd.stdFunc[0]=func;
     hashGet(&pstd.hl,"print",true);
+    obj=newFuncObject(func);
+    pstd.hl.slot[index].obj=obj;
     return pstd;
 }

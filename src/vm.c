@@ -402,7 +402,7 @@ void execute(VM*vm,Unit*unit){
                 }else if(obj->type==OBJECT_CLASS){
                     PUSH(createObject(vm,unit,obj->class,&argList,c));
                 }else{
-                    vmError(vm,"expected class of function when calling.");
+                    vmError(vm,"expected class or function when calling.");
                 }
                 if(c==OPCODE_CALL_METHOD){
                     vm->this=oldThis;
