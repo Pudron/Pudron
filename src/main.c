@@ -14,8 +14,9 @@ void run(char*fileName){
     Module mod=compileAll(fileName,pstd);
     Unit unit=getModuleUnit(mod);
     printCmds(unit,0);
-    unit.gvlist=pstd.hl;
     VM vm=newVM(fileName,pstd);
+    makeSTDObject(&vm,&pstd);
+    unit.gvlist=pstd.hl;
     execute(&vm,&unit);
 }
 int main(int argc,char**argv){

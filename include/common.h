@@ -358,9 +358,11 @@ Unit getModuleUnit(Module mod);
 Unit getFuncUnit(Func func);
 void printCmds(Unit unit,int blankCount);
 int addName(NameList*nlist,char*name);
+/*尽量在执行之前就建立好hash表，扩容时开销挺大*/
 int hashGet(HashList*hl,char*name,bool isAdd);
 HashList newHashList();
 void expandHashList(HashList*hl,int size);
 HashList hashMerge(HashList hl1,HashList hl2);
 HashList hashCopy(HashList hl);
+void hashPrint(HashList hl);
 #endif

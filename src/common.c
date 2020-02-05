@@ -329,16 +329,26 @@ void expandHashList(HashList*hl,int size){
     hs.nextSlot=-1;
     hs.obj=NULL;
     size=pow2(size);
-    hl->slot=(HashSlot*)memManage(hl->slot,size*sizeof(HashSlot));
-    while(hl->capacity<size){
-        hl->slot[hl->capacity++]=hs;
+    HashList newhl;
+    newhl.slot=(HashSlot*)memManage(NULL,size*sizeof(HashSlot));
+    newhl.capacity=0;
+    while(newhl.capacity<size){
+        newhl.slot[newhl.capacity++]=hs;
     }
+    /*重新插入*/
+    for(int i=0;i<hl->capacity;i++){
+        if(hl->slot[i].isUsed){
+            hashGet(&newhl,hl->slot[i].name,true);
+        }
+    }
+    free(hl->slot);
+    *hl=newhl;
 }
 HashList newHashList(){
     HashList hl;
-    hl.capacity=0;
-    hl.slot=NULL;
-    expandHashList(&hl,1);
+    hl.capacity=1;
+    hl.slot=(HashSlot*)memManage(NULL,sizeof(HashSlot));
+    hl.slot[0]=(HashSlot){NULL,-1,false,NULL};
     return hl;
 }
 /*未找到则返回-1*/
@@ -368,12 +378,8 @@ int hashGet(HashList*hl,char*name,bool isAdd){
                     return i;
                 }
             }
-            c=hl->capacity;
             expandHashList(hl,hl->capacity+1);
-            hl->slot[c].isUsed=true;
-            hl->slot[c].name=name;
-            hl->slot[x].nextSlot=c;
-            return c;
+            return hashGet(hl,name,true);
         }
     }
     return c;
@@ -395,6 +401,15 @@ HashList hashMerge(HashList hl1,HashList hl2){
         }
     }
     return hl;
+}
+void hashPrint(HashList hl){
+    printf("HashList(capacity:%d):\n",hl.capacity);
+    for(int i=0;i<hl.capacity;i++){
+        if(hl.slot[i].isUsed){
+            printf("%d.name:%s,nextSlot:%d\n",i,hl.slot[i].name,hl.slot[i].nextSlot);
+        }
+    }
+    printf("HashList End\n");
 }
 int addName(NameList*nlist,char*name){
     for(int i=0;i<nlist->count;i++){

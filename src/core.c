@@ -72,24 +72,22 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
     funit.lvlist=hashCopy(func.lvlist);
     va_list valist;
     va_start(valist,argc);
-    Object*argv=newListObject(vm);
+    Object*argv;
     if(argc<0){
         ArgList argList=va_arg(valist,ArgList);
         argc=argList.count;
+        argv=newListObject(vm,argc);
         for(int i=0;i<argc;i++){
             argv->subObj[i]=argList.vals[i];
         }
         LIST_DELETE(argList)
     }else{
-        argv->subObj=(Object**)memManage(NULL,argc*sizeof(Object*));
+        argv=newListObject(vm,argc);
         for(int i=0;i<argc;i++){
             argv->subObj[i]=va_arg(valist,Object*);
         }
     }
     va_end(valist);
-    Object*cnt=loadMember(vm,argv,"count",true);
-    cnt->num=argc;
-    reduceRef(vm,unit,cnt);
     setHash(vm,&funit.lvlist,"argv",argv);
     int count=(argc>func.argCount)?func.argCount:argc;
     for(int i=0;i<count;i++){
@@ -173,16 +171,19 @@ Object*newStringObject(VM*vm){
     }
     return obj;
 }
-Object*newListObject(VM*vm){
-    Class class=vm->pstd.stdClass[OBJECT_STRING];
+Object*newListObject(VM*vm,int count){
+    Class class=vm->pstd.stdClass[OBJECT_LIST];
     Object*obj=newObject(OBJECT_LIST);
     LIST_ADD(obj->classNameList,Name,"list")
-    obj->subObj=NULL;
+    obj->subObj=(Object**)memManage(NULL,sizeof(Object*)*count);
     obj->member=hashCopy(class.memberList);
     Unit unit=getFuncUnit(class.initFunc);
     for(int i=0;i<class.varList.count;i++){
         setHash(vm,&obj->member,class.varList.vals[i],loadConst(vm,&unit,i));
     }
+    Object*cnt=loadMember(vm,obj,"count",true);
+    cnt->num=count;
+    cnt->refCount--;
     return obj;
 }
 Func newFunc(char*name){
@@ -190,7 +191,7 @@ Func newFunc(char*name){
     Unit unit=newUnit();
     func.name=name;
     func.exe=NULL;
-    func.argCount=1;
+    func.argCount=0;
     hashGet(&unit.lvlist,"argv",true);
     setFuncUnit(&func,unit);
     return func;
@@ -444,33 +445,23 @@ FUNC_END()
 
 PdSTD makeSTD(){
     PdSTD pstd;
-    int index;
-    Object*obj;
     Class class;
     pstd.hl=newHashList();
     class=newClass("int");
     pstd.stdClass[OBJECT_INT]=class;
-    index=hashGet(&pstd.hl,"int",true);
-    obj=newClassObject(class);
-    pstd.hl.slot[index].obj=obj;
+    hashGet(&pstd.hl,"int",true);
 
     class=newClass("double");
     pstd.stdClass[OBJECT_DOUBLE]=class;
-    index=hashGet(&pstd.hl,"double",true);
-    obj=newClassObject(class);
-    pstd.hl.slot[index].obj=obj;
+    hashGet(&pstd.hl,"double",true);
 
     class=newClass("Func");
     pstd.stdClass[OBJECT_FUNCTION]=class;
-    index=hashGet(&pstd.hl,"Func",true);
-    obj=newClassObject(class);
-    pstd.hl.slot[index].obj=obj;
+    hashGet(&pstd.hl,"Func",true);
 
     class=newClass("Class");
     pstd.stdClass[OBJECT_CLASS]=class;
-    index=hashGet(&pstd.hl,"Class",true);
-    obj=newClassObject(class);
-    pstd.hl.slot[index].obj=obj;
+    hashGet(&pstd.hl,"Class",true);
 
     class=newClass("list");
     class.initFunc.exe=std_init;
@@ -480,9 +471,7 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,list_destroy,0);
     pstd.stdClass[OBJECT_LIST]=class;
-    index=hashGet(&pstd.hl,"list",true);
-    obj=newClassObject(class);
-    pstd.hl.slot[index].obj=obj;
+    hashGet(&pstd.hl,"list",true);
 
     class=newClass("string");
     class.initFunc.exe=std_init;
@@ -491,16 +480,28 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,string_destroy,0);
     pstd.stdClass[OBJECT_STRING]=class;
-    index=hashGet(&pstd.hl,"string",true);
-    obj=newClassObject(class);
-    pstd.hl.slot[index].obj=obj;
+    hashGet(&pstd.hl,"string",true);
 
     Func func;
     func=newFunc("print");
     func.exe=mprint;
     pstd.stdFunc[0]=func;
     hashGet(&pstd.hl,"print",true);
-    obj=newFuncObject(func);
-    pstd.hl.slot[index].obj=obj;
+    
     return pstd;
+}
+void makeSTDObject(VM*vm,PdSTD*pstd){
+    Object*obj;
+    Class class;
+    for(int i=0;i<STD_CLASS_COUNT;i++){
+        class=pstd->stdClass[i];
+        obj=newClassObject(class);
+        setHash(vm,&pstd->hl,class.name,obj);
+    }
+    Func func;
+    for(int i=0;i<STD_FUNC_COUNT;i++){
+        func=pstd->stdFunc[i];
+        obj=newFuncObject(func);
+        setHash(vm,&pstd->hl,func.name,obj);
+    }
 }

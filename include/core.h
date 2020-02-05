@@ -50,10 +50,11 @@ Object*newDoubleObject(double numd);
 Object*newClassObject(Class class);
 Object*newFuncObject(Func func);
 Object*newStringObject(VM*vm);
-Object*newListObject(VM*vm);
+Object*newListObject(VM*vm,int count);
 void confirmObjectType(VM*vm,Object*obj,char type);
 void setHash(VM*vm,HashList*hl,char*name,Object*obj);
 void delObj(VM*vm,Unit*unit,Object*obj);
 void callFunction(VM*vm,Unit*unit,Func func,int argc,...);
 void freeHashList(VM*vm,Unit*unit,HashList*hl);
+void makeSTDObject(VM*vm,PdSTD*pstd);
 #endif

@@ -425,15 +425,11 @@ void execute(VM*vm,Unit*unit){
                 break;
             case OPCODE_MAKE_ARRAY:{
                 c=unit->clist.vals[++i];
-                this=newListObject(vm);
-                this->subObj=(Object**)memManage(NULL,c*sizeof(Object*));
+                this=newListObject(vm,c);
                 invertOrder(vm,c);
                 for(int i2=0;i2<c;i2++){
                     this->subObj[i2]=POP();
                 }
-                obj=loadMember(vm,this,"count",true);
-                obj->num=c;
-                reduceRef(vm,unit,obj);
                 PUSH(this);
                 break;
             }
