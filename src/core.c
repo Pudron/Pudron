@@ -193,6 +193,7 @@ Func newFunc(char*name){
     func.argCount=1;
     hashGet(&func.lvlist,"argv",true);
     setFuncUnit(&func,unit);
+    return func;
 }
 Class newClass(char*name){
     Class class;
@@ -201,6 +202,7 @@ Class newClass(char*name){
     class.memberList=newHashList();
     LIST_INIT(class.varList)
     class.initFunc=newFunc("initFunc");
+    return class;
 }
 Object*loadConst(VM*vm,Unit*unit,int index){
     Object*obj=NULL;
@@ -230,23 +232,26 @@ Object*loadConst(VM*vm,Unit*unit,int index){
     return obj;
 }
 Object*loadVar(VM*vm,Unit*unit,char*name){
-    Object*obj;
+    Object*obj=NULL;
     if(vm->this!=NULL){
         obj=loadMember(vm,vm->this,name,false);
     }
     if(obj==NULL){
-        int index=hashGet(&unit->gvlist,name,false);
+        int index=hashGet(&unit->lvlist,name,false);
         if(index<0){
-            index-hashGet(&unit->lvlist,name,true);
-            if(obj=unit->lvlist.slot[index].obj==NULL){
-                obj=unit->lvlist.slot[index].obj=newIntObject(0);
+            index=hashGet(&unit->gvlist,name,false);
+            if(index<0){
+                vmError(vm,"variable \"%s\" no found.",name);
             }
-            obj=unit->lvlist.slot[index].obj;
-        }else{
             if(unit->gvlist.slot[index].obj==NULL){
                 unit->gvlist.slot[index].obj=newIntObject(0);
             }
             obj=unit->gvlist.slot[index].obj;
+        }else{
+            if(unit->lvlist.slot[index].obj==NULL){
+                unit->lvlist.slot[index].obj=newIntObject(0);
+            }
+            obj=unit->lvlist.slot[index].obj;
         }
     }
     obj->refCount++;
@@ -369,12 +374,13 @@ FUNC_END()
 FUNC_DEF(list_create)
     Object*this=loadVar(vm,unit,"this");
     Object*argv=loadVar(vm,unit,"argv");
-    Object*obj,*cnt=loadMember(vm,argv,"count",true);
+    Object*cnt=loadMember(vm,argv,"count",true);
     this->type=OBJECT_LIST;
     this->subObj=NULL;
     this->subObj=(Object**)memManage(this->subObj,cnt->num*sizeof(Object*));
     for(int i=1;i<cnt->num;i++){
         this->subObj[i]=argv->subObj[i];
+        argv->subObj[i]->refCount++;
     }
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
@@ -438,20 +444,34 @@ FUNC_END()
 
 PdSTD makeSTD(){
     PdSTD pstd;
+    int index;
+    Object*obj;
     Class class;
     pstd.hl=newHashList();
     class=newClass("int");
     pstd.stdClass[OBJECT_INT]=class;
-    hashGet(&pstd.hl,"int",true);
+    index=hashGet(&pstd.hl,"int",true);
+    obj=newClassObject(class);
+    pstd.hl.slot[index].obj=obj;
+
     class=newClass("double");
     pstd.stdClass[OBJECT_DOUBLE]=class;
-    hashGet(&pstd.hl,"double",true);
+    index=hashGet(&pstd.hl,"double",true);
+    obj=newClassObject(class);
+    pstd.hl.slot[index].obj=obj;
+
     class=newClass("Func");
     pstd.stdClass[OBJECT_FUNCTION]=class;
-    hashGet(&pstd.hl,"Func",true);
+    index=hashGet(&pstd.hl,"Func",true);
+    obj=newClassObject(class);
+    pstd.hl.slot[index].obj=obj;
+
     class=newClass("Class");
     pstd.stdClass[OBJECT_CLASS]=class;
-    hashGet(&pstd.hl,"Class",true);
+    index=hashGet(&pstd.hl,"Class",true);
+    obj=newClassObject(class);
+    pstd.hl.slot[index].obj=obj;
+
     class=newClass("list");
     class.initFunc.exe=std_init;
     addClassInt(&class,"count",0);
@@ -460,7 +480,10 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,list_destroy,0);
     pstd.stdClass[OBJECT_LIST]=class;
-    hashGet(&pstd.hl,"list",true);
+    index=hashGet(&pstd.hl,"list",true);
+    obj=newClassObject(class);
+    pstd.hl.slot[index].obj=obj;
+
     class=newClass("string");
     class.initFunc.exe=std_init;
     addClassInt(&class,"length",0);
@@ -468,5 +491,14 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,string_destroy,0);
     pstd.stdClass[OBJECT_STRING]=class;
+    index=hashGet(&pstd.hl,"string",true);
+    obj=newClassObject(class);
+    pstd.hl.slot[index].obj=obj;
+
+    Func func;
+    func=newFunc("print");
+    func.exe=mprint;
+    pstd.stdFunc[0]=func;
+    hashGet(&pstd.hl,"print",true);
     return pstd;
 }

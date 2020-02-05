@@ -9,7 +9,7 @@
 #define ASSERT(condition,message,...)
 #endif
 #define checkStack(num) ASSERT(vm->stackCount<num,"%d:expected %d slots but only %d slots in stack.",vm->ptr,num,vm->stackCount)
-VM newVM(char*fileName){
+VM newVM(char*fileName,PdSTD pstd){
     VM vm;
     vm.stackCount=0;
     vm.ptr=0;
@@ -21,44 +21,13 @@ VM newVM(char*fileName){
     vm.part.end=0;
     LIST_INIT(vm.plist)
     vm.this=NULL;
-    makeSTD(&vm);
+    vm.pstd=pstd;
     return vm;
 }
 void popStack(VM*vm,Unit*unit,int num){
     for(int i=0;i<num;i++){
         reduceRef(vm,unit,POP());
     }
-}
-void callClass(VM*vm,Class*class,int argc){
-    Object*obj=NULL;
-    obj=(Object*)memManage(obj,sizeof(Object));
-    obj->class=class;
-    obj->varCount=class->varList.count;
-    obj->refCount=1;
-    obj->objs=NULL;
-    obj->isInit=true;
-    if(obj->varCount>0){
-        obj->objs=(Object**)memManage(obj->objs,obj->varCount*sizeof(Object*));
-    }
-    /*execute initFunc*/
-    callInitFunc(vm,class,obj);
-    if(class->initID>=0){
-        obj->refCount++;
-        /*塞this到参数前*/
-        vm->stackCount++;
-        for(int i=0;i<argc;i++){
-            vm->stack[vm->stackCount-1-i]=vm->stack[vm->stackCount-2-i];
-        }
-        vm->stack[vm->stackCount-1-argc].obj=obj;
-        Object*cf=obj->objs[class->initID];
-        if(!compareClassStd(vm,cf,CLASS_FUNCTION)){
-            vmError(vm,"expected a initialization method.");
-        }
-        callFunction(vm,cf->func,argc+1);
-        cf=POP();
-        reduceRef(vm,cf);
-    }
-    PUSH(obj);
 }
 void invertOrder(VM*vm,int count){
     checkStack(count);
@@ -84,7 +53,7 @@ Object copyObject(VM*vm,Unit*unit,Object*obj){
         hs=val.member.slot[i];
         if(hs.isUsed && hs.obj!=NULL){
             val.member.slot[i].obj=(Object*)memManage(NULL,sizeof(Object));
-            *(val.member.slot[i].obj)=copyObject(vm,hs.obj);
+            *(val.member.slot[i].obj)=copyObject(vm,unit,hs.obj);
         }
     }
     if(obj->type==OBJECT_STRING){
@@ -101,18 +70,20 @@ Object copyObject(VM*vm,Unit*unit,Object*obj){
     return val;
 }
 /*若argList为NULL,则不执行opInit()方法*/
-Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList){
+Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
     Object*this=newObject(OBJECT_OTHERS);
     this->member=hashCopy(class.memberList);
     LIST_ADD(this->classNameList,Name,class.name)
+    /*继承父类*/
     Object*parent;
     Class classp;
     for(int i=0;i<class.parentList.count;i++){
         classp=class.parentList.vals[i];
         LIST_ADD(this->classNameList,Name,classp.name)
-        parent=createObject(vm,unit,classp,NULL);
+        parent=createObject(vm,unit,classp,NULL,opcode);
         setHash(vm,&this->member,classp.name,parent);
     }
+    /*执行initFunc*/
     Unit funit=getFuncUnit(class.initFunc);
     funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     funit.lvlist=hashCopy(funit.lvlist);
@@ -124,9 +95,27 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList){
     }
     freeHashList(vm,unit,&funit.lvlist);
     free(funit.gvlist.slot);
-    for(int i=class.parentList.count;i<class.varList.count;i++){
-        
+    invertOrder(vm,class.varList.count);
+    for(int i=0;i<class.varList.count;i++){
+        setHash(vm,&this->member,class.varList.vals[i],POP());
     }
+    /*执行opInit()方法*/
+    if(argList!=NULL){
+        Object*iobj=loadMember(vm,this,METHOD_NAME_INIT,false);
+        if(iobj!=NULL){
+            confirmObjectType(vm,iobj,OBJECT_FUNCTION);
+            if(opcode==OPCODE_CALL_METHOD){
+                argList->vals[0]=this;
+            }else{
+                LIST_INSERT((*argList),Arg,0,this)
+            }
+            this->refCount++;
+            callFunction(vm,unit,iobj->func,-1,*argList);
+            reduceRef(vm,unit,POP());
+        }
+        reduceRef(vm,unit,iobj);
+    }
+    return this;
 }
 #define EXE_OPT_BIT(opt,methodName) \
     if(a->type==OBJECT_INT){\
@@ -251,7 +240,7 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
                 *val=*obj;
                 val->isInit=false;
             }else{
-                *val=copyObject(vm,obj);
+                *val=copyObject(vm,unit,obj);
             }
         }else{
             obj->refCount++;
@@ -283,7 +272,6 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
     PUSH(obj);\
     reduceRef(vm,unit,this);
 void execute(VM*vm,Unit*unit){
-    char temp[64];
     int c=0;
     ArgList argList;
     Object*obj=NULL,*this=NULL;
@@ -397,7 +385,7 @@ void execute(VM*vm,Unit*unit){
                 invertOrder(vm,argc);
                 LIST_INIT(argList)
                 if(c==OPCODE_CALL_METHOD){
-                    this=vm->stackCount-argc-2;
+                    this=vm->stack[vm->stackCount-argc-2];
                     LIST_ADD(argList,Arg,this);/*add this*/
                     oldThis=vm->this;
                     vm->this=this;
@@ -407,26 +395,12 @@ void execute(VM*vm,Unit*unit){
                 }
                 obj=POP();/*pop func*/
                 if(c==OPCODE_CALL_METHOD){
-                    POP();/*pop this*/
+                    this=POP();/*pop this*/
                 }
                 if(obj->type==OBJECT_FUNCTION){
                     callFunction(vm,unit,obj->func,-1,argList);
                 }else if(obj->type==OBJECT_CLASS){
-                    Class class=obj->class,classp;
-                    Object*parent;
-                    Unit funit;
-                    this=newObject(OBJECT_OTHERS);
-                    this->member=hashCopy(class.memberList);
-                    LIST_ADD(this->classNameList,Name,class.name)
-                    for(int i2=0;i2<class.parentList.count;i2++){
-                        classp=class.parentList.vals[i2];
-                        LIST_ADD(this->classNameList,Name,classp.name)
-                        parent=newObject(OBJECT_OTHERS);
-                        LIST_ADD(parent->classNameList,Name,classp.name)
-                        funit=getFuncUnit(classp.initFunc);
-                        funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
-
-                    }
+                    PUSH(createObject(vm,unit,obj->class,&argList,c));
                 }else{
                     vmError(vm,"expected class of function when calling.");
                 }
@@ -465,45 +439,34 @@ void execute(VM*vm,Unit*unit){
             }
             case OPCODE_GET_FOR_INDEX:{
                 checkStack(3);
-                Object*ind=vm->stack[vm->stackCount-3].obj;
-                Object*array=vm->stack[vm->stackCount-2].obj;
-                Object*sum=vm->stack[vm->stackCount-1].obj;
-                if(!compareClassStd(vm,sum,CLASS_INT)){
-                    vmError(vm,"the for index must be integer.");
-                }
-                if(!compareClassStd(vm,array,CLASS_LIST)){
-                    vmError(vm,"expected list in for statement.");
-                }
-                Object*rt=newObjectStd(vm,CLASS_INT);
-                if(sum->num<LIST_COUNT(array)){
-                    *ind=array[array->class->varList.count+(sum->num++)];
-                    ind->refCount=2;
+                Object*array=vm->stack[vm->stackCount-2];
+                Object*sum=vm->stack[vm->stackCount-1];
+                confirmObjectType(vm,array,OBJECT_LIST);
+                Object*cnt=loadMember(vm,array,"count",true);
+                Object*rt=newIntObject(0);
+                if(sum->num<cnt->num){
+                    vm->stack[vm->stackCount-3]=array->subObj[sum->num++];
+                    reduceRef(vm,unit,vm->stack[vm->stackCount-3]);
+                    vm->stack[vm->stackCount-3]->refCount++;
                     rt->num=true;
                 }else{
-                    popStack(vm,3);
+                    popStack(vm,unit,3);
                     rt->num=false;
                 }
+                reduceRef(vm,unit,cnt);
                 PUSH(rt);
                 break;
             }
-            case OPCODE_LOAD_STACK:
-                obj=POP();
-                if(!compareClassStd(vm,obj,CLASS_INT)){
-                    vmError(vm,"expected integer for argument.");
-                }
-                this=vm->stack[unit->varStart+obj->num].obj;
-                this->refCount++;
-                reduceRef(vm,obj);
-                PUSH(this);
-                break;
-            case OPCODE_LOAD_ARG_COUNT:
-                obj=newObjectStd(vm,CLASS_INT);
-                obj->num=unit->argc;
-                PUSH(obj);
+            case OPCODE_CLASS_EXTEND:
+                name=unit->nlist.vals[unit->clist.vals[++i]];
+                this=vm->stack[vm->stackCount-1];
+                obj=loadVar(vm,unit,name);
+                confirmObjectType(vm,obj,OBJECT_CLASS);
+                LIST_ADD(this->class.parentList,Class,obj->class)
+                reduceRef(vm,unit,obj);
                 break;
             default:
-                sprintf(temp,"unknown opcode %d.",c);
-                vmError(vm,temp);
+                vmError(vm,"unknown opcode %d.",c);
                 break;
         }
     }

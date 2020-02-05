@@ -12,7 +12,7 @@
 #define VERSION 1
 #define VERSION_MIN 1
 #define STD_CLASS_COUNT 6
-#define STD_FUNC_COUNT 2
+#define STD_FUNC_COUNT 1
 
 /*List Operations*/
 //#define LIST_UNIT_SIZE 10
@@ -62,6 +62,15 @@
         list1.vals=(type*)memManage(list1.vals,list1.size*sizeof(type));\
     }\
     memcpy(list1.vals+list2.count,list2.vals,list2.count*sizeof(type));
+
+#define LIST_INSERT(list,type,position,val) /*在position前插入值,[position]的值即为val*/\
+    list.count++;\
+    if(list.count>list.size){\
+        list.size=pow2(list.count);\
+        list.vals=(type*)memManage(list.vals,sizeof(type)*list.size);\
+    }\
+    memcpy(list.vals+position+1,list.vals+position,(list.count-position)*sizeof(type));\
+    list.vals[position]=val;
 
 /*bool type*/
 typedef enum{
@@ -317,8 +326,8 @@ struct UnitDef{
     ModuleList mlist;
     PartList plist;
     NameList nlist;/*namespace*/
-    HashList gvlist;/*global variables(include upvalues),only useful in vm*/
-    HashList lvlist;/*local variables,only useful in vm*/
+    HashList gvlist;/*global variables(include upvalues)*/
+    HashList lvlist;/*local variables*/
     int curPart;
     int ptr;
 };

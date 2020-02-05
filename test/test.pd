@@ -1,6 +1,1 @@
-class A:B{
-    asd;dsa;
-    func t(){
-        1+2;
-    }
-}
+print(123);

@@ -42,7 +42,7 @@ Object*loadConst(VM*vm,Unit*unit,int index);
 PdSTD makeSTD();
 /*loadMember():当confirm为true时，未找到成员则报错，否则返回NULL*/
 Object*loadMember(VM*vm,Object*this,char*name,bool confirm);
-/*先从所属类查找，然后全局变量，最后局部变量，没有则在局部变量中添加*/
+/*先从所属类查找,然后全局变量,最后局部变量,若查找到的对象未创建,则创建*/
 Object*loadVar(VM*vm,Unit*unit,char*name);
 Object*newObject(char type);
 Object*newIntObject(int num);

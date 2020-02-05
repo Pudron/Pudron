@@ -61,7 +61,7 @@ void compileMsg(char msgType,Compiler*cp,char*text,int msgStart,...){
         msg.end=cp->parser.ptr;
     }
     va_list valist;
-    va_start(valist,text);
+    va_start(valist,msgStart);
     vsprintf(msg.text,text,valist);
     va_end(valist);
     msg.type=msgType;
@@ -86,7 +86,7 @@ Compiler newCompiler(Parser parser){
     free(path);
     return compiler;
 }
-Module compileAll(char*fileName){
+Module compileAll(char*fileName,PdSTD pstd){
     Module mod;
     char*n1=cutPath(fileName);
     mod.name=cutPostfix(n1);
@@ -95,6 +95,7 @@ Module compileAll(char*fileName){
     getAllToken(&cp.parser);
     Env env={NULL,NULL,-1,true};
     Unit unit=newUnit();
+    unit.gvlist=hashCopy(pstd.hl);
     compileBlock(&cp,&unit,env);
     unit.curPart=-1;
     addCmd(&unit,OPCODE_NOP);
@@ -182,6 +183,15 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
         }
         addCmd1(unit,OPCODE_MAKE_ARRAY,count);
     }else if(token.type==TOKEN_WORD){
+        if(hashGet(&unit->gvlist,token.word,false)<0){
+            if(isAssign){
+                hashGet(&unit->lvlist,token.word,true);
+            }else{
+                if(hashGet(&unit->lvlist,token.word,false)<0){
+                    compileMsg(MSG_ERROR,cp,"variable \"%s\" no found.",msgStart,token.word);
+                }
+            }
+        }
         addCmd1(unit,OPCODE_LOAD_VAR,addName(&unit->nlist,token.word));
         token=nextToken(&cp->parser);
         if(token.type==TOKEN_PARE1){
@@ -398,7 +408,10 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
         hashGet(&env.classDef->memberList,func.name,true);
         LIST_ADD(funit.nlist,Name,"this")
         func.argCount++;
+    }else{
+        hashGet(&unit->lvlist,token.word,true);
     }
+    funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in function definition",msgStart);
     token=nextToken(&cp->parser);
     if(token.type!=TOKEN_PARE2){
@@ -423,6 +436,7 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
     con.num=0;
     addCmd1(&funit,OPCODE_LOAD_CONST,addConst(&funit,con));
     addCmd(&funit,OPCODE_RETURN);
+    free(funit.gvlist.slot);
     setFuncUnit(&func,funit);
     free(funit.gvlist.slot);
     if(!isMethod){
@@ -452,13 +466,14 @@ void compileClass(Compiler*cp,Unit*unit){
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
     token=matchToken(&cp->parser,TOKEN_WORD,"class name",msgStart);
     class.name=token.word;
+    hashGet(&unit->lvlist,class.name,true);
+    funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     token=nextToken(&cp->parser);
     if(token.type==TOKEN_COLON){
         while(1){
             token=matchToken(&cp->parser,TOKEN_WORD,"class name when extending",msgStart);
             hashGet(&class.memberList,token.word,true);
-            addNameNoRepeat(cp,&class.varList,token.word,"parent class",msgStart);
-            addName(&exdList,token.word);
+            addNameNoRepeat(cp,&exdList,token.word,"parent class",msgStart);
             token=nextToken(&cp->parser);
             if(token.type!=TOKEN_COMMA){
                 break;
@@ -493,6 +508,8 @@ void compileClass(Compiler*cp,Unit*unit){
             }
         }else if(token.type==TOKEN_FUNC){
             compileFunction(cp,&funit,true,env);
+        }else if(token.type==TOKEN_CLASS){
+            compileClass(cp,&funit);
         }else{
             compileMsg(MSG_ERROR,cp,"expected class member",msgStart);
         }
@@ -503,11 +520,12 @@ void compileClass(Compiler*cp,Unit*unit){
     addCmd1(unit,OPCODE_LOAD_VAR,addName(&unit->nlist,class.name));
     addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
     /*继承*/
-    for(int i=1;i<exdList.count;i++){
+    for(int i=0;i<exdList.count;i++){
         addCmd1(unit,OPCODE_CLASS_EXTEND,addName(&unit->nlist,exdList.vals[i]));
     }
     addCmd1(unit,OPCODE_ASSIGN,-1);
     LIST_DELETE(exdList)
+    free(funit.gvlist.slot);
 }
 void compileIfState(Compiler*cp,Unit*unit,Env env){
     Token token;

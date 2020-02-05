@@ -177,6 +177,7 @@ Unit newUnit(){
     LIST_INIT(unit.mlist)
     LIST_INIT(unit.plist)
     LIST_INIT(unit.nlist)
+    unit.lvlist=newHashList();
     unit.curPart=-1;
     unit.ptr=0;
     return unit;

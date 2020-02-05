@@ -5,7 +5,7 @@ PLATFORM ?= WINDOWS
 CC=gcc
 CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM) -DDEBUG
 LIBS=
-OBJS=main.o common.o pio.o parser.o compiler.o
+OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
 	EXE=./
 	/ =$(strip /)

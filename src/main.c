@@ -1,6 +1,7 @@
 #include"common.h"
 #include"compiler.h"
 #include"core.h"
+#include"vm.h"
 //#include"vm.h"
 char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "compile and run:pd [file]\n"
@@ -13,6 +14,9 @@ void run(char*fileName){
     Module mod=compileAll(fileName,pstd);
     Unit unit=getModuleUnit(mod);
     printCmds(unit,0);
+    unit.gvlist=pstd.hl;
+    VM vm=newVM(fileName,pstd);
+    execute(&vm,&unit);
 }
 int main(int argc,char**argv){
     if(argc==1){
