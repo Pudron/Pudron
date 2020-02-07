@@ -1,6 +1,9 @@
 class A{
-    func aopInit(){
-        x=456;
+    x=3;
+    func opAdd(e){
+        x+=e;
     }
 }
 a=A();
+a+123;
+print(a.x);

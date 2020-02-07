@@ -116,11 +116,13 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
                 argList->vals[0]=this;
             }
             this->refCount++;
+            Object*oldThis=vm->this;
+            vm->this=this;
             callFunction(vm,unit,iobj->func,-1,(*argList));
+            vm->this=oldThis;
             reduceRef(vm,unit,POP());
             reduceRef(vm,unit,iobj);
         }
-        
     }
     return this;
 }

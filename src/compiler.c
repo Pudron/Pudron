@@ -184,13 +184,15 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
         addCmd1(unit,OPCODE_MAKE_ARRAY,count);
     }else if(token.type==TOKEN_WORD){
         if(hashGet(&unit->gvlist,token.word,NULL,false)<0){
-            if(isAssign){
+            /*if(isAssign){
                 hashGet(&unit->lvlist,token.word,NULL,true);
             }else{
                 if(hashGet(&unit->lvlist,token.word,NULL,false)<0){
                     compileMsg(MSG_ERROR,cp,"variable \"%s\" no found.",msgStart,token.word);
                 }
-            }
+            }*/
+            /*可能是类成员，所以isAssign在这里暂时没用*/
+            hashGet(&unit->lvlist,token.word,NULL,true);
         }
         addCmd1(unit,OPCODE_LOAD_VAR,addName(&unit->nlist,token.word));
         token=nextToken(&cp->parser);
@@ -439,9 +441,9 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
     con.num=0;
     addCmd1(&funit,OPCODE_LOAD_CONST,addConst(&funit,con));
     addCmd(&funit,OPCODE_RETURN);
-    free(funit.gvlist.slot);
     setFuncUnit(&func,funit);
     free(funit.gvlist.slot);
+    funit.gvlist.slot=NULL;
     if(!isMethod){
         addCmd1(unit,OPCODE_LOAD_VAR,addName(&unit->nlist,func.name));
     }
