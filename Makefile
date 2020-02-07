@@ -11,10 +11,12 @@ ifeq ($(PLATFORM),LINUX)
 	/ =$(strip /)
 	LIBS+=-ldl
 	PD_FILE=pd
+	RM=rm -r
 else
 	EXE=
 	/ =$(strip \)
 	PD_FILE=pd.exe
+	RM=del /Q
 endif
 ifneq (build$/objs,$(wildcard build$/objs))
 	MKD1=mkdir build$/objs
@@ -52,7 +54,5 @@ debug:build$/pudron$/$(PD_FILE) test$/test.pd
 
 .PHONY:clean
 clean:
-#	-rm -r build/objs
-#	-rm -r build/pudron
-	-del  /Q build\objs
-	-del  /Q build\pudron
+	-$(RM) build$/objs
+	-$(RM) build$/pudron
