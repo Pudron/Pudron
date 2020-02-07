@@ -233,7 +233,7 @@ void printConstMsg(Const con,int blankCount){
             printf("(%lf)",con.numd);
             break;
         case CONST_STRING:
-            printf("(%s)",con.str);
+            printf("(\"%s\")",con.str);
             break;
         case CONST_CLASS:
             printf("(class %s",con.class.name);
@@ -338,7 +338,7 @@ void expandHashList(HashList*hl,int size){
     /*重新插入*/
     for(int i=0;i<hl->capacity;i++){
         if(hl->slot[i].isUsed){
-            hashGet(&newhl,hl->slot[i].name,true);
+            hashGet(&newhl,hl->slot[i].name,hl->slot[i].obj,true);
         }
     }
     free(hl->slot);
@@ -351,8 +351,7 @@ HashList newHashList(){
     hl.slot[0]=(HashSlot){NULL,-1,false,NULL};
     return hl;
 }
-/*未找到则返回-1*/
-int hashGet(HashList*hl,char*name,bool isAdd){
+int hashGet(HashList*hl,char*name,Object*obj,bool isAdd){
     int c=hashString(name)%hl->capacity;
     int x;
     if(!hl->slot[c].isUsed){
@@ -361,6 +360,9 @@ int hashGet(HashList*hl,char*name,bool isAdd){
         }
         hl->slot[c].isUsed=true;
         hl->slot[c].name=name;
+        if(obj!=NULL){
+            hl->slot[c].obj=obj;
+        }
         return c;
     }
     while(strcmp(hl->slot[c].name,name)!=0){
@@ -374,13 +376,19 @@ int hashGet(HashList*hl,char*name,bool isAdd){
                 if(!hl->slot[i].isUsed){
                     hl->slot[i].isUsed=true;
                     hl->slot[i].name=name;
+                    if(obj!=NULL){
+                        hl->slot[i].obj=obj;
+                    }
                     hl->slot[x].nextSlot=i;
                     return i;
                 }
             }
             expandHashList(hl,hl->capacity+1);
-            return hashGet(hl,name,true);
+            return hashGet(hl,name,obj,true);
         }
+    }
+    if(obj!=NULL){
+        hl->slot[c].obj=obj;
     }
     return c;
 }
@@ -393,11 +401,11 @@ HashList hashCopy(HashList hl){
 }
 HashList hashMerge(HashList hl1,HashList hl2){
     HashList hl=hashCopy(hl1);
-    int c;
+    int index;
     for(int i=0;i<hl2.capacity;i++){
         if(hl2.slot[i].isUsed){
-            c=hashGet(&hl,hl2.slot[i].name,true);
-            hl.slot[c].obj=hl2.slot[i].obj;
+            index=hashGet(&hl,hl2.slot[i].name,NULL,true);
+            hl.slot[index].obj=hl2.slot[i].obj;/*强制赋值*/
         }
     }
     return hl;
@@ -406,7 +414,12 @@ void hashPrint(HashList hl){
     printf("HashList(capacity:%d):\n",hl.capacity);
     for(int i=0;i<hl.capacity;i++){
         if(hl.slot[i].isUsed){
-            printf("%d.name:%s,nextSlot:%d\n",i,hl.slot[i].name,hl.slot[i].nextSlot);
+            printf("%d.name:%s,nextSlot:%d,",i,hl.slot[i].name,hl.slot[i].nextSlot);
+        }
+        if(hl.slot[i].obj==NULL){
+            printf("None\n");
+        }else{
+            printf("Object(%s)\n",hl.slot[i].obj->classNameList.vals[0]);
         }
     }
     printf("HashList End\n");

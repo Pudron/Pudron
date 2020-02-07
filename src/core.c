@@ -48,11 +48,9 @@ void confirmObjectType(VM*vm,Object*obj,char type){
     }
 }
 void setHash(VM*vm,HashList*hl,char*name,Object*obj){
-    int index=hashGet(hl,name,false);
-    if(index<0){
-        vmError(vm,"variable \"%s\" no found.",name);
+    if(hashGet(hl,name,obj,false)<0){
+        vmError(vm,"the variable \"%s\" no found.",name);
     }
-    hl->slot[index].obj=obj;
 }
 void freeHashList(VM*vm,Unit*unit,HashList*hl){
     Object*obj;
@@ -65,7 +63,7 @@ void freeHashList(VM*vm,Unit*unit,HashList*hl){
     free(hl->slot);
 }
 /*
-*...为参数,若为method,则第一个参数为this,当argc=-1时,则后面接ArgList,ArgList会被DELETE,
+*...为参数,若为method,则第一个参数为this,当argc=-1时,则后面接ArgList,#ArgList会被DELETE#,
 *若argc=-2,则只传入this,执行opDestroy()方法,不创建argv,防止无限释放argv
 */
 void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
@@ -84,7 +82,7 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
         for(int i=0;i<argc;i++){
             argv->subObj[i]=argList.vals[i];
         }
-        LIST_DELETE(argList)
+        //LIST_DELETE(argList)
         setHash(vm,&funit.lvlist,"argv",argv);
         count=(argc>func.argCount)?func.argCount:argc;
     }else if(argc==-2){
@@ -202,7 +200,7 @@ Func newFunc(char*name){
     func.name=name;
     func.exe=NULL;
     func.argCount=0;
-    hashGet(&unit.lvlist,"argv",true);
+    hashGet(&unit.lvlist,"argv",NULL,true);
     setFuncUnit(&func,unit);
     return func;
 }
@@ -248,9 +246,9 @@ Object*loadVar(VM*vm,Unit*unit,char*name){
         obj=loadMember(vm,vm->this,name,false);
     }
     if(obj==NULL){
-        int index=hashGet(&unit->lvlist,name,false);
+        int index=hashGet(&unit->lvlist,name,NULL,false);
         if(index<0){
-            index=hashGet(&unit->gvlist,name,false);
+            index=hashGet(&unit->gvlist,name,NULL,false);
             if(index<0){
                 vmError(vm,"variable \"%s\" no found.",name);
             }
@@ -270,11 +268,11 @@ Object*loadVar(VM*vm,Unit*unit,char*name){
 }
 Object*loadMember(VM*vm,Object*this,char*name,bool confirm){
     Object*obj;
-    int index=hashGet(&this->member,name,false);
+    int index=hashGet(&this->member,name,NULL,false);
     if(index<0){
         Object*parent;
         for(int i=1;i<this->classNameList.count;i++){
-            parent=this->member.slot[hashGet(&this->member,this->classNameList.vals[i],false)].obj;
+            parent=this->member.slot[hashGet(&this->member,this->classNameList.vals[i],NULL,false)].obj;
             obj=loadMember(vm,parent,name,false);
             if(obj!=NULL){
                 return obj;
@@ -300,17 +298,17 @@ void addClassFunc(Class*class,char*name,void*exe,int argCount,...){
     Func func=newFunc(name);
     func.exe=exe;
     addName(&class->varList,name);
-    hashGet(&class->memberList,name,true);
+    hashGet(&class->memberList,name,NULL,true);
     va_list valist;
     va_start(valist,argCount);
     char*argName;
     func.argCount=1;
     LIST_ADD(func.nlist,Name,"this")
-    hashGet(&func.lvlist,"this",true);
+    hashGet(&func.lvlist,"this",NULL,true);
     for(int i=0;i<argCount;i++){
         argName=va_arg(valist,char*);
         LIST_ADD(func.nlist,Name,argName)
-        hashGet(&func.lvlist,argName,true);
+        hashGet(&func.lvlist,argName,NULL,true);
         func.argCount++;
     }
     va_end(valist);
@@ -321,7 +319,7 @@ void addClassFunc(Class*class,char*name,void*exe,int argCount,...){
 }
 void addClassInt(Class*class,char*name,int num){
     addName(&class->varList,name);
-    hashGet(&class->memberList,name,true);
+    hashGet(&class->memberList,name,NULL,true);
     Const con;
     con.type=CONST_INT;
     con.num=num;
@@ -462,19 +460,19 @@ PdSTD makeSTD(){
     pstd.hl=newHashList();
     class=newClass("int");
     pstd.stdClass[OBJECT_INT]=class;
-    hashGet(&pstd.hl,"int",true);
+    hashGet(&pstd.hl,"int",NULL,true);
 
     class=newClass("double");
     pstd.stdClass[OBJECT_DOUBLE]=class;
-    hashGet(&pstd.hl,"double",true);
+    hashGet(&pstd.hl,"double",NULL,true);
 
     class=newClass("Func");
     pstd.stdClass[OBJECT_FUNCTION]=class;
-    hashGet(&pstd.hl,"Func",true);
+    hashGet(&pstd.hl,"Func",NULL,true);
 
     class=newClass("Class");
     pstd.stdClass[OBJECT_CLASS]=class;
-    hashGet(&pstd.hl,"Class",true);
+    hashGet(&pstd.hl,"Class",NULL,true);
 
     class=newClass("list");
     class.initFunc.exe=std_init;
@@ -484,7 +482,7 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,list_destroy,0);
     pstd.stdClass[OBJECT_LIST]=class;
-    hashGet(&pstd.hl,"list",true);
+    hashGet(&pstd.hl,"list",NULL,true);
 
     class=newClass("string");
     class.initFunc.exe=std_init;
@@ -493,13 +491,13 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,string_destroy,0);
     pstd.stdClass[OBJECT_STRING]=class;
-    hashGet(&pstd.hl,"string",true);
+    hashGet(&pstd.hl,"string",NULL,true);
 
     Func func;
     func=newFunc("print");
     func.exe=mprint;
     pstd.stdFunc[0]=func;
-    hashGet(&pstd.hl,"print",true);
+    hashGet(&pstd.hl,"print",NULL,true);
     
     return pstd;
 }

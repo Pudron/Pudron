@@ -29,7 +29,9 @@
         list.vals=NULL;
 
 #define LIST_DELETE(list) \
-        free(list.vals);\
+        if(list.vals!=NULL){\
+            free(list.vals);\
+        }\
         list.vals=NULL;\
         list.count=0;\
         list.size=0;
@@ -358,8 +360,9 @@ Unit getModuleUnit(Module mod);
 Unit getFuncUnit(Func func);
 void printCmds(Unit unit,int blankCount);
 int addName(NameList*nlist,char*name);
-/*尽量在执行之前就建立好hash表，扩容时开销挺大*/
-int hashGet(HashList*hl,char*name,bool isAdd);
+/*尽量在执行之前就建立好hash表，扩容时开销挺大
+*未找到则返回-1,若obj未NULL,则不给找到的slot赋值*/
+int hashGet(HashList*hl,char*name,Object*obj,bool isAdd);
 HashList newHashList();
 void expandHashList(HashList*hl,int size);
 HashList hashMerge(HashList hl1,HashList hl2);

@@ -39,11 +39,10 @@ void invertOrder(VM*vm,int count){
         vm->stack[vm->stackCount-count+i]=st;
     }
 }
-Object copyObject(VM*vm,Unit*unit,Object*obj){
+Object copyObject(VM*vm,Unit*unit,Object*obj,int refCount){
     Object val=*obj;
-    /*refCount与前面保持一致，可能别的地方还在引用(不知何用)
-    val.refCount=refCount;*/
-    val.refCount=1;
+    /*refCount与原指针(非此obj)的refCount保持一致，可能别的地方还在引用该指针，防止该指针被释放*/
+    val.refCount=refCount;
     val.isInit=false;
     LIST_INIT(val.classNameList);
     LIST_CONNECT(val.classNameList,obj->classNameList,Name)
@@ -53,7 +52,7 @@ Object copyObject(VM*vm,Unit*unit,Object*obj){
         hs=val.member.slot[i];
         if(hs.isUsed && hs.obj!=NULL){
             val.member.slot[i].obj=(Object*)memManage(NULL,sizeof(Object));
-            *(val.member.slot[i].obj)=copyObject(vm,unit,hs.obj);
+            *(val.member.slot[i].obj)=copyObject(vm,unit,hs.obj,1);
         }
     }
     if(obj->type==OBJECT_STRING){
@@ -88,6 +87,7 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
     funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     funit.lvlist=hashCopy(funit.lvlist);
     setHash(vm,&funit.lvlist,"this",this);
+    this->refCount++;
     if(class.initFunc.exe!=NULL){
         class.initFunc.exe(vm,&funit);
     }else{
@@ -105,15 +105,22 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
         if(iobj!=NULL){
             confirmObjectType(vm,iobj,OBJECT_FUNCTION);
             if(opcode==OPCODE_CALL_METHOD){
+                reduceRef(vm,unit,argList->vals[0]);
                 argList->vals[0]=this;
             }else{
-                LIST_INSERT((*argList),Arg,0,this)
+                //LIST_INSERT((*argList),Arg,0,this)
+                LIST_ADD((*argList),Arg,NULL)
+                for(int i=argList->count-1;i>0;i--){
+                    argList->vals[i]=argList->vals[i-1];
+                }
+                argList->vals[0]=this;
             }
             this->refCount++;
-            callFunction(vm,unit,iobj->func,-1,*argList);
+            callFunction(vm,unit,iobj->func,-1,(*argList));
             reduceRef(vm,unit,POP());
+            reduceRef(vm,unit,iobj);
         }
-        reduceRef(vm,unit,iobj);
+        
     }
     return this;
 }
@@ -232,15 +239,18 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
     checkStack(asc+1);
     Object*obj=POP();
     Object*val,*obj2;
+    int refCount;
     for(int i=0;i<asc;i++){
         if(astype==-1){
             val=POP();
+            refCount=val->refCount;
             delObj(vm,unit,val);
             if(obj->isInit){
                 *val=*obj;
+                val->refCount=refCount;
                 val->isInit=false;
             }else{
-                *val=copyObject(vm,unit,obj);
+                *val=copyObject(vm,unit,obj,refCount);
             }
         }else{
             obj->refCount++;
@@ -248,9 +258,10 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
             val->refCount++;
             PUSH(obj);
             exeOpt(vm,unit,astype);
+            refCount=val->refCount;
             delObj(vm,unit,val);
             obj2=POP();
-            *val=copyObject(vm,unit,obj2);
+            *val=copyObject(vm,unit,obj2,refCount);
             reduceRef(vm,unit,obj2);
         }
     }
@@ -326,12 +337,7 @@ void execute(VM*vm,Unit*unit){
             case OPCODE_LOAD_VAR:
                 name=unit->nlist.vals[unit->clist.vals[++i]];
                 obj=NULL;
-                if(vm->this!=NULL){
-                    obj=loadMember(vm,vm->this,name,false);
-                }
-                if(obj==NULL){
-                    obj=loadVar(vm,unit,name);
-                }
+                obj=loadVar(vm,unit,name);
                 PUSH(obj);
                 break;
             case OPCODE_LOAD_MEMBER:
@@ -393,7 +399,7 @@ void execute(VM*vm,Unit*unit){
                 for(int i2=0;i2<argc;i2++){
                     LIST_ADD(argList,Arg,POP())
                 }
-                obj=POP();/*pop func*/
+                obj=POP();/*pop func or class*/
                 if(c==OPCODE_CALL_METHOD){
                     this=POP();/*pop this*/
                 }
@@ -407,6 +413,7 @@ void execute(VM*vm,Unit*unit){
                 if(c==OPCODE_CALL_METHOD){
                     vm->this=oldThis;
                 }
+                LIST_DELETE(argList)
                 LIST_SUB(vm->plist,Part)
                 reduceRef(vm,unit,obj);
                 break;

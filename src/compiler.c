@@ -183,11 +183,11 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
         }
         addCmd1(unit,OPCODE_MAKE_ARRAY,count);
     }else if(token.type==TOKEN_WORD){
-        if(hashGet(&unit->gvlist,token.word,false)<0){
+        if(hashGet(&unit->gvlist,token.word,NULL,false)<0){
             if(isAssign){
-                hashGet(&unit->lvlist,token.word,true);
+                hashGet(&unit->lvlist,token.word,NULL,true);
             }else{
-                if(hashGet(&unit->lvlist,token.word,false)<0){
+                if(hashGet(&unit->lvlist,token.word,NULL,false)<0){
                     compileMsg(MSG_ERROR,cp,"variable \"%s\" no found.",msgStart,token.word);
                 }
             }
@@ -356,7 +356,7 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
             opt=OPCODE_REM;
             break;
         default:
-            compileMsg(MSG_ERROR,cp,"expected assignment operator.",msgStart);
+            compileMsg(MSG_ERROR,cp,"expected assignment operator or \";\".",msgStart);
             break;
     }
     if(scount>1){
@@ -405,11 +405,12 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
     func.argCount=0;
     if(isMethod){
         addNameNoRepeat(cp,&env.classDef->varList,func.name,"member",msgStart);
-        hashGet(&env.classDef->memberList,func.name,true);
+        hashGet(&env.classDef->memberList,func.name,NULL,true);
         LIST_ADD(funit.nlist,Name,"this")
+        hashGet(&funit.lvlist,"this",NULL,true);
         func.argCount++;
     }else{
-        hashGet(&unit->lvlist,token.word,true);
+        hashGet(&unit->lvlist,token.word,NULL,true);
     }
     funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in function definition",msgStart);
@@ -420,6 +421,7 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
         while(token.type!=TOKEN_PARE2 || needArg){
             token=matchToken(&cp->parser,TOKEN_WORD,"argument in function definition",msgStart);
             addNameNoRepeat(cp,&funit.nlist,token.word,"argument",msgStart);
+            hashGet(&funit.lvlist,token.word,NULL,true);
             func.argCount++;
             token=nextToken(&cp->parser);
             if(token.type==TOKEN_COMMA){
@@ -429,6 +431,7 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
             }
         }
     }
+    hashGet(&funit.lvlist,"argv",NULL,true);
     func.exe=NULL;
     compileBlock(cp,&funit,env);
     Const con;
@@ -466,13 +469,13 @@ void compileClass(Compiler*cp,Unit*unit){
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
     token=matchToken(&cp->parser,TOKEN_WORD,"class name",msgStart);
     class.name=token.word;
-    hashGet(&unit->lvlist,class.name,true);
+    hashGet(&unit->lvlist,class.name,NULL,true);
     funit.gvlist=hashMerge(unit->gvlist,unit->lvlist);
     token=nextToken(&cp->parser);
     if(token.type==TOKEN_COLON){
         while(1){
             token=matchToken(&cp->parser,TOKEN_WORD,"class name when extending",msgStart);
-            hashGet(&class.memberList,token.word,true);
+            hashGet(&class.memberList,token.word,NULL,true);
             addNameNoRepeat(cp,&exdList,token.word,"parent class",msgStart);
             token=nextToken(&cp->parser);
             if(token.type!=TOKEN_COMMA){
@@ -483,6 +486,7 @@ void compileClass(Compiler*cp,Unit*unit){
     if(token.type!=TOKEN_BRACE1){
         compileMsg(MSG_ERROR,cp,"expected \"{\" in class definition.",msgStart);
     }
+    hashGet(&funit.lvlist,"this",NULL,true);
     int pt;
     while(1){
         token=nextToken(&cp->parser);
@@ -492,7 +496,7 @@ void compileClass(Compiler*cp,Unit*unit){
         }else if(token.type==TOKEN_WORD){
             pt=setPart(cp,&funit,msgStart);
             addName(&class.varList,token.word);
-            hashGet(&class.memberList,token.word,true);
+            hashGet(&class.memberList,token.word,NULL,true);
             token=nextToken(&cp->parser);
             if(token.type==TOKEN_EQUAL){
                 compileExpression(cp,&funit,0,false,msgStart,env);
@@ -705,9 +709,11 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             unit->plist.vals[pt].end=token.end;
             addCmd1(unit,OPCODE_JUMP,env.jumpTo);
         }else if(token.type==TOKEN_RETURN){
+            int pt=setPart(cp,unit,token.start);
             compileExpression(cp,unit,0,false,token.start,env);
             addCmd(unit,OPCODE_RETURN);
-            matchToken(&cp->parser,TOKEN_SEMI,"\";\" after returning",token.start);
+            token=matchToken(&cp->parser,TOKEN_SEMI,"\";\" after returning",token.start);
+            unit->plist.vals[pt].end=token.end;
         }else if(token.type==TOKEN_FUNC){
             compileFunction(cp,unit,false,env);
         }else if(token.type==TOKEN_CLASS){

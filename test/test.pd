@@ -1,1 +1,6 @@
-print(123);
+class A{
+    func aopInit(){
+        x=456;
+    }
+}
+a=A();
