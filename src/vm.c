@@ -234,7 +234,10 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
         if(mobj->func.argCount!=2){
             vmError(vm,"the count of operator method must be 1 but %d is here.",mobj->func.argCount);
         }
+        Object*oldThis=vm->this;
+        vm->this=a;
         callFunction(vm,unit,mobj->func,2,a,b);
+        vm->this=oldThis;
     }
 }
 void assign(VM*vm,Unit*unit,int astype,int asc){

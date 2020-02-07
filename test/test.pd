@@ -6,4 +6,5 @@ class A{
 }
 a=A();
 a+123;
+a+234;
 print(a.x);
