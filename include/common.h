@@ -4,7 +4,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<stdarg.h>
-
+/*尽量不用memcpy(),用它老是出现莫名其妙的错误,用它操作过的指针free()时都出错*/
 #define MAX_WORD_LENGTH 128
 #define FILE_POSTFIX ".pd"
 #define FILE_LIB_POSTFIX ".pdm"

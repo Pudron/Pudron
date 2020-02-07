@@ -1,9 +1,10 @@
 vpath %.h include
 vpath %.c src
 vpath %.o build/objs
+CONFIG ?= DEBUG
 PLATFORM ?= WINDOWS
 CC=gcc
-CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM) -DDEBUG
+CFLAGS=-Iinclude -Wall -g -D$(PLATFORM) -D$(CONFIG)
 LIBS=
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
@@ -17,6 +18,9 @@ else
 	/ =$(strip \)
 	PD_FILE=pd.exe
 	RM=del /Q
+endif
+ifeq ($(CONFIG),RELEASE)
+	CFLAGS+= -O2
 endif
 ifneq (build$/objs,$(wildcard build$/objs))
 	MKD1=mkdir build$/objs

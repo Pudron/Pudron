@@ -1,10 +1,15 @@
+asd=12;
 class A{
     x=3;
     func opAdd(e){
-        x+=e;
+        asd+=e;
+    }
+    func opDestroy(){
+        asd=888;
     }
 }
 a=A();
 a+123;
 a+234;
-print(a.x);
+a=123;
+print(asd);

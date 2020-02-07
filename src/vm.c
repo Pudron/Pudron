@@ -45,7 +45,13 @@ Object copyObject(VM*vm,Unit*unit,Object*obj,int refCount){
     val.refCount=refCount;
     val.isInit=false;
     LIST_INIT(val.classNameList);
-    LIST_CONNECT(val.classNameList,obj->classNameList,Name)
+    //LIST_CONNECT(val.classNameList,obj->classNameList,Name)
+    int count=obj->classNameList.count;
+    val.classNameList.size=pow2(count);
+    val.classNameList.vals=(char**)memManage(NULL,val.classNameList.size*sizeof(Name));
+    for(int i=0;i<count;i++){
+        val.classNameList.vals[i]=obj->classNameList.vals[i];
+    }
     val.member=hashCopy(obj->member);
     HashSlot hs;
     for(int i=0;i<val.member.capacity;i++){
