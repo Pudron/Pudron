@@ -363,15 +363,20 @@ void execute(VM*vm,Unit*unit){
                 PUSH(obj);
                 break;
             case OPCODE_LOAD_SUBSCRIPT:
-                c=unit->clist.vals[++i]+1;/*include this*/
+                c=unit->clist.vals[++i];
                 LIST_INIT(argList)
                 invertOrder(vm,c);
+                LIST_ADD(argList,Arg,NULL)/*给this预留空位*/
                 for(int i2=0;i2<c;i2++){
                     LIST_ADD(argList,Arg,POP())
                 }
+                this=POP();
+                argList.vals[0]=this;
                 obj=loadMember(vm,this,METHOD_NAME_SUBSCRIPT,true);
                 confirmObjectType(vm,obj,OBJECT_FUNCTION);
                 callFunction(vm,unit,obj->func,-1,argList);
+                reduceRef(vm,unit,obj);
+                LIST_DELETE(argList)
                 break;
             case OPCODE_STACK_COPY:
                 obj=vm->stack[vm->stackCount-unit->clist.vals[++i]-1];

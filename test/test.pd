@@ -1,15 +1,4 @@
-asd=12;
-class A{
-    x=3;
-    func opAdd(e){
-        asd+=e;
-    }
-    func opDestroy(){
-        asd=888;
-    }
+func t(a){
+    print(argv[2]);
 }
-a=A();
-a+123;
-a+234;
-a=123;
-print(asd);
+t(1,2);

@@ -410,11 +410,16 @@ FUNC_DEF(list_add)
 FUNC_END()
 FUNC_DEF(list_subscript)
     Object*this=loadVar(vm,unit,"this");
+    Object*cnt=loadMember(vm,this,"count",true);
     Object*ind=loadVar(vm,unit,"index");
     confirmObjectType(vm,ind,OBJECT_INT);
+    if(ind->num>=cnt->num){
+        vmError(vm,"only %d but not %d objects in the list.",cnt->num,ind->num+1);
+    }
     Object*rt=this->subObj[ind->num];
     rt->refCount++;
     reduceRef(vm,unit,ind);
+    reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,this);
     PUSH(rt);
     return;
@@ -474,7 +479,7 @@ PdSTD makeSTD(){
     pstd.stdClass[OBJECT_CLASS]=class;
     hashGet(&pstd.hl,"Class",NULL,true);
 
-    class=newClass("list");
+    class=newClass("List");
     class.initFunc.exe=std_init;
     addClassInt(&class,"count",0);
     addClassFunc(&class,METHOD_NAME_INIT,list_create,0);
@@ -482,7 +487,7 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,list_destroy,0);
     pstd.stdClass[OBJECT_LIST]=class;
-    hashGet(&pstd.hl,"list",NULL,true);
+    hashGet(&pstd.hl,"List",NULL,true);
 
     class=newClass("string");
     class.initFunc.exe=std_init;
