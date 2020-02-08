@@ -36,7 +36,7 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_SET_ASSIGN_COUNT,"SET_ASSIGN_COUNT",1},
     {OPCODE_ASSIGN,"ASSIGN",1},
     {OPCODE_MAKE_ARRAY,"MAKE_ARRAY",1},
-    {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",0},
+    {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",1},
     {OPCODE_LOAD_METHOD,"LOAD_METHOD",1},
     {OPCODE_CALL_METHOD,"CALL_METHOD",1},
     {OPCODE_CLASS_EXTEND,"CLASS_EXTEND",1}
@@ -302,6 +302,7 @@ void printCmds(Unit unit,int blankCount){
                 case OPCODE_LOAD_MEMBER:
                 case OPCODE_LOAD_METHOD:
                 case OPCODE_CLASS_EXTEND:
+                case OPCODE_GET_FOR_INDEX:
                     printf("(%s)",unit.nlist.vals[c]);
                     break;
                 case OPCODE_ASSIGN:

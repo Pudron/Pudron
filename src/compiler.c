@@ -628,6 +628,7 @@ void compileDoWhileState(Compiler*cp,Unit*unit,Env env){
     }
     LIST_DELETE(breakList)
 }
+/*将索引变量强制加入局部变量中*/
 void compileForState(Compiler*cp,Unit*unit,Env env){
     intList breakList,*orblist;
     orblist=env.breakList;
@@ -638,7 +639,7 @@ void compileForState(Compiler*cp,Unit*unit,Env env){
     Const con;
     Token token;
     matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in for statement",msgStart);
-    compileExpression(cp,unit,0,false,msgStart,env);
+    char*varName=(matchToken(&cp->parser,TOKEN_WORD,"for statement index variable",msgStart)).word;
     matchToken(&cp->parser,TOKEN_COMMA,"\",\" in for statement",msgStart);
     compileExpression(cp,unit,0,false,msgStart,env);
     token=matchToken(&cp->parser,TOKEN_PARE2,"\")\" in for statement",msgStart);
@@ -648,7 +649,8 @@ void compileForState(Compiler*cp,Unit*unit,Env env){
     addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));/*as index*/
     int jto=unit->clist.count;
     env.jumpTo=jto;
-    addCmd(unit,OPCODE_GET_FOR_INDEX);
+    addCmd1(unit,OPCODE_GET_FOR_INDEX,addName(&unit->nlist,varName));
+    hashGet(&unit->lvlist,varName,NULL,true);
     addCmd1(unit,OPCODE_JUMP_IF_FALSE,0);
     int jptr=unit->clist.count-1;
     compileBlock(cp,unit,env);

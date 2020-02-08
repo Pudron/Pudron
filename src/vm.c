@@ -457,19 +457,29 @@ void execute(VM*vm,Unit*unit){
                 break;
             }
             case OPCODE_GET_FOR_INDEX:{
-                checkStack(3);
+                checkStack(2);
+                name=unit->nlist.vals[unit->clist.vals[++i]];
                 Object*array=vm->stack[vm->stackCount-2];
                 Object*sum=vm->stack[vm->stackCount-1];
                 confirmObjectType(vm,array,OBJECT_LIST);
                 Object*cnt=loadMember(vm,array,"count",true);
                 Object*rt=newIntObject(0);
+                c=hashGet(&unit->lvlist,name,NULL,false);
                 if(sum->num<cnt->num){
-                    vm->stack[vm->stackCount-3]=array->subObj[sum->num++];
-                    reduceRef(vm,unit,vm->stack[vm->stackCount-3]);
-                    vm->stack[vm->stackCount-3]->refCount++;
+                    obj=unit->lvlist.slot[c].obj;
+                    if(obj!=NULL){
+                        reduceRef(vm,unit,obj);
+                    }
+                    unit->lvlist.slot[c].obj=array->subObj[sum->num++];
+                    unit->lvlist.slot[c].obj->refCount++;
                     rt->num=true;
                 }else{
-                    popStack(vm,unit,3);
+                    obj=unit->lvlist.slot[c].obj;
+                    if(obj!=NULL){
+                        reduceRef(vm,unit,obj);
+                    }
+                    unit->lvlist.slot[c].obj=NULL;
+                    popStack(vm,unit,2);
                     rt->num=false;
                 }
                 reduceRef(vm,unit,cnt);

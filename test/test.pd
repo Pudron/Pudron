@@ -1,4 +1,10 @@
-func t(a){
-    print(argv[2]);
+func a(){
+    class D{
+        func t(){
+            print("t\n");
+        }
+    }
+    d=D();
+    d.t();
 }
-t(1,2);
+a();
