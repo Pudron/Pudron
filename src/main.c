@@ -9,7 +9,7 @@ char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "argument:\n"
 "-m:make module\n"
 "-o [name]:use output file name\n";
-void run(char*fileName){
+int run(char*fileName){
     PdSTD pstd=makeSTD();
     Module mod=compileAll(fileName,pstd);
     Unit unit=getModuleUnit(mod);
@@ -18,6 +18,13 @@ void run(char*fileName){
     makeSTDObject(&vm,&pstd);
     unit.gvlist=pstd.hl;
     execute(&vm,&unit);
+    freeHashList(&vm,&unit,&unit.lvlist);
+    freeHashList(&vm,&unit,&pstd.hl);
+    Object*rt=vm.stack[--vm.stackCount];
+    confirmObjectType(&vm,rt,OBJECT_INT);
+    int r=rt->num;
+    free(rt);
+    return r;
 }
 int main(int argc,char**argv){
     if(argc==1){
@@ -74,6 +81,5 @@ int main(int argc,char**argv){
         run(fileName,isLib,outputName);
     }
     free(post);*/
-    run(fileName);
-    return 0;
+    return run(fileName);
 }

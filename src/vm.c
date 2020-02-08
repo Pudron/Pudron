@@ -272,6 +272,7 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
             }else{
                 *val=copyObject(vm,unit,obj,refCount);
             }
+            reduceRef(vm,unit,val);
         }else{
             obj->refCount++;
             val=vm->stack[vm->stackCount-1];
@@ -283,6 +284,7 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
             obj2=POP();
             *val=copyObject(vm,unit,obj2,refCount);
             reduceRef(vm,unit,obj2);
+            reduceRef(vm,unit,val);
         }
     }
     if(astype==-1 && obj->isInit){
@@ -503,6 +505,26 @@ void execute(VM*vm,Unit*unit){
                 LIST_ADD(this->class.parentList,Class,obj->class)
                 reduceRef(vm,unit,obj);
                 break;
+            case OPCODE_LOAD_MODULE:{
+                Module mod=unit->mlist.vals[unit->clist.vals[++i]];
+                Unit munit=getModuleUnit(mod);
+                munit.gvlist=vm->pstd.hl;
+                execute(vm,&munit);
+                obj=POP();
+                HashSlot hs;
+                for(int i2=0;i2<munit.lvlist.capacity;i2++){
+                    hs=munit.lvlist.slot[i2];
+                    if(hs.isUsed){
+                        c=hashGet(&unit->lvlist,hs.name,NULL,true);
+                        obj=unit->lvlist.slot[c].obj;
+                        if(obj!=NULL){
+                            reduceRef(vm,unit,obj);
+                        }
+                        unit->lvlist.slot[c].obj=hs.obj;
+                    }
+                }
+                break;
+            }
             default:
                 vmError(vm,"unknown opcode %d.",c);
                 break;

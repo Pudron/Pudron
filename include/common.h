@@ -6,8 +6,8 @@
 #include<stdarg.h>
 /*尽量不用memcpy(),用它老是出现莫名其妙的错误,用它操作过的指针free()时都出错*/
 #define MAX_WORD_LENGTH 128
-#define FILE_POSTFIX ".pd"
-#define FILE_LIB_POSTFIX ".pdm"
+#define FILE_CODE_POSTFIX ".pd"
+#define FILE_MODULE_POSTFIX ".pdm"
 #define FILE_SIGN 5201314
 #define VERSION 1
 #define VERSION_MIN 1
@@ -144,7 +144,7 @@ typedef enum{
     TOKEN_TRUE,
     TOKEN_FALSE
 }Tokentype;
-#define OPCODE_COUNT 39
+#define OPCODE_COUNT 40
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -190,7 +190,8 @@ typedef enum{
     OPCODE_LOAD_METHOD,/*不POP前面的对象*/
     OPCODE_CALL_METHOD,/*创建对象环境*/
 
-    OPCODE_CLASS_EXTEND/*继承*/
+    OPCODE_CLASS_EXTEND,/*继承*/
+    OPCODE_LOAD_MODULE
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
@@ -326,7 +327,7 @@ struct ObjectDef{
 struct UnitDef{
     ConstList constList;
     intList clist;
-    ModuleList mlist;
+    ModuleList mlist;/*第一个module为当前空module,只用其名字来防止重复引用*/
     PartList plist;
     NameList nlist;/*namespace*/
     HashList gvlist;/*global variables(include upvalues)*/

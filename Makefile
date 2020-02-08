@@ -4,7 +4,7 @@ vpath %.o build/objs
 CONFIG ?= DEBUG
 PLATFORM ?= WINDOWS
 CC=gcc
-CFLAGS=-Iinclude -Wall -g -D$(PLATFORM) -D$(CONFIG)
+CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(CONFIG)
 LIBS=
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
@@ -21,6 +21,8 @@ else
 endif
 ifeq ($(CONFIG),RELEASE)
 	CFLAGS+= -O2
+else
+	CFLAGS+= -g
 endif
 ifneq (build$/objs,$(wildcard build$/objs))
 	MKD1=mkdir build$/objs

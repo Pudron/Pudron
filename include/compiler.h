@@ -21,6 +21,8 @@ typedef struct{
 typedef struct{
     Parser parser;
     char*path;
+    PdSTD pstd;
 }Compiler;
+int addConst(Unit*unit,Const con);
 Module compileAll(char*fileName,PdSTD pstd);
 #endif

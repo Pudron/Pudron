@@ -67,9 +67,10 @@ void compileMsg(char msgType,Compiler*cp,char*text,int msgStart,...){
     msg.type=msgType;
     reportMsg(msg);
 }
-Compiler newCompiler(Parser parser){
+Compiler newCompiler(Parser parser,PdSTD pstd){
     Compiler compiler;
     compiler.parser=parser;
+    compiler.pstd=pstd;
     char*path=(char*)malloc(MAX_WORD_LENGTH);
     #ifdef LINUX
     int len=-1;
@@ -91,14 +92,21 @@ Module compileAll(char*fileName,PdSTD pstd){
     char*n1=cutPath(fileName);
     mod.name=cutPostfix(n1);
     free(n1);
-    Compiler cp=newCompiler(newParser(fileName));
+    Unit emptyUnit=newUnit();
+    setModuleUnit(&mod,emptyUnit);
+    Compiler cp=newCompiler(newParser(fileName),pstd);
     getAllToken(&cp.parser);
     Env env={NULL,NULL,-1,true};
     Unit unit=newUnit();
     unit.gvlist=hashCopy(pstd.hl);
+    LIST_ADD(unit.mlist,Module,mod)
     compileBlock(&cp,&unit,env);
     unit.curPart=-1;
-    addCmd(&unit,OPCODE_NOP);
+    Const con;
+    con.type=CONST_INT;
+    con.num=0;
+    addCmd1(&unit,OPCODE_LOAD_CONST,addConst(&unit,con));
+    addCmd(&unit,OPCODE_RETURN);
     setModuleUnit(&mod,unit);
     return mod;
 }
@@ -401,6 +409,7 @@ void compileFunction(Compiler*cp,Unit*unit,bool isMethod,Env env){
     Func func;
     Token token;
     Unit funit=newUnit();
+    LIST_ADD(funit.mlist,Module,unit->mlist.vals[0]);
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
     token=matchToken(&cp->parser,TOKEN_WORD,"function name",msgStart);
     func.name=token.word;
@@ -460,6 +469,7 @@ void compileClass(Compiler*cp,Unit*unit){
     Const con;
     Env env={&class,NULL,-1,false};
     Unit funit=newUnit();
+    LIST_ADD(funit.mlist,Module,unit->mlist.vals[0])
     class.initFunc.exe=NULL;
     class.initFunc.name=NULL;
     class.initFunc.argCount=1;
@@ -668,6 +678,20 @@ void compileForState(Compiler*cp,Unit*unit,Env env){
     }
     LIST_DELETE(breakList)
 }
+/*模块存在则返回true*/
+bool checkModuleName(ModuleList mlist,char*name){
+    Module mod;
+    for(int i=0;i<mlist.count;i++){
+        mod=mlist.vals[i];
+        if(strcmp(mod.name,name)==0){
+            return true;
+        }
+        if(checkModuleName(mod.moduleList,name)){
+            return true;
+        }
+    }
+    return false;
+}
 void compileBlock(Compiler*cp,Unit*unit,Env env){
     Token token;
     int msgStart=cp->parser.tokenList.vals[cp->parser.curToken].start;
@@ -722,6 +746,32 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             compileFunction(cp,unit,false,env);
         }else if(token.type==TOKEN_CLASS){
             compileClass(cp,unit);
+        }else if(token.type==TOKEN_INCLUDE){
+            char*fileName=NULL,*modName=NULL;
+            token=nextToken(&cp->parser);
+            if(token.type==TOKEN_WORD){
+                modName=token.word;
+                fileName=(char*)memManage(NULL,strlen(modName)+strlen(FILE_CODE_POSTFIX)+1);
+                sprintf(fileName,"%s%s",modName,FILE_CODE_POSTFIX);
+            }else if(token.type==TOKEN_STRING){
+                fileName=token.word;
+                char*temp=cutPath(fileName);
+                modName=cutPostfix(temp);
+                free(temp);
+            }else{
+                compileMsg(MSG_ERROR,cp,"expected a file name to include.",msgStart);
+            }
+            matchToken(&cp->parser,TOKEN_SEMI,"\";\" after include.",msgStart);
+            Module mod;
+            if(checkModuleName(unit->mlist,modName)){
+                /*模块已存在*/
+                free(fileName);
+                free(modName);
+            }else{
+                mod=compileAll(fileName,cp->pstd);
+                addCmd1(unit,OPCODE_LOAD_MODULE,unit->mlist.count);
+                LIST_ADD(unit->mlist,Module,mod);
+            }
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);

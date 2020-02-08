@@ -1,5 +1,9 @@
-if(2>2){
-    print("yes\n");
-}else{
-    print("no\n");
+class A{
+    func opInit(){
+        print("init\n");
+    }
+    func opDestroy(){
+        print("destroy\n");
+    }
 }
+a=A();

@@ -39,7 +39,8 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_GET_FOR_INDEX,"GET_FOR_INDEX",1},
     {OPCODE_LOAD_METHOD,"LOAD_METHOD",1},
     {OPCODE_CALL_METHOD,"CALL_METHOD",1},
-    {OPCODE_CLASS_EXTEND,"CLASS_EXTEND",1}
+    {OPCODE_CLASS_EXTEND,"CLASS_EXTEND",1},
+    {OPCODE_LOAD_MODULE,"LOAD_MODULE",1}
 };
 void*memManage(void*ptr,size_t size){
     void*p=realloc(ptr,size);
@@ -312,7 +313,14 @@ void printCmds(Unit unit,int blankCount){
                         printf("(%s)",opcodeList[c].name);
                     }
                     break;
-                
+                case OPCODE_LOAD_MODULE:{
+                    Unit munit=getModuleUnit(unit.mlist.vals[c]);
+                    printf("(Module %s{\n",unit.mlist.vals[c].name);
+                    printCmds(munit,blankCount+1);
+                    printBlanks(blankCount);
+                    printf("})\n");
+                    break;
+                }
                 default:
                     break;
             }
@@ -420,7 +428,7 @@ void hashPrint(HashList hl){
         if(hl.slot[i].obj==NULL){
             printf("None\n");
         }else{
-            printf("Object(%s)\n",hl.slot[i].obj->classNameList.vals[0]);
+            printf("Object(class:%s,refCount:%d)\n",hl.slot[i].obj->classNameList.vals[0],hl.slot[i].obj->refCount);
         }
     }
     printf("HashList End\n");
