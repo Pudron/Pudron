@@ -234,6 +234,12 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
         case OPCODE_NOT_EQUAL:
             EXE_OPT(!=,METHOD_NAME_NOT_EQUAL)
             break;
+        case OPCODE_GTHAN_EQUAL:
+            EXE_OPT(>=,METHOD_NAME_GTHAN_EQUAL)
+            break;
+        case OPCODE_LTHAN_EQUAL:
+            EXE_OPT(<=,METHOD_NAME_GTHAN_EQUAL)
+            break;
         default:
             break;
     }

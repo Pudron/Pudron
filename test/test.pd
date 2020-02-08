@@ -1,3 +1,5 @@
-for(i,range(1,6,2)){
-    print(i);
+if(2>2){
+    print("yes\n");
+}else{
+    print("no\n");
 }
