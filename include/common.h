@@ -11,8 +11,9 @@
 #define FILE_SIGN 5201314
 #define VERSION 1
 #define VERSION_MIN 1
+
 #define STD_CLASS_COUNT 6
-#define STD_FUNC_COUNT 1
+#define STD_FUNC_COUNT 2
 
 /*List Operations*/
 //#define LIST_UNIT_SIZE 10

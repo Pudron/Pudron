@@ -325,7 +325,21 @@ void addClassInt(Class*class,char*name,int num){
     con.num=num;
     LIST_ADD(class->initFunc.constList,Const,con)
 }
-
+Func makeFunc(char*name,void*exe,int argCount,...){
+    Func func=newFunc(name);
+    func.exe=exe;
+    va_list valist;
+    va_start(valist,argCount);
+    char*argName;
+    for(int i=0;i<argCount;i++){
+        argName=va_arg(valist,char*);
+        LIST_ADD(func.nlist,Name,argName)
+        hashGet(&func.lvlist,argName,NULL,true);
+        func.argCount++;
+    }
+    va_end(valist);
+    return func;
+}
 FUNC_DEF(string_create)
     char temp[50];
     Object*obj,*this=loadVar(vm,unit,"this");
@@ -458,7 +472,64 @@ FUNC_DEF(mprint)
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
 FUNC_END()
-
+FUNC_DEF(range)
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*cnt=loadMember(vm,argv,"count",true);
+    Object*a,*b,*c;
+    Object*list=NULL;
+    int count;
+    if(cnt->num==1){
+        a=loadVar(vm,unit,"a");
+        confirmObjectType(vm,a,OBJECT_INT);
+        list=newListObject(vm,a->num);
+        for(int i=0;i<a->num;i++){
+            list->subObj[i]=newIntObject(i);
+        }
+        reduceRef(vm,unit,a);
+    }else if(cnt->num==2){
+        a=loadVar(vm,unit,"a");
+        b=loadVar(vm,unit,"b");
+        confirmObjectType(vm,a,OBJECT_INT);
+        confirmObjectType(vm,b,OBJECT_INT);
+        if(a->num>b->num){
+            vmError(vm,"the start index(%d) must be less than the end index(%d).",a->num,b->num);
+        }
+        count=b->num-a->num+1;
+        list=newListObject(vm,count);
+        for(int i=0;i<count;i++){
+            list->subObj[i]=newIntObject(i+a->num);
+        }
+        reduceRef(vm,unit,a);
+        reduceRef(vm,unit,b);
+    }else if(cnt->num==3){
+        a=loadVar(vm,unit,"a");
+        b=loadVar(vm,unit,"b");
+        c=loadVar(vm,unit,"c");
+        confirmObjectType(vm,a,OBJECT_INT);
+        confirmObjectType(vm,b,OBJECT_INT);
+        confirmObjectType(vm,c,OBJECT_INT);
+        if(a->num>b->num){
+            vmError(vm,"the start index(%d) must be less than the end index(%d).",a->num,b->num);
+        }
+        if(c->num<=0){
+            vmError(vm,"the step length must be positive integer but not %d.",c->num);
+        }
+        count=b->num-a->num+1;
+        list=newListObject(vm,count);
+        for(int i=0;i<count;i++){
+            list->subObj[i]=newIntObject(a->num+i*c->num);
+        }
+        reduceRef(vm,unit,a);
+        reduceRef(vm,unit,b);
+        reduceRef(vm,unit,c);
+    }else{
+        vmError(vm,"the number of the arguments must be 1,2 or 3 for range().");
+    }
+    reduceRef(vm,unit,cnt);
+    reduceRef(vm,unit,argv);
+    PUSH(list);
+    return;
+FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
     Class class;
@@ -499,11 +570,14 @@ PdSTD makeSTD(){
     hashGet(&pstd.hl,"string",NULL,true);
 
     Func func;
-    func=newFunc("print");
-    func.exe=mprint;
+    func=makeFunc("print",mprint,0);
     pstd.stdFunc[0]=func;
     hashGet(&pstd.hl,"print",NULL,true);
     
+    func=makeFunc("range",range,3,"a","b","c");
+    pstd.stdFunc[1]=func;
+    hashGet(&pstd.hl,"range",NULL,true);
+
     return pstd;
 }
 void makeSTDObject(VM*vm,PdSTD*pstd){

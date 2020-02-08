@@ -1,10 +1,3 @@
-func a(){
-    class D{
-        func t(){
-            print("t\n");
-        }
-    }
-    d=D();
-    d.t();
+for(i,range(1,6,2)){
+    print(i);
 }
-a();

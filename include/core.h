@@ -34,6 +34,7 @@ struct VMDef{
 #define METHOD_NAME_EQUAL "opEqual"
 #define METHOD_NAME_GTHAN "opGthan"
 #define METHOD_NAME_LTHAN "opLthan"
+#define METHOD_NAME_NOT_EQUAL "opNotEqual"
 #define METHOD_NAME_REM "opRem"
 
 void vmError(VM*vm,char*text,...);

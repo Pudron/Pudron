@@ -231,6 +231,9 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
         case OPCODE_REM:
             EXE_OPT_BIT(%,METHOD_NAME_REM)
             break;
+        case OPCODE_NOT_EQUAL:
+            EXE_OPT(!=,METHOD_NAME_NOT_EQUAL)
+            break;
         default:
             break;
     }
