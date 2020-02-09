@@ -31,7 +31,7 @@ else
 endif
 ifneq (build$/pudron,$(wildcard build$/pudron))
 	MKD2=mkdir build$/pudron
-	MKD3=mkdir build$/pudron$/lib
+	MKD3=mkdir build$/pudron$/mod
 else
 	MKD2=
 	MKD3=

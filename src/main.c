@@ -9,11 +9,22 @@ char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "argument:\n"
 "-m:make module\n"
 "-o [name]:use output file name\n";
-int run(char*fileName){
+int run(char*fileName,char*outputName){
     PdSTD pstd=makeSTD();
-    Module mod=compileAll(fileName,pstd);
+    Module mod;
+    char*post=getPostfix(fileName);
+    if(strcmp(post,FILE_MODULE_POSTFIX)==0){
+        mod=importModule(fileName);
+    }else{
+        mod=compileAll(fileName,pstd);
+    }
+    free(post);
+    if(outputName!=NULL){
+        exportModule(outputName,mod);
+        return 0;
+    }
     Unit unit=getModuleUnit(mod);
-    printCmds(unit,0);
+    //printCmds(unit,0);
     VM vm=newVM(fileName,pstd);
     makeSTDObject(&vm,&pstd);
     unit.gvlist=pstd.hl;
@@ -31,13 +42,11 @@ int main(int argc,char**argv){
         printf("%s",statement);
         return 0;
     }
-    bool isLib=false,isVersion=false;
+    bool isVersion=false;
     char*fileName=NULL,*outputName=NULL;
-    /*for(int i=1;i<argc;i++){
+    for(int i=1;i<argc;i++){
         if(argv[i][0]=='-'){
             if(argv[i][1]=='m'){
-                isLib=true;
-            }else if(argv[i][1]=='o'){
                 i++;
                 if(i>=argc){
                     printf("error:expected output file name.\n");
@@ -58,8 +67,7 @@ int main(int argc,char**argv){
             }
             fileName=argv[i];
         }
-    }*/
-    fileName=argv[1];
+    }
     if(fileName==NULL){
         if(isVersion){
             return 0;
@@ -67,19 +75,5 @@ int main(int argc,char**argv){
         printf("error:expected a file.\n");
         return -1;
     }
-    if(outputName!=NULL && !isLib){
-        printf("error:nothing to output.\n");
-        return -1;
-    }
-    /*char*post=getPostfix(fileName);
-    if(strcmp(post,FILE_LIB_POSTFIX)==0){
-        if(isLib){
-            printf("warning:can not make library again.\n");
-        }
-        direct(fileName);
-    }else{
-        run(fileName,isLib,outputName);
-    }
-    free(post);*/
-    return run(fileName);
+    return run(fileName,outputName);
 }

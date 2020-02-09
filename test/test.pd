@@ -1,9 +1,1 @@
-class A{
-    func opInit(){
-        print("init\n");
-    }
-    func opDestroy(){
-        print("destroy\n");
-    }
-}
-a=A();
+import "t.pdm";

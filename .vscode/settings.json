@@ -3,5 +3,9 @@
     "terminal.integrated.cursorBlinking": true,
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 3000,
-    "editor.fontSize": 16
+    "editor.fontSize": 16,
+    "files.associations": {
+        "*.h": "c",
+        "type_traits": "c"
+    }
 }

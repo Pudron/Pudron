@@ -211,6 +211,9 @@ Class newClass(char*name){
     class.memberList=newHashList();
     LIST_INIT(class.varList)
     class.initFunc=newFunc("initFunc");
+    LIST_ADD(class.initFunc.nlist,Name,"this")
+    class.initFunc.argCount=1;
+    hashGet(&class.initFunc.lvlist,"this",NULL,true);
     return class;
 }
 Object*loadConst(VM*vm,Unit*unit,int index){
@@ -346,6 +349,9 @@ FUNC_DEF(string_create)
     Object*argv=loadVar(vm,unit,"argv");
     Object*cnt=loadMember(vm,argv,"count",true);
     Object*len=loadMember(vm,this,"length",true);
+    this->type=OBJECT_STRING;
+    this->str=(char*)memManage(NULL,1);
+    this->str[0]='\0';
     for(int i=1;i<cnt->num;i++){
         obj=argv->subObj[i];
         switch(obj->type){
@@ -369,6 +375,10 @@ FUNC_DEF(string_create)
         }
     }
     len->num=strlen(this->str);
+    reduceRef(vm,unit,cnt);
+    reduceRef(vm,unit,argv);
+    reduceRef(vm,unit,len);
+    reduceRef(vm,unit,this);
 FUNC_END()
 FUNC_DEF(string_add)
     Object*this=loadVar(vm,unit,"this"),*obj=loadVar(vm,unit,"element");
@@ -401,15 +411,18 @@ FUNC_DEF(list_create)
     Object*this=loadVar(vm,unit,"this");
     Object*argv=loadVar(vm,unit,"argv");
     Object*cnt=loadMember(vm,argv,"count",true);
+    Object*cnt2=loadMember(vm,this,"count",true);
+    cnt2->num=cnt->num-1;
     this->type=OBJECT_LIST;
     this->subObj=NULL;
-    this->subObj=(Object**)memManage(this->subObj,cnt->num*sizeof(Object*));
+    this->subObj=(Object**)memManage(this->subObj,cnt2->num*sizeof(Object*));
     for(int i=1;i<cnt->num;i++){
-        this->subObj[i]=argv->subObj[i];
+        this->subObj[i-1]=argv->subObj[i];
         argv->subObj[i]->refCount++;
     }
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
+    reduceRef(vm,unit,cnt2);
     reduceRef(vm,unit,this);
 FUNC_END()
 FUNC_DEF(list_add)
@@ -563,6 +576,7 @@ PdSTD makeSTD(){
     class=newClass("string");
     class.initFunc.exe=std_init;
     addClassInt(&class,"length",0);
+    addClassFunc(&class,METHOD_NAME_INIT,string_create,0);
     addClassFunc(&class,METHOD_NAME_ADD,string_add,1,"element");
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,string_destroy,0);

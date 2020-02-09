@@ -762,15 +762,41 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
                 compileMsg(MSG_ERROR,cp,"expected a file name to include.",msgStart);
             }
             matchToken(&cp->parser,TOKEN_SEMI,"\";\" after include.",msgStart);
-            Module mod;
             if(checkModuleName(unit->mlist,modName)){
                 /*模块已存在*/
                 free(fileName);
                 free(modName);
             }else{
-                mod=compileAll(fileName,cp->pstd);
                 addCmd1(unit,OPCODE_LOAD_MODULE,unit->mlist.count);
-                LIST_ADD(unit->mlist,Module,mod);
+                LIST_ADD(unit->mlist,Module,compileAll(fileName,cp->pstd));
+                free(fileName);
+            }
+        }else if(token.type==TOKEN_IMPORT){
+            token=nextToken(&cp->parser);
+            char*fileName=NULL,*modName=NULL;
+            if(token.type==TOKEN_STRING){
+                fileName=token.word;
+                char*temp=cutPath(fileName);
+                modName=cutPostfix(temp);
+                free(temp);
+            }else if(token.type==TOKEN_WORD){
+                modName=token.word;
+                fileName=(char*)memManage(NULL,strlen(cp->path)+strlen(modName)+strlen(FILE_MODULE_POSTFIX)+6);
+                sprintf(fileName,"%s/mod/%s%s",cp->path,modName,FILE_MODULE_POSTFIX);
+            }else{
+                free(modName);
+                free(fileName);
+                compileMsg(MSG_ERROR,cp,"expected a file name to import.",msgStart);
+            }
+            matchToken(&cp->parser,TOKEN_SEMI,"\";\" after import",msgStart);
+            if(checkModuleName(unit->mlist,modName)){
+                /*模块已存在*/
+                free(fileName);
+                free(modName);
+            }else{
+                addCmd1(unit,OPCODE_LOAD_MODULE,unit->mlist.count);
+                LIST_ADD(unit->mlist,Module,importModule(fileName))
+                free(fileName);
             }
         }else{
             lastToken(&cp->parser);
