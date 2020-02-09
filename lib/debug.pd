@@ -1,8 +1,0 @@
-func printFunction(function){
-    >>LOAD_VAR function;
-    >>PRINT_FUNC;
-}
-func printClass(classd){
-    >>LOAD_VAR classd;
-    >>PRINT_CLASS;
-}
