@@ -12,6 +12,7 @@ struct VMDef{
     Object*stack[MAX_STACK];
     Object*this;
     PdSTD pstd;
+    Unit*unit;
 };
 #define PUSH(objt) vm->stack[vm->stackCount++]=objt
 #define POP() vm->stack[--vm->stackCount]

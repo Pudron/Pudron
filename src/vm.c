@@ -22,6 +22,7 @@ VM newVM(char*fileName,PdSTD pstd){
     LIST_INIT(vm.plist)
     vm.this=NULL;
     vm.pstd=pstd;
+    vm.unit=NULL;
     return vm;
 }
 void popStack(VM*vm,Unit*unit,int num){
@@ -310,6 +311,8 @@ void execute(VM*vm,Unit*unit){
     Object*obj=NULL,*this=NULL;
     int asc=1;
     char*name=NULL;
+    Unit*oldUnit=vm->unit;
+    vm->unit=unit;
     for(int i=0;i<unit->clist.count;i++){
         c=unit->clist.vals[i];
         if(c>=0){
@@ -446,6 +449,7 @@ void execute(VM*vm,Unit*unit){
                 break;
             }
             case OPCODE_RETURN:
+                vm->unit=oldUnit;
                 return;
             case OPCODE_INVERT_ORDER:
                 invertOrder(vm,unit->clist.vals[++i]);
@@ -530,4 +534,5 @@ void execute(VM*vm,Unit*unit){
                 break;
         }
     }
+    vm->unit=oldUnit;
 }

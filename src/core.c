@@ -18,6 +18,11 @@ void vmError(VM*vm,char*text,...){
         printf("from:%s:%d:%d:\n",part.fileName,part.line,part.column);
     }
     va_end(valist);
+    while(vm->stackCount>0){
+        reduceRef(vm,vm->unit,POP());
+    }
+    freeHashList(vm,vm->unit,&vm->unit->lvlist);
+    freeHashList(vm,vm->unit,&vm->unit->gvlist);
     reportMsg(msg);
 }
 void confirmObjectType(VM*vm,Object*obj,char type){
@@ -407,6 +412,21 @@ FUNC_DEF(string_destroy)
      free(this->str);
      reduceRef(vm,unit,this);
 FUNC_END()
+FUNC_DEF(string_equal)
+    Object*this=loadVar(vm,unit,"this");
+    Object*st=loadVar(vm,unit,"str");
+    confirmObjectType(vm,st,OBJECT_STRING);
+    Object*rt;
+    if(strcmp(this->str,st->str)==0){
+        rt=newIntObject(true);
+    }else{
+        rt=newIntObject(false);
+    }
+    reduceRef(vm,unit,st);
+    reduceRef(vm,unit,this);
+    PUSH(rt);
+    return;
+FUNC_END()
 FUNC_DEF(list_create)
     Object*this=loadVar(vm,unit,"this");
     Object*argv=loadVar(vm,unit,"argv");
@@ -565,6 +585,21 @@ FUNC_DEF(mexit)
     freeHashList(vm,unit,&unit->gvlist);
     exit(d);
 FUNC_END()
+FUNC_DEF(compare_class)
+    Object*obj=loadVar(vm,unit,"object");
+    Object*type=loadVar(vm,unit,"type");
+    confirmObjectType(vm,type,OBJECT_CLASS);
+    Object*rt;
+    if(strcmp(obj->classNameList.vals[0],type->class.name)==0){
+        rt=newIntObject(true);
+    }else{
+        rt=newIntObject(false);
+    }
+    reduceRef(vm,unit,type);
+    reduceRef(vm,unit,obj);
+    PUSH(rt);
+    return;
+FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
     Class class;
@@ -602,6 +637,7 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_ADD,string_add,1,"element");
     addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,1,"index");
     addClassFunc(&class,METHOD_NAME_DESTROY,string_destroy,0);
+    addClassFunc(&class,METHOD_NAME_EQUAL,string_equal,1,"str");
     pstd.stdClass[OBJECT_STRING]=class;
     hashGet(&pstd.hl,"string",NULL,true);
 
@@ -621,6 +657,10 @@ PdSTD makeSTD(){
     func=makeFunc("exit",mexit,1,"id");
     pstd.stdFunc[3]=func;
     hashGet(&pstd.hl,"exit",NULL,true);
+
+    func=makeFunc("compareClass",compare_class,2,"object","type");
+    pstd.stdFunc[4]=func;
+    hashGet(&pstd.hl,"compareClass",NULL,true);
     return pstd;
 }
 void makeSTDObject(VM*vm,PdSTD*pstd){
