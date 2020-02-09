@@ -1,23 +1,7 @@
-import debug;
-import list;
-import file;
-import dll;
-dn="/home/pi/Documents/test/opendll/libt.so";
-dll=DLL(dn);
-dll.execute(int,"test",456);
-dll.execute(int,"test",789);
 class A{
-    a,b;
-}
-class B:A{
-    c;
-    func t(){
-        print(a,"\n");
+    func opDestroy(){
+        print("asd\n");
     }
 }
-printClass(B);
-x=B();
-x.a=123;
-x.t();
-#>>PRINT_STACK;
->>PRINT_VAR;#
+a=A();
+compareClass(a,A);

@@ -1,24 +1,37 @@
 vpath %.h include
 vpath %.c src
 vpath %.o build/objs
-PLATFORM ?= LINUX
+CONFIG ?= DEBUG
+PLATFORM ?= WINDOWS
 CC=gcc
-CFLAGS=-Iinclude -Wall -O2 -g -D$(PLATFORM)
-LIBS=-ldl
-OBJS=main.o common.o pio.o parser.o vm.o compiler.o
+CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(CONFIG) -std=c11
+LIBS=
+OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
 	EXE=./
+	/ =$(strip /)
+	LIBS+=-ldl
+	PD_FILE=pd
+	RM=rm -r
 else
 	EXE=
+	/ =$(strip \)
+	PD_FILE=pd.exe
+	RM=del /Q
 endif
-ifneq (build/objs,$(wildcard build/objs))
-	MKD1=mkdir build/objs
+ifeq ($(CONFIG),RELEASE)
+	CFLAGS+= -O2
+else
+	CFLAGS+= -g
+endif
+ifneq (build$/objs,$(wildcard build$/objs))
+	MKD1=mkdir build$/objs
 else
 	MKD1=
 endif
-ifneq (build/pudron,$(wildcard build/pudron))
-	MKD2=mkdir build/pudron
-	MKD3=mkdir build/pudron/lib
+ifneq (build$/pudron,$(wildcard build$/pudron))
+	MKD2=mkdir build$/pudron
+	MKD3=mkdir build$/pudron$/mod
 else
 	MKD2=
 	MKD3=
@@ -32,26 +45,20 @@ mkd:
 	$(MKD3)
 
 pd:$(OBJS)
-	$(CC) $(addprefix build/objs/,$(OBJS)) -o build/pudron/pd $(LIBS)
+	$(CC) $(addprefix build$/objs$/,$(OBJS)) -o build$/pudron$/pd $(LIBS)
 
 $(OBJS):%.o:%.c
-	$(CC) -c $(CFLAGS) $< -o build/objs/$@
+	$(CC) -c $(CFLAGS) $< -o build$/objs$/$@
 
-.PHONY:lib
-lib:lib/float.pd lib/meta.pd lib/string.pd lib/debug.pd
-	$(EXE)build/pudron/pd -l lib/meta.pd -o build/pudron/lib/meta.pdl
-	$(EXE)build/pudron/pd -l lib/float.pd -o build/pudron/lib/float.pdl
-	$(EXE)build/pudron/pd -l lib/string.pd -o build/pudron/lib/string.pdl
-	$(EXE)build/pudron/pd -l lib/debug.pd -o build/pudron/lib/debug.pdl
-	$(EXE)build/pudron/pd -l lib/list.pd -o build/pudron/lib/list.pdl
-	$(EXE)build/pudron/pd -l lib/file.pd -o build/pudron/lib/file.pdl
-	$(EXE)build/pudron/pd -l lib/dll.pd -o build/pudron/lib/dll.pdl
-.PHNOY:test
-test:test/test.pd
-	$(EXE)build/pudron/pd test/test.pd
+.PHONY:test
+test:test$/test.pd
+	$(EXE)build$/pudron$/pd test$/test.pd
+
+.PHONY:debug
+debug:build$/pudron$/$(PD_FILE) test$/test.pd
+	gdb --args build$/pudron$/pd test$/test.pd
 
 .PHONY:clean
 clean:
-	-rm -r build/objs
-	-rm -r build/pudron
-#	-del /Q objs
+	-$(RM) build$/objs
+	-$(RM) build$/pudron

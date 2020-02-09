@@ -1,18 +1,18 @@
 #include"pio.h"
-bool readTextFile(char**text,char*fileName){
+char*readTextFile(char*fileName){
     FILE*fp=fopen(fileName,"r");
     if(fp==NULL){
         printf("error:can not open the file \"%s\"!\n",fileName);
-        return false;
+        return NULL;
     }
     fseek(fp,0,SEEK_END);
     int len=ftell(fp);
     rewind(fp);
-    *text=(char*)malloc(len+1);
-    len=fread(*text,1,len,fp);
+    char*text=(char*)malloc(len+1);
+    len=fread(text,1,len,fp);
     fclose(fp);
-    (*text)[len]='\0';
-    return true;
+    text[len]='\0';
+    return text;
 }
 /*当结构体元素顺序改变时，相应的顺序也要改变*/
 #define WRITE_LIST(dat,list,type) \
@@ -23,11 +23,13 @@ bool readTextFile(char**text,char*fileName){
 
 /*READ_LIST()在使用前先定义变量int count;*/
 #define READ_LIST(bin,list,type,typeName) \
+    LIST_INIT(list)\
     count=readInt(bin);\
     for(int i=0;i<count;i++){\
         LIST_ADD(list,type,read##typeName(bin))\
     }
-
+void writeUnit(charList*dat,Unit unit);
+Unit readUnit(Bin*bin);
 void writeInt(charList*dat,int num){
     for(int i=0;i<sizeof(int);i++){
         LIST_ADD((*dat),char,num>>((sizeof(int)-i-1)*8))
@@ -36,22 +38,21 @@ void writeInt(charList*dat,int num){
 int readInt(Bin*bin){
     int num=0;
     for(int i=0;i<sizeof(int);i++){
-        num|=bin->dat[bin->ptr++]<<((sizeof(int)-i-1)*8);
+        num|=(bin->dat[bin->ptr++]&0xFF)<<((sizeof(int)-i-1)*8);
     }
     return num;
 }
-void writeFloat(charList*dat,float num){
-    for(int i=0;i<sizeof(float);i++){
-        LIST_ADD((*dat),char,((int)num)>>((sizeof(float)-i-1)*8))
-    } 
+void writeDouble(charList*dat,double numd){
+    unsigned int num=((unsigned int*)&numd)[0];
+    writeInt(dat,num);
 }
-float readFloat(Bin*bin){
-    int num=0;
-    for(int i=0;i<sizeof(float);i++){
-        num|=bin->dat[bin->ptr++]<<((sizeof(float)-i-1)*8);
-    }
-    return (float)num;
+double readDouble(Bin*bin){
+    double numd;
+    int num=readInt(bin);
+    numd=((double*)&num)[0];
+    return numd;
 }
+/*不写入最后的'\0'*/
 void writeString(charList*dat,char*text){
     int len=strlen(text);
     writeInt(dat,len);
@@ -61,30 +62,120 @@ void writeString(charList*dat,char*text){
 }
 char*readString(Bin*bin){
     int len=readInt(bin);
-    char*text=(char*)malloc(len+1);
+    char*text=(char*)memManage(NULL,len+1);
     for(int i=0;i<len;i++){
         text[i]=bin->dat[bin->ptr++];
     }
     text[len]='\0';
     return text;
 }
-void writeModule(charList*dat,Module module){
-    writeString(dat,module.name);
-    writeInt(dat,module.funcBasis);
-    writeInt(dat,module.cmdBasis);
-    writeInt(dat,module.symBasis);
-    writeInt(dat,module.classBasis);
-    writeInt(dat,module.partBasis);
+/*空的也写下去*/
+void writeHashList(charList*dat,HashList hl){
+    writeInt(dat,hl.capacity);
+    for(int i=0;i<hl.capacity;i++){
+        LIST_ADD((*dat),char,hl.slot[i].isUsed)
+        if(hl.slot[i].isUsed){
+            writeString(dat,hl.slot[i].name);
+            writeInt(dat,hl.slot[i].nextSlot);
+        }
+    }
 }
-Module readModule(Bin*bin){
-    Module module;
-    module.name=readString(bin);
-    module.funcBasis=readInt(bin);
-    module.cmdBasis=readInt(bin);
-    module.symBasis=readInt(bin);
-    module.classBasis=readInt(bin);
-    module.partBasis=readInt(bin);
-    return module;
+HashList readHashList(Bin*bin){
+    HashList hl;
+    hl.capacity=readInt(bin);
+    hl.slot=(HashSlot*)memManage(NULL,hl.capacity*sizeof(HashSlot));
+    HashSlot hs={NULL,-1,false,NULL};
+    for(int i=0;i<hl.capacity;i++){
+        hl.slot[i].isUsed=bin->dat[bin->ptr++];
+        if(hl.slot[i].isUsed){
+            hl.slot[i].name=readString(bin);
+            hl.slot[i].nextSlot=readInt(bin);
+            hl.slot[i].obj=NULL;
+        }else{
+            hl.slot[i]=hs;
+        }
+    }
+    return hl;
+}
+void writeFunc(charList*dat,Func func){
+    writeString(dat,func.name);
+    writeInt(dat,func.argCount);
+    writeUnit(dat,getFuncUnit(func));
+}
+Func readFunc(Bin*bin){
+    Func func;
+    func.exe=NULL;
+    func.name=readString(bin);
+    func.argCount=readInt(bin);
+    setFuncUnit(&func,readUnit(bin));
+    return func;
+}
+void writeClass(charList*dat,Class class){
+    writeString(dat,class.name);
+    WRITE_LIST(dat,class.parentList,Class)
+    writeHashList(dat,class.memberList);
+    WRITE_LIST(dat,class.varList,String)
+    writeFunc(dat,class.initFunc);
+}
+Class readClass(Bin*bin){
+    int count=0;
+    Class class;
+    class.name=readString(bin);
+    READ_LIST(bin,class.parentList,Class,Class)
+    class.memberList=readHashList(bin);
+    READ_LIST(bin,class.varList,char*,String)
+    class.initFunc=readFunc(bin);
+    return class;
+}
+void writeConst(charList*dat,Const con){
+    LIST_ADD((*dat),char,con.type)
+    switch(con.type){
+        case CONST_INT:
+            writeInt(dat,con.num);
+            break;
+        case CONST_DOUBLE:
+            writeDouble(dat,con.numd);
+            break;
+        case CONST_STRING:
+            writeString(dat,con.str);
+            break;
+        case CONST_FUNCTION:
+            writeFunc(dat,con.func);
+            break;
+        case CONST_CLASS:
+            writeClass(dat,con.class);
+            break;
+        default:
+            printf("export error:unknown constant type:%d.\n",con.type);
+            exit(-1);
+            break;
+    }
+}
+Const readConst(Bin*bin){
+    Const con;
+    con.type=bin->dat[bin->ptr++];
+    switch(con.type){
+        case CONST_INT:
+            con.num=readInt(bin);
+            break;
+        case CONST_DOUBLE:
+            con.numd=readDouble(bin);
+            break;
+        case CONST_STRING:
+            con.str=readString(bin);
+            break;
+        case CONST_FUNCTION:
+            con.func=readFunc(bin);
+            break;
+        case CONST_CLASS:
+            con.class=readClass(bin);
+            break;
+        default:
+            printf("import error:unknown constant type:%d.\n",con.type);
+            exit(-1);
+            break;
+    }
+    return con;
 }
 void writePart(charList*dat,Part part){
     //writeString(dat,part.code);
@@ -104,199 +195,79 @@ Part readPart(Bin*bin){
     part.end=readInt(bin);
     return part;
 }
-void writeSymbol(charList*dat,Symbol symbol){
-    writeInt(dat,symbol.type);
-    switch(symbol.type){
-        case SYM_INT:
-            writeInt(dat,symbol.num);
-            break;
-        case SYM_FLOAT:
-            writeFloat(dat,symbol.numf);
-            break;
-        case SYM_STRING:
-            writeString(dat,symbol.str);
-            break;
-        default:
-            printf("output error:unknown symbol type:%d.\n",symbol.type);
-            exit(-1);
-            break;
-    }
+void writeModule(charList*dat,Module mod){
+    writeString(dat,mod.name);
+    writeUnit(dat,getModuleUnit(mod));
 }
-Symbol readSymbol(Bin*bin){
-    Symbol symbol;
-    symbol.type=readInt(bin);
-    switch(symbol.type){
-        case SYM_INT:
-            symbol.num=readInt(bin);
-            break;
-        case SYM_FLOAT:
-            symbol.numf=readFloat(bin);
-            break;
-        case SYM_STRING:
-            symbol.str=readString(bin);
-            break;
-        default:
-            printf("import error:unknown symbol type:%d.\n",symbol.type);
-            exit(-1);
-            break;
-    }
-    return symbol;
+Module readModule(Bin*bin){
+    Module mod;
+    mod.name=readString(bin);
+    setModuleUnit(&mod,readUnit(bin));
+    return mod;
 }
-void writeFunc(charList*dat,Func func){
-    writeString(dat,func.name);
-    WRITE_LIST(dat,func.args,String)
-    WRITE_LIST(dat,func.clist,Int)
-    writeInt(dat,func.moduleID);
+void writeUnit(charList*dat,Unit unit){
+    WRITE_LIST(dat,unit.constList,Const)
+    WRITE_LIST(dat,unit.clist,Int)
+    WRITE_LIST(dat,unit.mlist,Module)
+    WRITE_LIST(dat,unit.plist,Part)
+    WRITE_LIST(dat,unit.nlist,String)
+    writeHashList(dat,unit.lvlist);
 }
-Func readFunc(Bin*bin){
-    Func func;
-    func.name=readString(bin);
-    int count;
-    LIST_INIT(func.args,Name)
-    LIST_INIT(func.clist,int)
-    READ_LIST(bin,func.args,Name,String)
-    READ_LIST(bin,func.clist,int,Int)
-    func.moduleID=readInt(bin);
-    return func;
+Unit readUnit(Bin*bin){
+    int count=0;
+    Unit unit;
+    READ_LIST(bin,unit.constList,Const,Const)
+    READ_LIST(bin,unit.clist,int,Int)
+    READ_LIST(bin,unit.mlist,Module,Module)
+    READ_LIST(bin,unit.plist,Part,Part)
+    READ_LIST(bin,unit.nlist,char*,String)
+    unit.lvlist=readHashList(bin);
+    return unit;
 }
-void writeClass(charList*dat,Class class){
-    writeString(dat,class.name);
-    WRITE_LIST(dat,class.var,String)
-    writeInt(dat,class.varBasis);
-    WRITE_LIST(dat,class.methods,Func)
-    for(int i=0;i<OPT_METHOD_COUNT;i++){
-        writeInt(dat,class.optID[i]);
-    }
-    WRITE_LIST(dat,class.parentList,Int)
-    writeInt(dat,class.initID);
-    writeInt(dat,class.destroyID);
-    writeInt(dat,class.initValID);
-}
-Class readClass(Bin*bin){
-    Class class;
-    int count;
-    class.name=readString(bin);
-    LIST_INIT(class.var,Name)
-    READ_LIST(bin,class.var,Name,String)
-    class.varBasis=readInt(bin);
-    LIST_INIT(class.methods,Func)
-    READ_LIST(bin,class.methods,Func,Func)
-    for(int i=0;i<OPT_METHOD_COUNT;i++){
-        class.optID[i]=readInt(bin);
-    }
-    LIST_INIT(class.parentList,int)
-    READ_LIST(bin,class.parentList,int,Int)
-    class.initID=readInt(bin);
-    class.destroyID=readInt(bin);
-    class.initValID=readInt(bin);
-    return class;
-}
-void export(Parser parser,char*outputName){
+void exportModule(char*fileName,Module mod){
     charList dat;
-    LIST_INIT(dat,char)
+    LIST_INIT(dat)
     writeInt(&dat,FILE_SIGN);
     writeInt(&dat,VERSION);
-    WRITE_LIST(&dat,parser.moduleList,Module)
-    WRITE_LIST(&dat,parser.partList,Part)
-    WRITE_LIST(&dat,parser.clist,Int)
-    WRITE_LIST(&dat,parser.symList,Symbol)
-    WRITE_LIST(&dat,parser.funcList,Func)
-    WRITE_LIST(&dat,parser.classList,Class)
-    FILE*fp;
-    if(outputName==NULL){
-        char fileName[MAX_WORD_LENGTH];
-        int len=strlen(parser.fileName);
-        char c;
-        for(int i=0;i<len;i++){
-            c=parser.fileName[i];
-            if(c=='.'){
-                fileName[i]='\0';
-                break;
-            }
-            fileName[i]=c;
-        }
-        strcat(fileName,FILE_LIB_POSTFIX);
-        fp=fopen(fileName,"wb");
-        if(fp==NULL){
-            printf("output error:can not create the file %s.\n",fileName);
-            exit(-1);
-        }
-    }else{
-        fp=fopen(outputName,"wb");
-        if(fp==NULL){
-            printf("output error:can not create the file %s.\n",outputName);
-            exit(-1);
-        }
+    writeModule(&dat,mod);
+    FILE*fp=fopen(fileName,"wb");
+    if(fp==NULL){
+        printf("export error:can not open the file \"%s\".\n",fileName);
+        exit(-1);
     }
     fwrite(dat.vals,1,dat.count,fp);
     fclose(fp);
+    LIST_DELETE(dat)
 }
-void import(Parser*parser,char*fileName){
+Module importModule(char*fileName){
     Bin bin;
-    char*ft=cutPath(fileName);
-    char*fn=cutPostfix(ft);
-    free(ft);
-    for(int i=0;i<parser->moduleList.count;i++){
-        if(strcmp(fn,parser->moduleList.vals[i].name)==0){
-            return;
-        }
-    }
     FILE*fp=fopen(fileName,"rb");
     if(fp==NULL){
-        printf("import error:%s not found.\n",fileName);
+        printf("import error:can not open the file \"%s\".\n",fileName);
         exit(-1);
     }
     fseek(fp,0,SEEK_END);
     bin.count=ftell(fp);
     rewind(fp);
-    bin.dat=(char*)malloc(bin.count+1);
-    bin.count=fread(bin.dat,1,bin.count,fp);
     bin.ptr=0;
+    bin.dat=(char*)memManage(NULL,bin.count+1);
+    bin.count=fread(bin.dat,1,bin.count,fp);
     fclose(fp);
     if(bin.count<2*sizeof(int)){
-        printf("import error:%s is not a pudron file.\n",fileName);
+        printf("import error:%s is not a Pudron Module File.",fileName);
         exit(-1);
     }
     int dat=readInt(&bin);
     if(dat!=FILE_SIGN){
-        printf("import error:%s is not in pudron format.\n",fileName);
+        printf("import error:%s is not a Pudron Module File.",fileName);
         exit(-1);
     }
     dat=readInt(&bin);
     if(dat<VERSION_MIN){
-        printf("import error:%s: the version \"%d\" is too old.\ncurrent version:%d\nmin version:%d\n",fileName,dat,VERSION,VERSION_MIN);
+        printf("import error:the version of the module is out of date.");
         exit(-1);
     }
-    int count;
-    int begin=parser->moduleList.count;
-    int moduleID=begin;
-    Symbol symbol;
-    symbol.type=SYM_STRING;
-    symbol.str=fn;
-    int sid=addSymbol(parser,symbol);
-    READ_LIST(&bin,parser->moduleList,Module,Module)
-    for(int i=begin;i<parser->moduleList.count;i++){
-        parser->moduleList.vals[i].funcBasis+=parser->funcList.count;
-        parser->moduleList.vals[i].cmdBasis+=parser->clist.count+3;/*加上后面的SET_MODULE*/
-        parser->moduleList.vals[i].symBasis+=parser->symList.count;
-        parser->moduleList.vals[i].classBasis+=parser->classList.count;
-        parser->moduleList.vals[i].partBasis+=parser->partList.count;
-    }
-    READ_LIST(&bin,parser->partList,Part,Part)
-    addCmd1(parser,&parser->clist,OPCODE_SET_MODULE,sid);
-    READ_LIST(&bin,parser->clist,int,Int)
-    addCmd(parser,&parser->clist,OPCODE_RETURN_MODULE);
-    READ_LIST(&bin,parser->symList,Symbol,Symbol)
-    begin=parser->funcList.count;
-    READ_LIST(&bin,parser->funcList,Func,Func)
-    for(int i=begin;i<parser->funcList.count;i++){
-        parser->funcList.vals[i].moduleID+=moduleID;
-    }
-    begin=parser->classList.count;
-    READ_LIST(&bin,parser->classList,Class,Class)
-    for(int i=begin;i<parser->classList.count;i++){
-        for(int i2=0;i2<parser->classList.vals[i].methods.count;i2++){
-            parser->classList.vals[i].methods.vals[i2].moduleID+=moduleID;
-        }
-    }
+    Module mod=readModule(&bin);
+    free(bin.dat);
+    return mod;
 }

@@ -5,25 +5,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "gcc build and debug active file",
+            "name": "Windows gdb 调试",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/pd",
-            "args": ["t.pd"],
+            "program": "${workspaceFolder}/build/pudron/pd.exe",
+            "args": ["test/test.pd"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "miDebuggerPath": "C:\\mingw64\\bin\\gdb.exe",
             "setupCommands": [
                 {
-                    "description": "Enable pretty-printing for gdb",
+                    "description": "为 gdb 启用整齐打印",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "gcc build active file",
-            "miDebuggerPath": "C:/Program Files/mingw64/bin/gdb.exe"
+            "preLaunchTask": "make"
         }
     ]
 }

@@ -3,16 +3,20 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-
+#include<stdarg.h>
+/*尽量不用memcpy(),用它老是出现莫名其妙的错误,用它操作过的指针free()时都出错*/
 #define MAX_WORD_LENGTH 128
-#define FILE_POSTFIX ".pd"
-#define FILE_LIB_POSTFIX ".pdl"
+#define FILE_CODE_POSTFIX ".pd"
+#define FILE_MODULE_POSTFIX ".pdm"
 #define FILE_SIGN 5201314
 #define VERSION 1
 #define VERSION_MIN 1
 
+#define STD_CLASS_COUNT 6
+#define STD_FUNC_COUNT 5
+
 /*List Operations*/
-#define LIST_UNIT_SIZE 10
+//#define LIST_UNIT_SIZE 10
 #define LIST_DECLARE(type) \
         typedef struct{\
             int count;\
@@ -20,13 +24,15 @@
             type *vals;\
         }type##List;
 
-#define LIST_INIT(list,type) \
+#define LIST_INIT(list) \
         list.count=0;\
-        list.size=LIST_UNIT_SIZE;\
-        list.vals=(type*)malloc(LIST_UNIT_SIZE*sizeof(type));
+        list.size=0;\
+        list.vals=NULL;
 
 #define LIST_DELETE(list) \
-        free(list.vals);\
+        if(list.vals!=NULL){\
+            free(list.vals);\
+        }\
         list.vals=NULL;\
         list.count=0;\
         list.size=0;
@@ -34,32 +40,40 @@
 #define LIST_ADD(list,type,val) \
         list.count++;\
         if(list.count>list.size){\
-            list.size+=LIST_UNIT_SIZE;\
-            list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+            list.size=pow2(list.count);\
+            list.vals=(type*)memManage(list.vals,sizeof(type)*list.size);\
         }\
         list.vals[list.count-1]=val;
 
 #define LIST_SUB(list,type) \
     list.count--;\
-    if(list.count<=(list.size-LIST_UNIT_SIZE)){\
-        list.size-=LIST_UNIT_SIZE;\
-        list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+    list.size=pow2(list.count);\
+    if(list.count<=list.size){\
+        list.vals=(type*)memManage(list.vals,sizeof(type)*list.size);\
     }
 #define LIST_REDUCE(list,type,mcount) \
     list.count-=mcount;\
-    if(list.count<=(list.size-LIST_UNIT_SIZE)){\
-        list.size-=mcount;\
-        list.vals=(type*)realloc(list.vals,sizeof(type)*list.size);\
+    list.size=pow2(list.count);\
+    if(list.count<=list.size){\
+        list.vals=(type*)memManage(list.vals,sizeof(type)*list.size);\
     }
 
-#define LIST_CONNECT(list1,list2,type,id) \
-    int licount##id=list1.count;\
-    list1.count+=list2.count;\
-    list1.vals=(type*)realloc(list1.vals,list1.count*sizeof(type));\
-    list1.size=list1.count;\
-    for(int li=licount##id;li<list1.count;li++){\
-        list1.vals[li]=list2.vals[li-licount##id];\
-    }
+#define LIST_CONNECT(list1,list2,type) \
+	list1.count+=list2.count;\
+    if(list1.count>list1.size){\
+        list1.size=pow2(list1.count);\
+        list1.vals=(type*)memManage(list1.vals,list1.size*sizeof(type));\
+    }\
+    memcpy(list1.vals+list2.count,list2.vals,list2.count*sizeof(type));
+
+#define LIST_INSERT(list,type,position,val) /*在position前插入值,[position]的值即为val*/\
+    list.count++;\
+    if(list.count>list.size){\
+        list.size=pow2(list.count);\
+        list.vals=(type*)memManage(list.vals,sizeof(type)*list.size);\
+    }\
+    memcpy(list.vals+position+1,list.vals+position,(list.count-position)*sizeof(type));\
+    list.vals[position]=val;
 
 /*bool type*/
 typedef enum{
@@ -67,19 +81,11 @@ typedef enum{
     true
 }bool;
 
-#define STD_CLASS_COUNT 6
-#define CLASS_INT 0
-#define CLASS_CLASS 1
-#define CLASS_FUNCTION 2
-#define CLASS_META 3
-#define CLASS_FLOAT 4
-#define CLASS_STRING 5
-
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,
     TOKEN_INTEGER,
-    TOKEN_FLOAT,
+    TOKEN_DOUBLE,
     TOKEN_WORD,
     TOKEN_STRING,
     TOKEN_FUNC,
@@ -87,6 +93,7 @@ typedef enum{
     TOKEN_DO,
     TOKEN_FOR,
     TOKEN_BREAK,
+    TOKEN_CONTINUE,
     TOKEN_RETURN,
     TOKEN_IF,
     TOKEN_ELIF,/*else if*/
@@ -135,11 +142,9 @@ typedef enum{
     TOKEN_IMPORT,
     TOKEN_INCLUDE,
     TOKEN_TRUE,
-    TOKEN_FALSE,
-    TOKEN_LINE
-}TokenType;
-#define OPT_METHOD_COUNT 17
-#define OPCODE_COUNT 69
+    TOKEN_FALSE
+}Tokentype;
+#define OPCODE_COUNT 40
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -165,70 +170,40 @@ typedef enum{
     OPCODE_SUBS,
     
     OPCODE_LOAD_CONST,
-    OPCODE_LOAD_VAL,
-    OPCODE_LOAD_ATTR,
-    OPCODE_LOAD_INDEX,
-    OPCODE_STORE_VAL,
-    OPCODE_STORE_ATTR,
-    OPCODE_STORE_INDEX,
-    OPCODE_PUSH_VAL,
+    OPCODE_LOAD_VAR,
+    OPCODE_LOAD_MEMBER,
+    OPCODE_LOAD_SUBSCRIPT,
     OPCODE_STACK_COPY,
-    OPCODE_POP_VAR,/*参数为数量*/
     OPCODE_POP_STACK,/*参数为数量*/
     OPCODE_JUMP,
     OPCODE_JUMP_IF_FALSE,
-    OPCODE_SET_FIELD,
-    OPCODE_FREE_FIELD,
-    OPCODE_SET_LOOP,
-    OPCODE_FREE_LOOP,
 
     OPCODE_CALL_FUNCTION,
-    OPCODE_CALL_METHOD,
     OPCODE_RETURN,
-    OPCODE_ENABLE_FUNCTION,/*顺便把函数变量入栈*/
+    OPCODE_INVERT_ORDER,/*arg:count,倒序*/
+    OPCODE_SET_ASSIGN_COUNT,/*set asc*/
+    OPCODE_ASSIGN,/*arg:operation type(-1 is normal assignment),顺便把asc设为1*/
 
-    OPCODE_MAKE_OBJECT,
-    OPCODE_EXTEND_CLASS,
-    OPCODE_ENABLE_CLASS,
-
-    OPCODE_SET_MODULE,/*参数为模块名*/
-    OPCODE_RETURN_MODULE,
-
-    OPCODE_PRINT_STACK,
-    OPCODE_PRINT_VAR,
-    OPCODE_PRINT_FUNC,
-    OPCODE_PRINT_CLASS,
-
-    OPCODE_GET_VARCOUNT,
-    OPCODE_RESIZE_VAR,
     OPCODE_MAKE_ARRAY,
-    OPCODE_GET_CLASS,
-    OPCODE_GET_VARBASIS,
-    OPCODE_SET_VARBASIS,
-    OPCODE_EXIT,
+    OPCODE_GET_FOR_INDEX,
+    
+    OPCODE_LOAD_METHOD,/*不POP前面的对象*/
+    OPCODE_CALL_METHOD,/*创建对象环境*/
 
-    OPCODE_MAKE_RANGE,
-    OPCODE_COPY_OBJECT,
-    OPCODE_STR_FORMAT,
-    OPCODE_PRINT,
-    OPCODE_INPUT,
-    OPCODE_STR_COMPARE,
-    OPCODE_READ_TEXT_FILE,
-    OPCODE_WRITE_TEXT_FILE,
-
-    OPCODE_DLL_OPEN,
-    OPCODE_DLL_CLOSE,
-    OPCODE_DLL_EXECUTE
+    OPCODE_CLASS_EXTEND,/*继承*/
+    OPCODE_LOAD_MODULE
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
+typedef unsigned int uint;
+LIST_DECLARE(uint)
 typedef char* Name;
 LIST_DECLARE(Name);
 typedef struct{
-    TokenType type;
+    Tokentype type;
     union{
         int num;
-        float numf;
+        double numd;
         char*word;
     };
     int start,end,column,line;
@@ -241,7 +216,7 @@ typedef struct{
     }type;
     char*code;
     char*fileName;
-    char text[100];
+    char text[500];
     int line,column,start,end;
 }Msg;
 typedef struct{
@@ -250,95 +225,149 @@ typedef struct{
 }Part;
 LIST_DECLARE(Part)
 typedef struct{
-    int class;
-    union{
-        int num;
-        float numf;
-    };
-    int refID;
-}Value;
-LIST_DECLARE(Value)
-typedef struct{
-    enum{
-        SYM_INT,
-        SYM_FLOAT,
-        SYM_STRING,
-    }type;
-    union{
-        int num;
-        float numf;
-        char*str;
-    };
-}Symbol;
-LIST_DECLARE(Symbol)
-typedef struct{
     int code[10];
     int count;
 }Command;
 typedef struct{
-    char*name;
-    int funcBasis;
-    int cmdBasis;
-    int symBasis;
-    int classBasis;
-    int partBasis;
-}Module;
-LIST_DECLARE(Module)
-typedef struct{
-    char*name;
-    NameList args;
-    intList clist;
-    int moduleID;
-}Func;
-LIST_DECLARE(Func)
-typedef struct{
-    char*name;
-    NameList var;
-    int varBasis;
-    FuncList methods;
-    int optID[OPT_METHOD_COUNT];
-    intList parentList;
-    int initID,destroyID,initValID;
-}Class;
-LIST_DECLARE(Class)
-typedef struct{
     char*fileName;
     char*code;
     int curToken,ptr,line,column;
-    int curPart;
-    bool isLib;
-    int curModule;
-    char*path;
     TokenList tokenList;
+}Parser;
+typedef struct ModuleDef Module;
+typedef struct ConstDef Const;
+LIST_DECLARE(Const)
+LIST_DECLARE(Module)
+typedef struct ObjectDef Object;
+typedef struct{
+    char*name;
+    int nextSlot;
+    bool isUsed;
+    Object*obj;
+}HashSlot;
+typedef struct{
+    int capacity;
+    HashSlot*slot;
+}HashList;
+struct ModuleDef{
+    char*name;
+    /*unit start*/
+    ConstList constList;
+    intList clist;
     ModuleList moduleList;
     PartList partList;
+    HashList lvlist;
+    NameList nlist;
+    /*unit end*/
+};
+typedef struct VMDef VM;
+typedef struct UnitDef Unit;
+typedef struct{
+    char*name;
+    void (*exe)(VM*,Unit*);
+    int argCount;/*nlist的前argCount个名字皆为参数*/
+    /*unit start*/
+    ConstList constList;
     intList clist;
-    SymbolList symList;
-    FuncList funcList;
-    ClassList classList;
-}Parser;
+    ModuleList moduleList;
+    PartList partList;
+    HashList lvlist;
+    NameList nlist;
+    /*unit end*/
+}Func;
+typedef struct ClassDef Class;
+LIST_DECLARE(Class)
+struct ClassDef{
+    /*确定对象类型时用字符串来确定,创建标准对象只能通过常量方式*/
+    char*name;
+    ClassList parentList;
+    HashList memberList;
+    NameList varList;/*成员名字,调用initFunc时有用,不包括父类名*/
+    Func initFunc;/*用于初始化成员，执行完后手动将栈中的结果赋予成员*/
+};
+struct ConstDef{
+    enum{
+        CONST_INT,
+        CONST_DOUBLE,
+        CONST_STRING,
+        CONST_FUNCTION,
+        CONST_CLASS
+    }type;
+    union{
+        int num;
+        double numd;
+        char*str;
+        Func func;
+        Class class;
+    };
+};
+struct ObjectDef{
+    enum{
+        OBJECT_INT,
+        OBJECT_DOUBLE,
+        OBJECT_CLASS,
+        OBJECT_FUNCTION,
+        OBJECT_STRING,
+        OBJECT_LIST,
+        OBJECT_OTHERS
+    }type;
+    NameList classNameList;
+    union{
+        int num;
+        double numd;
+        char*str;
+        Func func;
+        Class class;
+        Object**subObj;/*用于list*/
+    };
+    HashList member;
+    int refCount;
+    bool isInit;/*用于标记初始化对象*/
+};
+struct UnitDef{
+    ConstList constList;
+    intList clist;
+    ModuleList mlist;/*第一个module为当前空module,只用其名字来防止重复引用*/
+    PartList plist;
+    NameList nlist;/*namespace*/
+    HashList gvlist;/*global variables(include upvalues)*/
+    HashList lvlist;/*local variables*/
+    int curPart;
+    int ptr;
+};
 typedef struct{
     Opcode opcode;
     char*name;
-    bool isArg;
-    bool isSymbol;
+    int argCount;
 }OpcodeMsg;
-void initParser(Parser*parser,bool isRoot);
-void freeParser(Parser*parser);
-//void extend(Class*class,Class eclass);
+typedef struct{
+    HashList hl;
+    Class stdClass[STD_CLASS_COUNT];
+    Func stdFunc[STD_FUNC_COUNT];
+}PdSTD;
+void*memManage(void*ptr,size_t size);
 char*cutText(char*text,int start,int end);
 char*cutPostfix(char*text);
 char*getPostfix(char*text);
 char*cutPath(char*text);
 char*getPath(char*text);
+/*pow2():求大于等于num的最小２次冪*/
+int pow2(int num);
 void reportMsg(Msg msg);
-void reportError(Parser*parser,char*text,int start);
-void reportWarning(Parser*parser,char*text,int start);
-void addCmd(Parser*parser,intList*clist,int opcode);
-void addCmd1(Parser*parser,intList*clist,int opcode,int dat);
-void addCmds(Parser*parser,intList*clist,Command cmds);
-int addSymbol(Parser*parser,Symbol symbol);
-void clistToString(Parser parser,intList clist,char*text,Module module);
-void funcToString(Parser parser,FuncList funcList,char*text);
-void classToString(Parser parser,char*text);
+unsigned int hashString(char*str);
+Unit newUnit();
+void setModuleUnit(Module*mod,Unit unit);
+void setFuncUnit(Func*func,Unit unit);
+Unit getModuleUnit(Module mod);
+Unit getFuncUnit(Func func);
+void printCmds(Unit unit,int blankCount);
+int addName(NameList*nlist,char*name);
+/*尽量在执行之前就建立好hash表，扩容时开销挺大
+*未找到则返回-1,若obj未NULL,则不给找到的slot赋值*/
+int hashGet(HashList*hl,char*name,Object*obj,bool isAdd);
+HashList newHashList();
+void expandHashList(HashList*hl,int size);
+HashList hashMerge(HashList hl1,HashList hl2);
+HashList hashCopy(HashList hl);
+void hashPrint(HashList hl);
 #endif

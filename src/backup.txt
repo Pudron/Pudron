@@ -1,0 +1,82 @@
+/*#define INT_FUNC_BIT_DEF(name,opt) \
+    FUNC_DEF(name){\
+        Object*obj=POP();\
+        Object*this=POP();\
+        Object*result=NULL;\
+        if(compareClassStd(vm,obj,CLASS_INT)){\
+            result=newObjectStd(vm,CLASS_INT);\
+            result->num=this->num opt obj->num;\
+        }else{\
+            PD_ERROR("unsupported operation for int.");\
+        }\
+        reduceRef(obj);\
+        reduceRef(this);\
+        PD_RETURN(result);\
+    }
+#define INT_FUNC_DEF(name,opt) \
+    FUNC_DEF(name){\
+        Object*obj=POP();\
+        Object*this=POP();\
+        Object*result=NULL;\
+        if(compareClassStd(vm,obj,CLASS_INT)){\
+            result=newObjectStd(vm,CLASS_INT);\
+            result->num=this->num opt obj->num;\
+        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){\
+            result=newObjectStd(vm,CLASS_DOUBLE);\
+            result->numd=(double)this->num opt obj->numd;\
+        }else{\
+            PD_ERROR("unsupported operation for int.");\
+        }\
+        reduceRef(obj);\
+        reduceRef(this);\
+        PD_RETURN(result);\
+    }
+INT_FUNC_DEF(INT_ADD,+)
+INT_FUNC_DEF(INT_SUB,-)
+INT_FUNC_DEF(INT_MUL,*)
+INT_FUNC_DEF(INT_DIV,/)
+INT_FUNC_BIT_DEF(INT_AND,&)
+INT_FUNC_BIT_DEF(INT_OR,|)
+INT_FUNC_DEF(INT_CAND,&&)
+INT_FUNC_DEF(INT_COR,||)
+INT_FUNC_BIT_DEF(INT_LEFT,<<)
+INT_FUNC_BIT_DEF(INT_RIGHT,>>)
+INT_FUNC_DEF(INT_EQUAL,==)
+INT_FUNC_DEF(INT_GTHAN,>)
+INT_FUNC_DEF(INT_LTHAN,<)
+INT_FUNC_DEF(INT_NOT_EQUAL,!=)
+INT_FUNC_DEF(INT_GTHAN_EQUAL,>=)
+INT_FUNC_DEF(INT_LTHAN_EQUAL,<=)
+INT_FUNC_BIT_DEF(INT_REM,%)
+#define DOUBLE_FUNC_DEF(name,opt) \
+    FUNC_DEF(name){\
+        Object*obj=POP();\
+        Object*this=POP();\
+        Object*result=NULL;\
+        if(compareClassStd(vm,obj,CLASS_INT)){\
+            result=newObjectStd(vm,CLASS_DOUBLE);\
+            result->num=this->numd opt obj->num;\
+        }else if(compareClassStd(vm,obj,CLASS_DOUBLE)){\
+            result=newObjectStd(vm,CLASS_DOUBLE);\
+            result->num=this->numd opt obj->numd;\
+        }else{\
+            PD_ERROR("unsupported operation for double.");\
+        }\
+        reduceRef(obj);\
+        reduceRef(this);\
+        PD_RETURN(result);\
+    }
+DOUBLE_FUNC_DEF(DOUBLE_ADD,+)
+DOUBLE_FUNC_DEF(DOUBLE_SUB,-)
+DOUBLE_FUNC_DEF(DOUBLE_MUL,*)
+DOUBLE_FUNC_DEF(DOUBLE_DIV,/)
+DOUBLE_FUNC_DEF(DOUBLE_CAND,&&)
+DOUBLE_FUNC_DEF(DOUBLE_COR,||)
+DOUBLE_FUNC_DEF(DOUBLE_EQUAL,==)
+DOUBLE_FUNC_DEF(DOUBLE_GTHAN,>)
+DOUBLE_FUNC_DEF(DOUBLE_LTHAN,<)
+DOUBLE_FUNC_DEF(DOUBLE_NOT_EQUAL,!=)
+DOUBLE_FUNC_DEF(DOUBLE_GTHAN_EQUAL,>=)
+DOUBLE_FUNC_DEF(DOUBLE_LTHAN_EQUAL,<=)
+#define ADD_INT_FUNC(name) addClassFunc(&class,#name,INT_##name,OPCODE_##name)
+#define ADD_DOUBLE_FUNC(name) addClassFunc(&class,#name,DOUBLE_##name,OPCODE_##name)*/
