@@ -543,6 +543,28 @@ FUNC_DEF(range)
     PUSH(list);
     return;
 FUNC_END()
+FUNC_DEF(minput)
+    Object*st=newStringObject(vm);
+    Object*len=loadMember(vm,st,"length",true);
+    st->str=(char*)memManage(NULL,MAX_WORD_LENGTH+1);
+    gets(st->str);/*gets_s()不知怎的用不了*/
+    len->num=strlen(st->str);
+    reduceRef(vm,unit,len);
+    PUSH(st);
+    return;
+FUNC_END()
+FUNC_DEF(mexit)
+    Object*id=loadVar(vm,unit,"id");
+    confirmObjectType(vm,id,OBJECT_INT);
+    int d=id->num;
+    reduceRef(vm,unit,id);
+    while(vm->stackCount>0){
+        reduceRef(vm,unit,POP());
+    }
+    freeHashList(vm,unit,&unit->lvlist);
+    freeHashList(vm,unit,&unit->gvlist);
+    exit(d);
+FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
     Class class;
@@ -592,6 +614,13 @@ PdSTD makeSTD(){
     pstd.stdFunc[1]=func;
     hashGet(&pstd.hl,"range",NULL,true);
 
+    func=makeFunc("input",minput,0);
+    pstd.stdFunc[2]=func;
+    hashGet(&pstd.hl,"input",NULL,true);
+
+    func=makeFunc("exit",mexit,1,"id");
+    pstd.stdFunc[3]=func;
+    hashGet(&pstd.hl,"exit",NULL,true);
     return pstd;
 }
 void makeSTDObject(VM*vm,PdSTD*pstd){

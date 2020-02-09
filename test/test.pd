@@ -1,1 +1,9 @@
-import "t.pdm";
+class A{
+    func opInit(str){
+        print("I:",str,"\n");
+    }
+    func opDestroy(){
+        print("i go\n");
+    }
+}
+a=A("asd");

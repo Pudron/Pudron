@@ -4,7 +4,7 @@ vpath %.o build/objs
 CONFIG ?= DEBUG
 PLATFORM ?= WINDOWS
 CC=gcc
-CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(CONFIG)
+CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(CONFIG) -std=c11
 LIBS=
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)

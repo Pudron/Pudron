@@ -13,7 +13,7 @@
 #define VERSION_MIN 1
 
 #define STD_CLASS_COUNT 6
-#define STD_FUNC_COUNT 2
+#define STD_FUNC_COUNT 4
 
 /*List Operations*/
 //#define LIST_UNIT_SIZE 10
