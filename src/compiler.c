@@ -67,34 +67,21 @@ void compileMsg(char msgType,Compiler*cp,char*text,int msgStart,...){
     msg.type=msgType;
     reportMsg(msg);
 }
-Compiler newCompiler(Parser parser,PdSTD pstd){
+Compiler newCompiler(Parser parser,char*path,PdSTD pstd){
     Compiler compiler;
     compiler.parser=parser;
     compiler.pstd=pstd;
-    char*path=(char*)malloc(MAX_WORD_LENGTH);
-    #ifdef LINUX
-    int len=-1;
-    len=readlink("/proc/self/exe",path,MAX_WORD_LENGTH-1);
-    if(len<0){
-        printf("error:failed to get pudron path.\n");
-        exit(-1);
-    }
-    path[len]='\0';
-    #else
-        GetModuleFileName(NULL,path,MAX_WORD_LENGTH-1);
-    #endif
-    compiler.path=getPath(path);
-    free(path);
+    compiler.path=path;
     return compiler;
 }
-Module compileAll(char*fileName,PdSTD pstd){
+Module compileAll(char*fileName,char*path,PdSTD pstd){
     Module mod;
     char*n1=cutPath(fileName);
     mod.name=cutPostfix(n1);
     free(n1);
     Unit emptyUnit=newUnit();
     setModuleUnit(&mod,emptyUnit);
-    Compiler cp=newCompiler(newParser(fileName),pstd);
+    Compiler cp=newCompiler(newParser(fileName),path,pstd);
     getAllToken(&cp.parser);
     Env env={NULL,NULL,-1,true};
     Unit unit=newUnit();
@@ -768,7 +755,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
                 free(modName);
             }else{
                 addCmd1(unit,OPCODE_LOAD_MODULE,unit->mlist.count);
-                LIST_ADD(unit->mlist,Module,compileAll(fileName,cp->pstd));
+                LIST_ADD(unit->mlist,Module,compileAll(fileName,cp->path,cp->pstd));
                 free(fileName);
             }
         }else if(token.type==TOKEN_IMPORT){

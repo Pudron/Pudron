@@ -1,5 +1,19 @@
 #include"core.h"
 #include"vm.h"
+void doexit(VM*vm,Unit*unit){
+    while(vm->stackCount>0){
+        reduceRef(vm,vm->unit,POP());
+    }
+    freeHashList(vm,unit,&unit->lvlist);
+    freeHashList(vm,unit,&unit->gvlist);
+    for(int i=0;i<vm->dlist.count;i++){
+        if(vm->dlist.vals[i].dllptr!=NULL){
+            DLL_CLOSE(vm->dlist.vals[i].dllptr);
+            LIST_DELETE(vm->dlist.vals[i].dflist)
+        }
+    }
+    LIST_DELETE(vm->dlist)
+}
 void vmError(VM*vm,char*text,...){
     Msg msg;
     Part part=vm->part;
@@ -18,11 +32,7 @@ void vmError(VM*vm,char*text,...){
         printf("from:%s:%d:%d:\n",part.fileName,part.line,part.column);
     }
     va_end(valist);
-    while(vm->stackCount>0){
-        reduceRef(vm,vm->unit,POP());
-    }
-    freeHashList(vm,vm->unit,&vm->unit->lvlist);
-    freeHashList(vm,vm->unit,&vm->unit->gvlist);
+    doexit(vm,vm->unit);
     reportMsg(msg);
 }
 void confirmObjectType(VM*vm,Object*obj,char type){
@@ -109,7 +119,7 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
         setHash(vm,&funit.lvlist,funit.nlist.vals[i],obj);
     }
     if(func.exe!=NULL){
-        func.exe(vm,&funit);
+        func.exe(vm,&funit,&func);
     }else{
         execute(vm,&funit);
     }
@@ -505,6 +515,10 @@ FUNC_DEF(mprint)
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
 FUNC_END()
+FUNC_DEF(mprintln)
+    mprint(vm,unit,func);
+    printf("\n");
+FUNC_END()
 FUNC_DEF(range)
     Object*argv=loadVar(vm,unit,"argv");
     Object*cnt=loadMember(vm,argv,"count",true);
@@ -567,7 +581,7 @@ FUNC_DEF(minput)
     Object*st=newStringObject(vm);
     Object*len=loadMember(vm,st,"length",true);
     st->str=(char*)memManage(NULL,MAX_WORD_LENGTH+1);
-    gets(st->str);/*gets_s()不知怎的用不了*/
+    scanf("%[^\n]",st->str);
     len->num=strlen(st->str);
     reduceRef(vm,unit,len);
     PUSH(st);
@@ -598,6 +612,125 @@ FUNC_DEF(compare_class)
     reduceRef(vm,unit,type);
     reduceRef(vm,unit,obj);
     PUSH(rt);
+    return;
+FUNC_END()
+FUNC_DEF(dll_create)
+    Object*this=loadVar(vm,unit,"this");
+    Object*id=loadMember(vm,this,"id",true);
+    Object*st=loadVar(vm,unit,"path");
+    this->type=OBJECT_DLL;
+    confirmObjectType(vm,st,OBJECT_STRING);
+    Dllptr dptr=DLL_OPEN(st->str);
+    if(dptr==NULL){
+        char*path=(char*)memManage(NULL,strlen(vm->path)+strlen(st->str)+5);
+        sprintf(path,"%s/mod/%s",vm->path,st->str);
+        dptr=DLL_OPEN(path);
+        free(path);
+    }
+    if(dptr==NULL){
+        #ifdef LINUX
+            vmError(vm,"DLL:%s.",dlerror());
+        #else
+            vmError(vm,"can not open the dll file,error code:%ld.",GetLastError());
+        #endif
+    }
+    Dllinfo dllinfo;
+    dllinfo.dllptr=dptr;
+    LIST_INIT(dllinfo.dflist)
+    id->num=vm->dlist.count;
+    LIST_ADD(vm->dlist,Dllinfo,dllinfo)
+    reduceRef(vm,unit,st);
+    reduceRef(vm,unit,id);
+    reduceRef(vm,unit,this);
+FUNC_END()
+FUNC_DEF(dll_destroy)
+    Object*this=loadVar(vm,unit,"this");
+    Object*id=loadMember(vm,this,"id",true);
+    DLL_CLOSE(vm->dlist.vals[id->num].dllptr);
+    vm->dlist.vals[id->num].dllptr=NULL;
+    LIST_DELETE(vm->dlist.vals[id->num].dflist)
+    reduceRef(vm,unit,id);
+    reduceRef(vm,unit,this);
+FUNC_END()
+FUNC_DEF(dll_func)
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*cnt=loadMember(vm,argv,"count",true);
+    Dllinfo di=vm->dlist.vals[func->dllID];
+    if(di.dllptr==NULL){
+        vmError(vm,"the dll function has been closed");
+    }
+    DllFunc df=di.dflist.vals[func->dllFuncID];
+    _PDat pdat;
+    pdat.rval.type=PVAL_INT;
+    pdat.rval.num=0;
+    LIST_INIT(pdat.argList)
+    _PValue pval;
+    Object*obj;
+    for(int i=0;i<cnt->num;i++){
+        obj=argv->subObj[i];
+        switch(obj->type){
+            case OBJECT_INT:
+                pval.type=PVAL_INT;
+                pval.num=obj->num;
+                break;
+            case OBJECT_DOUBLE:
+                pval.type=PVAL_DOUBLE;
+                pval.numd=obj->numd;
+                break;
+            case OBJECT_STRING:
+                pval.type=PVAL_STRING;
+                pval.str=(char*)memManage(NULL,strlen(obj->str)+1);
+                strcpy(pval.str,obj->str);
+                break;
+            default:
+                vmError(vm,"dll function only accept type int,double and string arguments.");
+                break;
+        }
+        LIST_ADD(pdat.argList,_PValue,pval)
+    }
+    df(&pdat);
+    LIST_DELETE(pdat.argList)
+    switch(pdat.rval.type){
+        case PVAL_INT:
+            obj=newIntObject(pdat.rval.num);
+            break;
+        case PVAL_DOUBLE:
+            obj=newDoubleObject(pdat.rval.numd);
+            break;
+        case PVAL_STRING:{
+            obj=newStringObject(vm);
+            Object*len=loadMember(vm,obj,"length",true);
+            obj->str=pval.str;
+            len->num=strlen(obj->str);
+            reduceRef(vm,unit,len);
+            break;
+        }
+        default:
+            vmError(vm,"unknown dll function return type:%d.",pdat.rval.type);
+            break;
+    }
+    PUSH(obj);
+    return;
+FUNC_END()
+FUNC_DEF(dll_get_func)
+    Object*this=loadVar(vm,unit,"this");
+    Object*id=loadMember(vm,this,"id",true);
+    Object*fname=loadVar(vm,unit,"funcName");
+    confirmObjectType(vm,fname,OBJECT_STRING);
+    Func dfunc=newFunc(NULL);
+    dfunc.dllID=id->num;
+    DllFunc df=DLL_GET(vm->dlist.vals[id->num].dllptr,fname->str);
+    if(df==NULL){
+        #ifdef LINUX
+            vmError(vm,"DLL:%s.",dlerror());
+        #else
+            vmError(vm,"can not get the dll function,error code:%ld.",GetLastError());
+        #endif
+    }
+    dfunc.dllFuncID=vm->dlist.vals[dfunc.dllFuncID].dflist.count;
+    LIST_ADD(vm->dlist.vals[dfunc.dllFuncID].dflist,DllFunc,df)
+    dfunc.exe=dll_func;
+    PUSH(newFuncObject(dfunc));
     return;
 FUNC_END()
 PdSTD makeSTD(){
@@ -641,25 +774,38 @@ PdSTD makeSTD(){
     pstd.stdClass[OBJECT_STRING]=class;
     hashGet(&pstd.hl,"string",NULL,true);
 
+    class=newClass("DLL");
+    class.initFunc.exe=std_init;
+    addClassInt(&class,"id",-1);/*指向在vm->dllptrList中的位置*/
+    addClassFunc(&class,METHOD_NAME_INIT,dll_create,1,"path");
+    addClassFunc(&class,METHOD_NAME_DESTROY,dll_destroy,0);
+    addClassFunc(&class,"getFunc",dll_get_func,1,"funcName");
+    pstd.stdClass[OBJECT_DLL]=class;
+    hashGet(&pstd.hl,"DLL",NULL,true);
+
     Func func;
     func=makeFunc("print",mprint,0);
     pstd.stdFunc[0]=func;
     hashGet(&pstd.hl,"print",NULL,true);
+
+    func=makeFunc("println",mprintln,0);
+    pstd.stdFunc[1]=func;
+    hashGet(&pstd.hl,"println",NULL,true);
     
     func=makeFunc("range",range,3,"a","b","c");
-    pstd.stdFunc[1]=func;
+    pstd.stdFunc[2]=func;
     hashGet(&pstd.hl,"range",NULL,true);
 
     func=makeFunc("input",minput,0);
-    pstd.stdFunc[2]=func;
+    pstd.stdFunc[3]=func;
     hashGet(&pstd.hl,"input",NULL,true);
 
     func=makeFunc("exit",mexit,1,"id");
-    pstd.stdFunc[3]=func;
+    pstd.stdFunc[4]=func;
     hashGet(&pstd.hl,"exit",NULL,true);
 
     func=makeFunc("compareClass",compare_class,2,"object","type");
-    pstd.stdFunc[4]=func;
+    pstd.stdFunc[5]=func;
     hashGet(&pstd.hl,"compareClass",NULL,true);
     return pstd;
 }

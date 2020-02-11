@@ -36,7 +36,7 @@ else
 	MKD2=
 	MKD3=
 endif
-all:mkd pd lib
+all:mkd pd
 
 .PHONY:mkd
 mkd:

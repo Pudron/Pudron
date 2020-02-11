@@ -1,7 +1,1 @@
-class A{
-    func opDestroy(){
-        print("asd\n");
-    }
-}
-a=A();
-compareClass(a,A);
+println("dsa");

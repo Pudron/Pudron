@@ -9,7 +9,7 @@
 #define ASSERT(condition,message,...)
 #endif
 #define checkStack(num) ASSERT(vm->stackCount<num,"%d:expected %d slots but only %d slots in stack.",vm->ptr,num,vm->stackCount)
-VM newVM(char*fileName,PdSTD pstd){
+VM newVM(char*fileName,char*path,PdSTD pstd){
     VM vm;
     vm.stackCount=0;
     vm.ptr=0;
@@ -23,6 +23,8 @@ VM newVM(char*fileName,PdSTD pstd){
     vm.this=NULL;
     vm.pstd=pstd;
     vm.unit=NULL;
+    LIST_INIT(vm.dlist)
+    vm.path=path;
     return vm;
 }
 void popStack(VM*vm,Unit*unit,int num){
@@ -96,7 +98,7 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
     setHash(vm,&funit.lvlist,"this",this);
     this->refCount++;
     if(class.initFunc.exe!=NULL){
-        class.initFunc.exe(vm,&funit);
+        class.initFunc.exe(vm,&funit,&class.initFunc);
     }else{
         execute(vm,&funit);
     }

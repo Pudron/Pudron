@@ -2,21 +2,33 @@
 #include"compiler.h"
 #include"core.h"
 #include"vm.h"
-//#include"vm.h"
 char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "compile and run:pd [file]\n"
 "run pdm file:pd [file]\n"
 "argument:\n"
-"-m:make module\n"
-"-o [name]:use output file name\n";
+"-m [module file name]:make module\n";
 int run(char*fileName,char*outputName){
     PdSTD pstd=makeSTD();
     Module mod;
+    char*pt=(char*)malloc(MAX_WORD_LENGTH);
+    #ifdef LINUX
+    int len=-1;
+    len=readlink("/proc/self/exe",path,MAX_WORD_LENGTH-1);
+    if(len<0){
+        printf("error:failed to get pudron path.\n");
+        exit(-1);
+    }
+    path[len]='\0';
+    #else
+        GetModuleFileName(NULL,pt,MAX_WORD_LENGTH-1);
+    #endif
+    char*path=getPath(pt);
+    free(pt);
     char*post=getPostfix(fileName);
     if(strcmp(post,FILE_MODULE_POSTFIX)==0){
         mod=importModule(fileName);
     }else{
-        mod=compileAll(fileName,pstd);
+        mod=compileAll(fileName,path,pstd);
     }
     free(post);
     if(outputName!=NULL){
@@ -25,14 +37,13 @@ int run(char*fileName,char*outputName){
     }
     Unit unit=getModuleUnit(mod);
     //printCmds(unit,0);
-    VM vm=newVM(fileName,pstd);
+    VM vm=newVM(fileName,path,pstd);
     makeSTDObject(&vm,&pstd);
     unit.gvlist=pstd.hl;
     execute(&vm,&unit);
-    freeHashList(&vm,&unit,&unit.lvlist);
-    freeHashList(&vm,&unit,&pstd.hl);
     Object*rt=vm.stack[--vm.stackCount];
     confirmObjectType(&vm,rt,OBJECT_INT);
+    doexit(&vm,&unit);
     int r=rt->num;
     free(rt);
     return r;

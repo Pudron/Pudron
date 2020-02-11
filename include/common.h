@@ -12,8 +12,8 @@
 #define VERSION 1
 #define VERSION_MIN 1
 
-#define STD_CLASS_COUNT 6
-#define STD_FUNC_COUNT 5
+#define STD_CLASS_COUNT 7
+#define STD_FUNC_COUNT 6
 
 /*List Operations*/
 //#define LIST_UNIT_SIZE 10
@@ -262,9 +262,14 @@ struct ModuleDef{
 };
 typedef struct VMDef VM;
 typedef struct UnitDef Unit;
-typedef struct{
-    char*name;
-    void (*exe)(VM*,Unit*);
+typedef struct FuncDef{
+    union{
+        char*name;
+        struct{
+            int dllID,dllFuncID;
+        };
+    };
+    void (*exe)(VM*,Unit*,struct FuncDef*);
     int argCount;/*nlist的前argCount个名字皆为参数*/
     /*unit start*/
     ConstList constList;
@@ -309,6 +314,7 @@ struct ObjectDef{
         OBJECT_FUNCTION,
         OBJECT_STRING,
         OBJECT_LIST,
+        OBJECT_DLL,
         OBJECT_OTHERS
     }type;
     NameList classNameList;

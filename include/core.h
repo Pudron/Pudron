@@ -1,7 +1,28 @@
 #ifndef _PD_CORE_H_
 #define _PD_CORE_H_
 #include"common.h"
+#include"pdex.h"
 #define MAX_STACK 1024
+#ifdef LINUX
+#include<dlfcn.h>
+typedef void* Dllptr;
+#define DLL_OPEN(fname) dlopen(fname,RTLD_LAZY)
+#define DLL_GET(dptr,fname) (DllFunc)dlsym(dptr,fname)
+#define DLL_CLOSE(dptr) dlclose(dptr)
+#else
+#include<windows.h>
+typedef HINSTANCE Dllptr;
+#define DLL_OPEN(fname) LoadLibrary(TEXT(fname))
+#define DLL_GET(dptr,fname) (DllFunc)GetProcAddress(dptr,TEXT(fname))
+#define DLL_CLOSE(dptr) FreeLibrary(dptr)
+#endif
+typedef void (*DllFunc)(_PDat*pdat);
+LIST_DECLARE(DllFunc)
+typedef struct{
+    Dllptr dllptr;
+    DllFuncList dflist;
+}Dllinfo;
+LIST_DECLARE(Dllinfo)
 typedef Object* Arg;
 LIST_DECLARE(Arg)
 struct VMDef{
@@ -13,10 +34,12 @@ struct VMDef{
     Object*this;
     PdSTD pstd;
     Unit*unit;
+    DllinfoList dlist;
+    char*path;
 };
 #define PUSH(objt) vm->stack[vm->stackCount++]=objt
 #define POP() vm->stack[--vm->stackCount]
-#define FUNC_DEF(name) void name(VM*vm,Unit*unit){
+#define FUNC_DEF(name) void name(VM*vm,Unit*unit,Func*func){
 #define FUNC_END() PUSH(newIntObject(0));return;}
 
 #define METHOD_NAME_INIT "opInit"
@@ -40,6 +63,7 @@ struct VMDef{
 #define METHOD_NAME_LTHAN_EQUAL "opLthanEqual"
 #define METHOD_NAME_REM "opRem"
 
+void doexit(VM*vm,Unit*unit);
 void vmError(VM*vm,char*text,...);
 void reduceRef(VM*vm,Unit*unit,Object*obj);
 Object*loadConst(VM*vm,Unit*unit,int index);

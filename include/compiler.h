@@ -24,5 +24,5 @@ typedef struct{
     PdSTD pstd;
 }Compiler;
 int addConst(Unit*unit,Const con);
-Module compileAll(char*fileName,PdSTD pstd);
+Module compileAll(char*fileName,char*path,PdSTD pstd);
 #endif
