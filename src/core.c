@@ -581,7 +581,8 @@ FUNC_DEF(minput)
     Object*st=newStringObject(vm);
     Object*len=loadMember(vm,st,"length",true);
     st->str=(char*)memManage(NULL,MAX_WORD_LENGTH+1);
-    scanf("%[^\n]",st->str);
+    //scanf("%[^\n]",st->str);
+    fgets(st->str,MAX_WORD_LENGTH,stdin);
     len->num=strlen(st->str);
     reduceRef(vm,unit,len);
     PUSH(st);
