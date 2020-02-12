@@ -1,9 +1,4 @@
 #include"compiler.h"
-#ifdef LINUX
-#include<unistd.h>
-#else
-#include<windows.h>
-#endif
 const int OPERAT_PREFIX_COUNT=3;
 const Operat operatPrefix[]={
     {TOKEN_EXCL,OPCODE_NOT,130},

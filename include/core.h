@@ -5,6 +5,7 @@
 #define MAX_STACK 1024
 #ifdef LINUX
 #include<dlfcn.h>
+#include<unistd.h>
 typedef void* Dllptr;
 #define DLL_OPEN(fname) dlopen(fname,RTLD_LAZY)
 #define DLL_GET(dptr,fname) (DllFunc)dlsym(dptr,fname)
