@@ -13,12 +13,12 @@ int run(char*fileName,char*outputName){
     char*pt=(char*)malloc(MAX_WORD_LENGTH);
     #ifdef LINUX
     int len=-1;
-    len=readlink("/proc/self/exe",path,MAX_WORD_LENGTH-1);
+    len=readlink("/proc/self/exe",pt,MAX_WORD_LENGTH-1);
     if(len<0){
         printf("error:failed to get pudron path.\n");
         exit(-1);
     }
-    path[len]='\0';
+    pt[len]='\0';
     #else
         GetModuleFileName(NULL,pt,MAX_WORD_LENGTH-1);
     #endif
