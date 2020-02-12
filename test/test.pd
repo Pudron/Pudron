@@ -1,2 +1,3 @@
-str=input();
-println("str:",str);
+dll=DLL("/home/pi/Projects/Pudron/test/DLLtest/libtest.so");
+test=dll.getFunc("test");
+test(12345);

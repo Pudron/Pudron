@@ -623,7 +623,7 @@ FUNC_DEF(dll_create)
     confirmObjectType(vm,st,OBJECT_STRING);
     Dllptr dptr=DLL_OPEN(st->str);
     if(dptr==NULL){
-        char*path=(char*)memManage(NULL,strlen(vm->path)+strlen(st->str)+5);
+        char*path=(char*)memManage(NULL,strlen(vm->path)+strlen(st->str)+6);
         sprintf(path,"%s/mod/%s",vm->path,st->str);
         dptr=DLL_OPEN(path);
         free(path);

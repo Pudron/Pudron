@@ -1,5 +1,5 @@
-test.dll:test.c
-	gcc -Wall -shared test.c -o test.dll
+libtest.so:test.c
+	gcc -Wall -shared test.c -o libtest.so
 
 .PHONY:clean
 clean:
