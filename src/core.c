@@ -78,7 +78,7 @@ void freeHashList(VM*vm,Unit*unit,HashList*hl){
     free(hl->slot);
 }
 /*
-*...为参数,若为method,则第一个参数为this,当argc=-1时,则后面接ArgList,#ArgList会被DELETE#,
+*...为参数,若为method,则第一个参数为this,当argc=-1时,则后面接ArgList,
 *若argc=-2,则只传入this,执行opDestroy()方法,不创建argv,防止无限释放argv
 */
 void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
@@ -118,13 +118,19 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
         obj->refCount++;
         setHash(vm,&funit.lvlist,funit.nlist.vals[i],obj);
     }
+    int stackCount=vm->stackCount;
     if(func.exe!=NULL){
         func.exe(vm,&funit,&func);
     }else{
         execute(vm,&funit);
     }
+    obj=POP();
+    while(vm->stackCount>stackCount){
+        reduceRef(vm,unit,POP());
+    }
     freeHashList(vm,unit,&funit.lvlist);
     free(funit.gvlist.slot);
+    PUSH(obj);
 }
 /*只删除现有数据，保持指针有效*/
 void delObj(VM*vm,Unit*unit,Object*obj){
@@ -197,7 +203,7 @@ Object*newStringObject(VM*vm){
 Object*newListObject(VM*vm,int count){
     Class class=vm->pstd.stdClass[OBJECT_LIST];
     Object*obj=newObject(OBJECT_LIST);
-    LIST_ADD(obj->classNameList,Name,"list")
+    LIST_ADD(obj->classNameList,Name,"List")
     obj->subObj=(Object**)memManage(NULL,sizeof(Object*)*count);
     obj->member=hashCopy(class.memberList);
     Unit unit=getFuncUnit(class.initFunc);
@@ -207,6 +213,26 @@ Object*newListObject(VM*vm,int count){
     Object*cnt=loadMember(vm,obj,"count",true);
     cnt->num=count;
     cnt->refCount--;
+    return obj;
+}
+Object*newErrorObject(VM*vm,ErrorType id,char*msg){
+    Class class=vm->pstd.stdClass[OBJECT_ERROR];
+    Object*obj=newObject(OBJECT_ERROR);
+    LIST_ADD(obj->classNameList,Name,"Error")
+    obj->member=hashCopy(class.memberList);
+    Unit unit=getFuncUnit(class.initFunc);
+    for(int i=0;i<class.varList.count;i++){
+        setHash(vm,&obj->member,class.varList.vals[i],loadConst(vm,&unit,i));
+    }
+    Object*oid=loadMember(vm,obj,"id",true);
+    Object*omsg=loadMember(vm,obj,"message",true);
+    Object*len=loadMember(vm,omsg,"length",true);
+    oid->num=id;
+    omsg->str=msg;
+    len->num=strlen(msg);
+    len->refCount--;
+    omsg->refCount--;
+    oid->refCount--;
     return obj;
 }
 Func newFunc(char*name){
@@ -343,6 +369,14 @@ void addClassInt(Class*class,char*name,int num){
     con.num=num;
     LIST_ADD(class->initFunc.constList,Const,con)
 }
+void addClassString(Class*class,char*name,char*str){
+    addName(&class->varList,name);
+    hashGet(&class->memberList,name,NULL,true);
+    Const con;
+    con.type=CONST_STRING;
+    con.str=str;
+    LIST_ADD(class->initFunc.constList,Const,con)
+}
 Func makeFunc(char*name,void*exe,int argCount,...){
     Func func=newFunc(name);
     func.exe=exe;
@@ -410,8 +444,11 @@ FUNC_END()
 FUNC_DEF(string_subscript)
     Object*this=loadVar(vm,unit,"this"),*ind=loadVar(vm,unit,"index");
     confirmObjectType(vm,ind,OBJECT_INT);
+    Object*err;
     if(ind->num>strlen(this->str)){
-        vmError(vm,"string overflow.");
+        err=newErrorObject(vm,ERR_INDEX,"string overflow.");
+        PUSH(err);
+        return;
     }
     Object*sto=newIntObject(this->str[ind->num]);
     PUSH(sto);
@@ -425,9 +462,10 @@ FUNC_END()
 FUNC_DEF(string_equal)
     Object*this=loadVar(vm,unit,"this");
     Object*st=loadVar(vm,unit,"str");
-    confirmObjectType(vm,st,OBJECT_STRING);
     Object*rt;
-    if(strcmp(this->str,st->str)==0){
+    if(st->type!=OBJECT_STRING){
+        rt=newIntObject(false);
+    }else if(strcmp(this->str,st->str)==0){
         rt=newIntObject(true);
     }else{
         rt=newIntObject(false);
@@ -665,6 +703,7 @@ FUNC_DEF(dll_func)
     pdat.rval.type=PVAL_INT;
     pdat.rval.num=0;
     LIST_INIT(pdat.argList)
+    pdat.err_id=-1;
     _PValue pval;
     Object*obj;
     for(int i=0;i<cnt->num;i++){
@@ -706,6 +745,9 @@ FUNC_DEF(dll_func)
             reduceRef(vm,unit,len);
             break;
         }
+        case PVAL_ERROR:
+            obj=newErrorObject(vm,pdat.err_id,pdat.rval.str);
+            break;
         default:
             vmError(vm,"unknown dll function return type:%d.",pdat.rval.type);
             break;
@@ -733,6 +775,23 @@ FUNC_DEF(dll_get_func)
     dfunc.exe=dll_func;
     PUSH(newFuncObject(dfunc));
     return;
+FUNC_END()
+FUNC_DEF(error_create)
+    Object*this=loadVar(vm,unit,"this");
+    Object*id=loadMember(vm,this,"id",true);
+    Object*msg=loadMember(vm,this,"message",true);
+    Object*argMsg=loadVar(vm,unit,"err_message");/*参数名不能与成员名一样*/
+    confirmObjectType(vm,argMsg,OBJECT_STRING);
+    Object*argID=loadVar(vm,unit,"err_id");
+    confirmObjectType(vm,argID,OBJECT_INT);
+    delObj(vm,unit,id);
+    delObj(vm,unit,msg);
+    free(id);
+    free(msg);
+    this->type=OBJECT_ERROR;
+    setHash(vm,&this->member,"id",argID);
+    setHash(vm,&this->member,"message",argMsg);
+    reduceRef(vm,unit,this);
 FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
@@ -783,6 +842,14 @@ PdSTD makeSTD(){
     addClassFunc(&class,"getFunc",dll_get_func,1,"funcName");
     pstd.stdClass[OBJECT_DLL]=class;
     hashGet(&pstd.hl,"DLL",NULL,true);
+
+    class=newClass("Error");
+    class.initFunc.exe=std_init;
+    addClassInt(&class,"id",0);
+    addClassString(&class,"message","\0");
+    addClassFunc(&class,METHOD_NAME_INIT,error_create,2,"err_id","err_message");
+    pstd.stdClass[OBJECT_ERROR]=class;
+    hashGet(&pstd.hl,"Error",NULL,true);
 
     Func func;
     func=makeFunc("print",mprint,0);

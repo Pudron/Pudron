@@ -37,7 +37,13 @@ struct VMDef{
     Unit*unit;
     DllinfoList dlist;
     char*path;
+    intList jplist;
+    Object*errObj;
 };
+typedef enum{
+    ERR_INDEX,
+    ERR_CALCULATION
+}ErrorType;
 #define PUSH(objt) vm->stack[vm->stackCount++]=objt
 #define POP() vm->stack[--vm->stackCount]
 #define FUNC_DEF(name) void name(VM*vm,Unit*unit,Func*func){
@@ -80,6 +86,7 @@ Object*newClassObject(Class class);
 Object*newFuncObject(Func func);
 Object*newStringObject(VM*vm);
 Object*newListObject(VM*vm,int count);
+Object*newErrorObject(VM*vm,ErrorType id,char*msg);
 void confirmObjectType(VM*vm,Object*obj,char type);
 void setHash(VM*vm,HashList*hl,char*name,Object*obj);
 void delObj(VM*vm,Unit*unit,Object*obj);

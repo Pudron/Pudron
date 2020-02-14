@@ -4,5 +4,6 @@
 #include"core.h"
 void execute(VM*vm,Unit*unit);
 VM newVM(char*fileName,char*path,PdSTD pstd);
+bool checkError(VM*vm,Unit*unit,int*ptr);
 void popStack(VM*vm,Unit*unit,int num);
 #endif

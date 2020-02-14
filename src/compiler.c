@@ -660,6 +660,28 @@ void compileForState(Compiler*cp,Unit*unit,Env env){
     }
     LIST_DELETE(breakList)
 }
+void compileTry(Compiler*cp,Unit*unit,Env env){
+    Token token=cp->parser.tokenList.vals[cp->parser.curToken];
+    int msgStart=token.start;
+    int pt=setPart(cp,unit,msgStart);
+    unit->plist.vals[pt].end=token.end;
+    addCmd1(unit,OPCODE_BEGIN_TRY,0);
+    int jp=unit->clist.count-1;
+    compileBlock(cp,unit,env);
+    unit->curPart=pt;
+    addCmd1(unit,OPCODE_END_TRY,0);
+    unit->clist.vals[jp]=unit->clist.count;
+    jp=unit->clist.count-1;
+    msgStart=cp->parser.ptr;
+    token=matchToken(&cp->parser,TOKEN_CATCH,"catch statement",msgStart);
+    token=matchToken(&cp->parser,TOKEN_PARE1,"\"(\" in catch statement",msgStart);
+    token=matchToken(&cp->parser,TOKEN_WORD,"error variable",msgStart);
+    hashGet(&unit->lvlist,token.word,NULL,true);
+    addCmd1(unit,OPCODE_SET_CATCH,addName(&unit->nlist,token.word));
+    token=matchToken(&cp->parser,TOKEN_PARE2,"\")\" in catch statement",msgStart);
+    compileBlock(cp,unit,env);
+    unit->clist.vals[jp]=unit->clist.count;
+}
 /*模块存在则返回true*/
 bool checkModuleName(ModuleList mlist,char*name){
     Module mod;
@@ -780,6 +802,8 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
                 LIST_ADD(unit->mlist,Module,importModule(fileName))
                 free(fileName);
             }
+        }else if(token.type==TOKEN_TRY){
+            compileTry(cp,unit,env);
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);

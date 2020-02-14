@@ -12,7 +12,7 @@
 #define VERSION 1
 #define VERSION_MIN 1
 
-#define STD_CLASS_COUNT 7
+#define STD_CLASS_COUNT 8
 #define STD_FUNC_COUNT 6
 
 /*List Operations*/
@@ -142,9 +142,11 @@ typedef enum{
     TOKEN_IMPORT,
     TOKEN_INCLUDE,
     TOKEN_TRUE,
-    TOKEN_FALSE
+    TOKEN_FALSE,
+    TOKEN_TRY,
+    TOKEN_CATCH
 }Tokentype;
-#define OPCODE_COUNT 40
+#define OPCODE_COUNT 43
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -191,7 +193,11 @@ typedef enum{
     OPCODE_CALL_METHOD,/*创建对象环境*/
 
     OPCODE_CLASS_EXTEND,/*继承*/
-    OPCODE_LOAD_MODULE
+    OPCODE_LOAD_MODULE,
+
+    OPCODE_BEGIN_TRY,
+    OPCODE_END_TRY,
+    OPCODE_SET_CATCH
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)
@@ -315,6 +321,7 @@ struct ObjectDef{
         OBJECT_STRING,
         OBJECT_LIST,
         OBJECT_DLL,
+        OBJECT_ERROR,
         OBJECT_OTHERS
     }type;
     NameList classNameList;

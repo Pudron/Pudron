@@ -40,7 +40,10 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_LOAD_METHOD,"LOAD_METHOD",1},
     {OPCODE_CALL_METHOD,"CALL_METHOD",1},
     {OPCODE_CLASS_EXTEND,"CLASS_EXTEND",1},
-    {OPCODE_LOAD_MODULE,"LOAD_MODULE",1}
+    {OPCODE_LOAD_MODULE,"LOAD_MODULE",1},
+    {OPCODE_BEGIN_TRY,"BEGIN_TRY",1},
+    {OPCODE_END_TRY,"END_TRY",1},
+    {OPCODE_SET_CATCH,"SET_CATCH",1}
 };
 void*memManage(void*ptr,size_t size){
     void*p=realloc(ptr,size);

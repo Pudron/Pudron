@@ -1,3 +1,10 @@
-dll=DLL("/home/pi/Projects/Pudron/test/DLLtest/libtest.so");
-test=dll.getFunc("test");
-test(12345);
+class A{
+    func opInit(){
+        return Error(234,"ttt");
+    }
+}
+try{
+    a=A();
+}catch(e){
+    println(e.id,":",e.message);
+}

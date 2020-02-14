@@ -8,7 +8,7 @@
 #else
 #define ASSERT(condition,message,...)
 #endif
-#define checkStack(num) ASSERT(vm->stackCount<num,"%d:expected %d slots but only %d slots in stack.",vm->ptr,num,vm->stackCount)
+#define checkStack(num) ASSERT(vm->stackCount<num,"file:%s,line:%d,ptr:%d:expected %d slots but only %d slots in stack.",__FILE__,__LINE__,vm->ptr,num,vm->stackCount)
 VM newVM(char*fileName,char*path,PdSTD pstd){
     VM vm;
     vm.stackCount=0;
@@ -25,6 +25,7 @@ VM newVM(char*fileName,char*path,PdSTD pstd){
     vm.unit=NULL;
     LIST_INIT(vm.dlist)
     vm.path=path;
+    LIST_INIT(vm.jplist)
     return vm;
 }
 void popStack(VM*vm,Unit*unit,int num){
@@ -78,7 +79,7 @@ Object copyObject(VM*vm,Unit*unit,Object*obj,int refCount){
     return val;
 }
 /*若argList为NULL,则不执行opInit()方法*/
-Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
+Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode,int*ind){
     Object*this=newObject(OBJECT_OTHERS);
     this->member=hashCopy(class.memberList);
     LIST_ADD(this->classNameList,Name,class.name)
@@ -88,7 +89,7 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
     for(int i=0;i<class.parentList.count;i++){
         classp=class.parentList.vals[i];
         LIST_ADD(this->classNameList,Name,classp.name)
-        parent=createObject(vm,unit,classp,NULL,opcode);
+        parent=createObject(vm,unit,classp,NULL,opcode,ind);
         setHash(vm,&this->member,classp.name,parent);
     }
     /*执行initFunc*/
@@ -129,7 +130,9 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode){
             vm->this=this;
             callFunction(vm,unit,iobj->func,-1,(*argList));
             vm->this=oldThis;
-            reduceRef(vm,unit,POP());
+            if(!checkError(vm,unit,ind)){
+                reduceRef(vm,unit,POP());
+            }
             reduceRef(vm,unit,iobj);
         }
     }
@@ -202,6 +205,13 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
             EXE_OPT(*,METHOD_NAME_MUL)
             break;
         case OPCODE_DIV:
+            if((a->type==OBJECT_INT || a->type==OBJECT_DOUBLE) && (b->type==OBJECT_INT || b->type==OBJECT_DOUBLE)){
+                if(b->num==0 || b->numd==0){
+                    Object*eobj=newErrorObject(vm,ERR_CALCULATION,"dividend can not be 0.");
+                    PUSH(eobj);
+                    break;
+                }
+            }
             EXE_OPT(/,METHOD_NAME_DIV)
             break;
         case OPCODE_AND:
@@ -307,6 +317,27 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
     }\
     PUSH(obj);\
     reduceRef(vm,unit,this);
+bool checkError(VM*vm,Unit*unit,int*ptr){
+    Object*obj=POP();
+    if(obj->type==OBJECT_ERROR){
+        if(vm->jplist.count>0){
+            vm->errObj=obj;
+            *ptr=vm->jplist.vals[vm->jplist.count-1]-1;
+        }else{
+            Object*omsg=loadMember(vm,obj,"message",true);
+            confirmObjectType(vm,omsg,OBJECT_STRING);
+            char*msg=omsg->str;
+            reduceRef(vm,unit,omsg);
+            delObj(vm,unit,obj);
+            free(obj);
+            vmError(vm,msg);
+        }
+        return true;
+    }else{
+        PUSH(obj);
+    }
+    return false;
+}
 void execute(VM*vm,Unit*unit){
     int c=0;
     ArgList argList;
@@ -344,6 +375,7 @@ void execute(VM*vm,Unit*unit){
             case OPCODE_LTHAN_EQUAL:
             case OPCODE_REM:
                 exeOpt(vm,unit,c);
+                checkError(vm,unit,&i);
                 break;
             case OPCODE_INVERT:
                 this=POP();
@@ -437,8 +469,9 @@ void execute(VM*vm,Unit*unit){
                 }
                 if(obj->type==OBJECT_FUNCTION){
                     callFunction(vm,unit,obj->func,-1,argList);
+                    checkError(vm,unit,&i);
                 }else if(obj->type==OBJECT_CLASS){
-                    PUSH(createObject(vm,unit,obj->class,&argList,c));
+                    PUSH(createObject(vm,unit,obj->class,&argList,c,&i));
                 }else{
                     vmError(vm,"expected class or function when calling.");
                 }
@@ -529,8 +562,26 @@ void execute(VM*vm,Unit*unit){
                         unit->lvlist.slot[c].obj=hs.obj;
                     }
                 }
+                checkError(vm,unit,&i);
                 break;
             }
+            case OPCODE_BEGIN_TRY:
+                LIST_ADD(vm->jplist,int,unit->clist.vals[++i]);
+                break;
+            case OPCODE_END_TRY:
+                LIST_SUB(vm->jplist,int)
+                i++;
+                i=unit->clist.vals[i]-1;
+                break;
+            case OPCODE_SET_CATCH:
+                name=unit->nlist.vals[unit->clist.vals[++i]];
+                c=hashGet(&unit->lvlist,name,NULL,false);
+                obj=unit->lvlist.slot[c].obj;
+                if(obj!=NULL){
+                    reduceRef(vm,unit,obj);
+                }
+                unit->lvlist.slot[c].obj=vm->errObj;
+                break;
             default:
                 vmError(vm,"unknown opcode %d.",c);
                 break;
