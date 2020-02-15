@@ -36,7 +36,7 @@ else
 	MKD2=
 	MKD3=
 endif
-all:mkd pd
+all:mkd pd mod
 
 .PHONY:mkd
 mkd:
@@ -49,6 +49,8 @@ pd:$(OBJS)
 
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $< -o build$/objs$/$@
+
+include mod/makefile
 
 .PHONY:test
 test:test$/test.pd

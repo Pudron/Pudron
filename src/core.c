@@ -740,7 +740,7 @@ FUNC_DEF(dll_func)
         case PVAL_STRING:{
             obj=newStringObject(vm);
             Object*len=loadMember(vm,obj,"length",true);
-            obj->str=pval.str;
+            obj->str=pdat.rval.str;
             len->num=strlen(obj->str);
             reduceRef(vm,unit,len);
             break;
@@ -770,10 +770,13 @@ FUNC_DEF(dll_get_func)
             vmError(vm,"can not get the dll function,error code:%ld.",GetLastError());
         #endif
     }
-    dfunc.dllFuncID=vm->dlist.vals[dfunc.dllFuncID].dflist.count;
-    LIST_ADD(vm->dlist.vals[dfunc.dllFuncID].dflist,DllFunc,df)
+    dfunc.dllFuncID=vm->dlist.vals[dfunc.dllID].dflist.count;
+    LIST_ADD(vm->dlist.vals[dfunc.dllID].dflist,DllFunc,df)
     dfunc.exe=dll_func;
     PUSH(newFuncObject(dfunc));
+    reduceRef(vm,unit,fname);
+    reduceRef(vm,unit,id);
+    reduceRef(vm,unit,this);
     return;
 FUNC_END()
 FUNC_DEF(error_create)
@@ -792,6 +795,16 @@ FUNC_DEF(error_create)
     setHash(vm,&this->member,"id",argID);
     setHash(vm,&this->member,"message",argMsg);
     reduceRef(vm,unit,this);
+FUNC_END()
+FUNC_DEF(get_platform)
+    Object*obj;
+    #ifdef LINUX
+        obj=newIntObject(0);
+    #else
+        obj=newIntObject(1);
+    #endif
+    PUSH(obj);
+    return;
 FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
@@ -875,6 +888,11 @@ PdSTD makeSTD(){
     func=makeFunc("compareClass",compare_class,2,"object","type");
     pstd.stdFunc[5]=func;
     hashGet(&pstd.hl,"compareClass",NULL,true);
+
+    func=makeFunc("getPlatform",get_platform,0);
+    pstd.stdFunc[6]=func;
+    hashGet(&pstd.hl,"getPlatform",NULL,true);
+
     return pstd;
 }
 void makeSTDObject(VM*vm,PdSTD*pstd){

@@ -24,6 +24,13 @@ typedef struct{
     _PValueList argList;
     int err_id;
 }_PDat;
+enum{
+    PERROR_INDEX,
+    PERROR_CALCULATION,
+    PERROR_FILE,
+    PERROR_ARGUMENT,
+    PERROR_MEMORY
+};
 #define PD_FUNC_DEF(func_name) void func_name(_PDat*_pdat)
 #define PD_ARG(index) _pdat->argList.vals[index]
 #define PD_ARG_COUNT _pdat->argList.count

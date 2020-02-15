@@ -338,6 +338,7 @@ bool checkError(VM*vm,Unit*unit,int*ptr){
     }
     return false;
 }
+extern OpcodeMsg opcodeList[];
 void execute(VM*vm,Unit*unit){
     int c=0;
     ArgList argList;
@@ -352,7 +353,7 @@ void execute(VM*vm,Unit*unit){
             vm->part=unit->plist.vals[c];
         }
         vm->ptr=i;
-        //printf("cmd:%d\n",i);
+        //printf("cmd:%d:%s\n",i,opcodeList[unit->clist.vals[i+1]].name);
         c=unit->clist.vals[++i];
         switch(c){
             case OPCODE_NOP:
@@ -548,8 +549,14 @@ void execute(VM*vm,Unit*unit){
                 Module mod=unit->mlist.vals[unit->clist.vals[++i]];
                 Unit munit=getModuleUnit(mod);
                 munit.gvlist=vm->pstd.hl;
+                int stackCount=vm->stackCount;
                 execute(vm,&munit);
-                obj=POP();
+                if(!checkError(vm,unit,&i)){
+                    obj=POP();
+                }
+                while(vm->stackCount>stackCount){
+                    reduceRef(vm,unit,POP());
+                }
                 HashSlot hs;
                 for(int i2=0;i2<munit.lvlist.capacity;i2++){
                     hs=munit.lvlist.slot[i2];
@@ -562,7 +569,6 @@ void execute(VM*vm,Unit*unit){
                         unit->lvlist.slot[c].obj=hs.obj;
                     }
                 }
-                checkError(vm,unit,&i);
                 break;
             }
             case OPCODE_BEGIN_TRY:

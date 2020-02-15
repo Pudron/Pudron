@@ -1,10 +1,3 @@
-class A{
-    func opInit(){
-        return Error(234,"ttt");
-    }
-}
-try{
-    a=A();
-}catch(e){
-    println(e.id,":",e.message);
-}
+import file;
+writeTextFile("t.txt","test\nttt\r");
+println("read:\n",readTextFile("t.txt"));

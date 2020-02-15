@@ -42,8 +42,11 @@ struct VMDef{
 };
 typedef enum{
     ERR_INDEX,
-    ERR_CALCULATION
-}ErrorType;
+    ERR_CALCULATION,
+    ERR_FILE,
+    ERR_ARGUMENT,
+    ERR_MEMORY
+}ErrorType;/*注意更改pdex.h中的enum*/
 #define PUSH(objt) vm->stack[vm->stackCount++]=objt
 #define POP() vm->stack[--vm->stackCount]
 #define FUNC_DEF(name) void name(VM*vm,Unit*unit,Func*func){

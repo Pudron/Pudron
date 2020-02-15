@@ -74,7 +74,7 @@ Token getToken(Parser*parser){
     msg.fileName=parser->fileName;
     msg.code=parser->code;
     char c=parser->code[parser->ptr];
-    while(c==' ' || c=='	' || c=='\n' || c=='#'){
+    while(c==' ' || c=='	' || c=='\n' || c=='\r' || c=='#'){
         parser->column++;
         if(c=='\n'){
             parser->line++;
@@ -176,12 +176,16 @@ Token getToken(Parser*parser){
         c=parser->code[++parser->ptr];
         for(i=0;c!='\'';i++){
             if(c=='\0'){
-                msg.end=parser->ptr;
+                if(parser->ptr>msg.start+99){
+                    msg.end=msg.start+99;
+                }else{
+                    msg.end=parser->ptr;
+                }
                 strcpy(msg.text,"expected \' after the name.");
                 reportMsg(msg);
             }
             if(i>=1023){
-                msg.end=parser->ptr;
+                msg.end=msg.start+99;
                 strcpy(msg.text,"the name is too long.");
                 reportMsg(msg);
             }
@@ -229,8 +233,10 @@ Token getToken(Parser*parser){
                 i--;
                 c=parser->code[++parser->ptr];
                 continue;
-            }
-            if(c=='\\'){
+            }else if(c=='\r'){
+                i--;
+                c=parser->code[++parser->ptr];
+            }else if(c=='\\'){
                 switch(parser->code[parser->ptr+1]){
                     case 'n':
                         c='\n';
@@ -250,6 +256,30 @@ Token getToken(Parser*parser){
                         break;
                     case '\"':
                         c='\"';
+                        parser->ptr++;
+                        break;
+                    case 'r':
+                        c='\r';
+                        parser->ptr++;
+                        break;
+                    case 't':
+                        c='\t';
+                        parser->ptr++;
+                        break;
+                    case 'v':
+                        c='\v';
+                        parser->ptr++;
+                        break;
+                    case 'a':
+                        c='\a';
+                        parser->ptr++;
+                        break;
+                    case 'b':
+                        c='\b';
+                        parser->ptr++;
+                        break;
+                    case 'f':
+                        c='\f';
                         parser->ptr++;
                         break;
                     default:
@@ -292,7 +322,7 @@ Token getToken(Parser*parser){
         msg.line=parser->line;
         msg.end=parser->ptr;
         msg.type=MSG_ERROR;
-        sprintf(msg.text,"unknown charactor \"%c\".",c);
+        sprintf(msg.text,"unknown charactor \"%c\"(%d).",c,c);
         reportMsg(msg);
     }
     /*查找关键字*/

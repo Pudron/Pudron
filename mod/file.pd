@@ -1,0 +1,9 @@
+platform=getPlatform();
+if(platform=0){
+    file="libfile.so";
+}else{
+    file="file.dll";
+}
+fdll=DLL(file);
+readTextFile=fdll.getFunc("readTextFile");
+writeTextFile=fdll.getFunc("writeTextFile");
