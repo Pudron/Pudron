@@ -4,6 +4,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<stdarg.h>
+#include<stdbool.h>
 /*尽量不用memcpy(),用它老是出现莫名其妙的错误,用它操作过的指针free()时都出错*/
 #define MAX_WORD_LENGTH 128
 #define FILE_CODE_POSTFIX ".pd"
@@ -75,11 +76,11 @@
     memcpy(list.vals+position+1,list.vals+position,(list.count-position)*sizeof(type));\
     list.vals[position]=val;
 
-/*bool type*/
+/*bool type
 typedef enum{
     false=0,
     true
-}bool;
+}bool;(now use stdbool.h)*/
 
 typedef enum{
     TOKEN_END,
