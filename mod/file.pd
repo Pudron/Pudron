@@ -1,5 +1,4 @@
-platform=getPlatform();
-if(platform=0){
+if(getPlatform()=0){
     file="libfile.so";
 }else{
     file="file.dll";

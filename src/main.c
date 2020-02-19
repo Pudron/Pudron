@@ -6,7 +6,8 @@ char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "compile and run:pd [file]\n"
 "run pdm file:pd [file]\n"
 "argument:\n"
-"-m [module file name]:make module\n";
+"-m [module file name]:make module\n"
+"-v:see the version\n";
 int run(char*fileName,char*outputName){
     PdSTD pstd=makeSTD();
     Module mod;
@@ -65,7 +66,7 @@ int main(int argc,char**argv){
                 }
                 outputName=argv[i];
             }else if(argv[i][1]=='v'){
-                printf("version%d\n",VERSION);
+                printf("version:%d\n",VERSION);
                 isVersion=true;
             }else{
                 printf("error:unknown argument \"%s\".\n",argv[i]);

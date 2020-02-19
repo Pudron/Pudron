@@ -207,7 +207,7 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
         case OPCODE_DIV:
             if((a->type==OBJECT_INT || a->type==OBJECT_DOUBLE) && (b->type==OBJECT_INT || b->type==OBJECT_DOUBLE)){
                 if(b->num==0 || b->numd==0){
-                    Object*eobj=newErrorObject(vm,ERR_CALCULATION,"dividend can not be 0.");
+                    Object*eobj=newErrorObject(vm,ERR_CALCULATION,"divisor can not be 0.");
                     PUSH(eobj);
                     break;
                 }

@@ -147,7 +147,6 @@ typedef enum{
     TOKEN_TRY,
     TOKEN_CATCH
 }Tokentype;
-#define OPCODE_COUNT 43
 typedef enum{
     OPCODE_NOP,
     OPCODE_ADD,
@@ -198,7 +197,9 @@ typedef enum{
 
     OPCODE_BEGIN_TRY,
     OPCODE_END_TRY,
-    OPCODE_SET_CATCH
+    OPCODE_SET_CATCH,
+
+    OPCODE_COUNT/*opcode总数量*/
 }Opcode;
 LIST_DECLARE(int)
 LIST_DECLARE(char)

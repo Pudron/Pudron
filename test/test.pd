@@ -1,3 +1,2 @@
-import file;
-writeTextFile("t.txt","test\nttt\r");
-println("read:\n",readTextFile("t.txt"));
+import error;
+println(ERROR_INDEX,ERROR_CALCULATION,ERROR_FILE,ERROR_ARGUMENT,ERROR_MEMORY);

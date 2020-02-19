@@ -46,7 +46,7 @@ typedef enum{
     ERR_FILE,
     ERR_ARGUMENT,
     ERR_MEMORY
-}ErrorType;/*注意更改pdex.h中的enum*/
+}ErrorType;/*注意更改pdex.h中的enum,并更改error.pd*/
 #define PUSH(objt) vm->stack[vm->stackCount++]=objt
 #define POP() vm->stack[--vm->stackCount]
 #define FUNC_DEF(name) void name(VM*vm,Unit*unit,Func*func){
