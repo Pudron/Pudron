@@ -96,6 +96,7 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
         argv=newListObject(vm,argc);
         for(int i=0;i<argc;i++){
             argv->subObj[i]=argList.vals[i];
+            argv->subObj[i]->isInit=false;/*防止赋值时被释放*/
         }
         //LIST_DELETE(argList)
         setHash(vm,&funit.lvlist,"argv",argv);
@@ -108,6 +109,7 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
         argv=newListObject(vm,argc);
         for(int i=0;i<argc;i++){
             argv->subObj[i]=va_arg(valist,Object*);
+            argv->subObj[i]->isInit=false;
         }
         setHash(vm,&funit.lvlist,"argv",argv);
         count=(argc>func.argCount)?func.argCount:argc;
@@ -282,6 +284,7 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             vmError(vm,"unknown constant type:%d.",con.type);
             break;
     }
+    //obj->isInit=false;
     return obj;
 }
 Object*loadVar(VM*vm,Unit*unit,char*name){

@@ -1,2 +1,13 @@
-import error;
-println(ERROR_INDEX,ERROR_CALCULATION,ERROR_FILE,ERROR_ARGUMENT,ERROR_MEMORY);
+#this is only a demo to test#
+class Person{
+    name;
+    func opInit(argName){
+        name=argName;
+    }
+    func love(person){
+        println("I love you,",person.name,"!");
+    }
+}
+I=Person("I");
+you=Person("Blue");
+I.love(you);
