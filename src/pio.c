@@ -43,13 +43,17 @@ int readInt(Bin*bin){
     return num;
 }
 void writeDouble(charList*dat,double numd){
-    unsigned int num=((unsigned int*)&numd)[0];
+    void*temp=&numd;
+    unsigned int num=*((unsigned int*)temp);
+    //unsigned int num=((unsigned int*)&numd)[0];
     writeInt(dat,num);
 }
 double readDouble(Bin*bin){
     double numd;
     int num=readInt(bin);
-    numd=((double*)&num)[0];
+    void*temp=&num;
+    numd=*((double*)temp);
+    //numd=((double*)&num)[0];
     return numd;
 }
 /*不写入最后的'\0'*/
