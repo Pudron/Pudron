@@ -7,6 +7,8 @@
 * 支持多种编程方法，如面向对象、面向过程等
 * 可拓展性强，使用动态链接库来拓展Pudron库
 * 潜力巨大
+## 已编译版
+在[Release](https://gitee.com/pudron/Pudron/releases/v1.0-beta.1)中下载。
 ## 编译
 在命令行中输入 `make`
 build目录中的pudron即为编译结果  
