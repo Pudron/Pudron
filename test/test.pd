@@ -5,7 +5,7 @@ class Person{
         name=argName;
     }
     func love(person){
-        println("I love you,",person.name,"!");
+        println("I love you,",person.name,"!")
     }
 }
 I=Person("I");

@@ -86,23 +86,33 @@ Token getToken(Parser*parser){
             msg.line=parser->line;
             msg.start=parser->ptr;
             c=parser->code[++parser->ptr];
-            while(c!='#'){
-                if(c=='\0'){
-                    msg.type=MSG_ERROR;
-                    if(parser->ptr-msg.start<20){
-                        msg.end=parser->ptr;
-                    }else{
-                        msg.end=msg.start+20;
+            /*单行注释*/
+            if(c=='#'){
+                while(c!='\n' && c!='\0'){
+                    parser->column++;
+                    c=parser->code[++parser->ptr];
+                }
+                /*交给下一次循环处理*/
+                parser->ptr--;
+            }else{
+                while(c!='#'){
+                    if(c=='\0'){
+                        msg.type=MSG_ERROR;
+                        if(parser->ptr-msg.start<20){
+                            msg.end=parser->ptr;
+                        }else{
+                            msg.end=msg.start+20;
+                        }
+                        strcpy(msg.text,"unterminated comment.");
+                        reportMsg(msg);
                     }
-                    strcpy(msg.text,"unterminated comment.");
-                    reportMsg(msg);
+                    parser->column++;
+                    if(c=='\n'){
+                        parser->line++;
+                        parser->column=1;
+                    }
+                    c=parser->code[++parser->ptr];
                 }
-                parser->column++;
-                if(c=='\n'){
-                    parser->line++;
-                    parser->column=1;
-                }
-                c=parser->code[++parser->ptr];
             }
         }
         c=parser->code[++parser->ptr];
