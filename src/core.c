@@ -708,7 +708,7 @@ FUNC_DEF(dll_func)
     LIST_INIT(pdat.argList)
     pdat.err_id=-1;
     _PValue pval;
-    Object*obj;
+    Object*obj=NULL;
     for(int i=0;i<cnt->num;i++){
         obj=argv->subObj[i];
         switch(obj->type){

@@ -1,10 +1,10 @@
 vpath %.h include
 vpath %.c src
 vpath %.o build/objs
-CONFIG ?= DEBUG
+BUILD ?= RELEASE
 PLATFORM ?= WINDOWS
 CC=gcc
-CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(CONFIG)
+CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(BUILD)
 LIBS=
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
@@ -19,7 +19,7 @@ else
 	PD_FILE=pd.exe
 	RM=del /Q
 endif
-ifeq ($(CONFIG),RELEASE)
+ifeq ($(BUILD),RELEASE)
 	CFLAGS+= -O2
 else
 	CFLAGS+= -g
