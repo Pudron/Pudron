@@ -6,10 +6,10 @@
                 "${workspaceFolder}/include"
             ],
             "defines": [],
-            "compilerPath": "C:/mingw64/bin/gcc.exe",
+            "compilerPath": "D:/programming/msys64/mingw64/bin/gcc.exe",
             "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64"
+            "cppStandard": "c++20",
+            "intelliSenseMode": "gcc-x64"
         }
     ],
     "version": 4

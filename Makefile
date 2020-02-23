@@ -5,7 +5,7 @@ BUILD ?= RELEASE
 PLATFORM ?= WINDOWS
 CC=gcc
 CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(BUILD)
-LIBS=
+LIBS=-liconv
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
 	EXE=./

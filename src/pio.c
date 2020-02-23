@@ -73,6 +73,22 @@ char*readString(Bin*bin){
     text[len]='\0';
     return text;
 }
+void writeWideString(charList*dat,wchar_t*wstr){
+    int len=wcslen(wstr);
+    writeInt(dat,len);
+    for(int i=0;i<len;i++){
+        writeInt(dat,(int)wstr[i]);
+    }
+}
+wchar_t*readWideString(Bin*bin){
+    int len=readInt(bin);
+    wchar_t*wstr=(wchar_t*)memManage(NULL,(len+1)*sizeof(wchar_t));
+    for(int i=0;i<len;i++){
+        wstr[i]=readInt(bin);
+    }
+    wstr[len]=L'\0';
+    return wstr;
+}
 /*空的也写下去*/
 void writeHashList(charList*dat,HashList hl){
     writeInt(dat,hl.capacity);
@@ -141,7 +157,7 @@ void writeConst(charList*dat,Const con){
             writeDouble(dat,con.numd);
             break;
         case CONST_STRING:
-            writeString(dat,con.str);
+            writeWideString(dat,con.str);
             break;
         case CONST_FUNCTION:
             writeFunc(dat,con.func);
@@ -166,7 +182,7 @@ Const readConst(Bin*bin){
             con.numd=readDouble(bin);
             break;
         case CONST_STRING:
-            con.str=readString(bin);
+            con.str=readWideString(bin);
             break;
         case CONST_FUNCTION:
             con.func=readFunc(bin);

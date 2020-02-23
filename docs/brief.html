@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="stylesheet" type="text/css" href="css/main.css"/>
+		<link rel="shortcut icon" href="img/logo.png"/>
+		<title>Pudron简明文档</title>
+	</head>
+	<body>
+		<header>
+			<img src="img/doc_cn.png" width="578px" height="86px"/>
+		</header>
+		<div class="content">
+			<nav>
+				<ul class="left_nav">
+					<li><a href="#say">前言</a></li>
+					<li><a href="#note">注释</a></li>
+					<li><a href="#exp">表达式</a></li>
+					<li><a href="#const">常量</a></li>
+					<li><a href="#var">变量</a></li>
+					<li><a href="#statif">条件语句(if)</a></li>
+					<li><a href="#statwhile">循环语句(while)</a></li>
+					<li><a href="#statdo">循环语句(do while)</a></li>
+					<li><a href="#statfor">循环语句(for)</a></li>
+					<li><a href="#func">函数</a></li>
+					<li><a href="#class">类</a></li>
+					<li><a href="#string">字符串(string)</a></li>
+					<li><a href="#list">列表(List)</a></li>
+					<li><a href="#print">函数print()</a></li>
+					<li><a href="#input">函数input()</a></li>
+					<li><a href="#range">函数range()</a></li>
+					<li><a href="#compareClass">函数compareClass(object,type)</a></li>
+					<li><a href="#exit">函数exit(id)</a></li>
+					<li><a href="#getPlatform">函数getPlatform()</a></li>
+					<li><a href="#module">模块化编程</a></li>
+					<li><a href="#error">异常处理</a></li>
+					<li><a href="#dll">动态链接(DLL)</a></li>
+				</ul>
+			</nav>
+			<section>
+				<h1>Pudron简明文档</h1><hr/>
+				<h2><a id="say">前言</a></h2>
+				<p>
+					十分有幸让你开到这个页面,你能看到这个页面,要么是已经掌握了Pudron,要么是对Pudron已经有自己见解,要么只是想浏览一下,不管怎样,
+					我已经迫不及待把Pudron的简明文档呈现给你了。<br/>
+					该文档对Pudron各个语法和格式做了简明的概括。
+				</p><hr/>
+				<h2><a id="note">注释</a></h2>
+				<p>语法:<br/>
+				<ul>
+					<li>单行注释:<code>##单行注释一直到换行</code></li>
+					<li>有头有尾的注释:<code>#这个注释即能插入又能多行#</code></li>
+				</ul></p><hr/>
+				<h2><a id="exp">表达式</a></h2>
+				<p>表达式由常量、变量、函数和运算符组成。</p>
+				<h3>运算符优先级:</h3>
+				<p>(越往上越优先)</p>
+				<table border="1">
+					<tr>
+						<th>优先级</th>
+						<th>运算符</th>
+					</tr>
+					<tr><td>1</td><td>~</td></tr>
+					<tr><td>2</td><td>&lt&lt,&gt&gt</td></tr>
+					<tr><td>3</td><td>&,|</td></tr>
+					<tr><td>4</td><td>!</td></tr>
+					<tr><td>5</td><td>%,*,/</td></tr>
+					<tr><td>6</td><td>+,-</td></tr>
+					<tr><td>7</td><td>&lt,&gt,&lt=,&gt=,=,!=</td></tr>
+					<tr><td>8</td><td>and,or</td></tr>
+				</table>
+				<p>注意:“=”在此是逻辑运算,非赋值运算。</p>
+				<hr/>
+				<h2><a id="const">常量</a></h2>
+				<p>
+					Pudron的常量有:整数、小数、字符串和列表。<br/>
+					整数示例:<code>123,true,false</code>,(true和false在Pudron属于整数1和0,可以参与运算)<br/>
+					小数示例:<code>1.23</code><br/>
+					字符串示例:<code>"this is a string"</code><br/>
+					列表示例:<code>{1,2,3}</code>
+				</p>
+				<hr/>
+				<h2><a id="var">变量</a></h2>
+				<p>Pudron的变量即为对象,可以是整数(int)、小数(double)、字符串(string)、列表(List)、函数(Func)和类(Class)等。</p>
+				<h3>创建</h3>
+				<p>当你给一个未知变量赋值或引用一个未知变量时,这个未知变量就被创建,并且默认值为整数0。</p>
+				<h3>赋值</h3>
+				<p>格式:<code>变量1,变量2,变量3,...=表达式1,表达式2,表达式3,...;</code></p>
+				<p>赋值符号可以为简化符:+=,-=,*=,/=,&=,|=,%=,&lt&lt=,&gt&gt=。</p>
+				<p>当左边变量多于右边表达式时,左边多出来的变量会被赋予右边最后一个表达式的值。</p>
+				<hr/>
+				<h2><a id="statif">条件语句(if)</a></h2>
+				<h3>格式</h3>
+				<pre><div class="code">
+if(条件1){
+	代码块1
+}elif(条件2){
+	代码块1
+}elif
+......
+else{
+	代码块3
+}
+				</div></pre>
+				<h3>说明</h3>
+				<p>条件即为表达式,当表达式结果不为0时,则此条件成立,反之不成立。</p>
+				<p>当条件1成立时,执行代码块1,否则判断条件2,若条件均不成立,则执行代码块3。<br/>
+					elif可以有多个,也可以没有,else只能有一个或没有,else必须在末尾。
+				</p>
+				<hr/>
+				<h2><a id="statwhile">循环语句(while)</a></h2>
+				<h3>格式</h3>
+				<pre><div class="code">
+while(条件){
+	代码块
+}
+				</div></pre>
+				<h3>说明</h3>
+				<p>当条件成立时,执行代码块,再判断条件,直到条件不成立为止。</p>
+				<hr/>
+				<h2><a id="statdo">循环语句(do while)</a></h2>
+				<h3>格式</h3>
+				<pre><div class="code">
+do{
+	代码块
+}while(条件);
+				</div></pre>
+				<h3>说明</h3>
+				<p>先执行代码块,再判断条件,若条件成立,则再执行一次代码块,直到条件不成立为止。</p>
+				<hr/>
+				<h2><a id="statfor">循环语句(for)</a></h2>
+				<h3>格式</h3>
+				<pre><div class="code">
+for(索引变量名,列表){
+	代码块
+}
+				</div></pre>
+				<h3>说明</h3>
+				<p>这将创建一个索引变量,它会在每次循环被依次赋予列表中的值,直到被赋予列表中的最后一个值后为止,for循环常使用<a href="#range">函数range()</a>产生列表。</p>
+				<hr/>
+				<h2><a id="func">函数</a></h2>
+				<h3>定义格式</h3>
+				<pre><div class="code">
+func 函数名(参数1,参数2,参数3,...){
+	代码块
+}
+				</div></pre>
+				<h3>说明</h3>
+				<ul>
+					<li>通过<code>return 表达式;</code>来返回一个值</li>
+					<li>每个函数(包括类方法)都会带有argv变量,这是一个列表,里面包含了本次调用传入的所有参数</li>
+					<li>调用函数时传入的参数数量可以与定义的不同,函数传入参数数量通过访问argv的成员count获得,即<code>argv.count</code></li>
+					<li>所有函数和方法默认返回值为整数0</li>
+					<li>函数也是一个对象,可以用于赋值</li>
+				</ul>
+				<hr/>
+				<h2><a id="class">类</a></h2>
+				<h3>格式</h3>
+				<pre><div class="code">
+class 类名:父类1,父类2,...{
+	成员1;
+	成员2=表达式;
+	......
+	func 方法名(参数1,参数2,参数3,...){
+		代码块
+	}
+	......
+}
+				</div></pre>
+				<h3>说明</h3>
+				<ul>
+					<li>类成员支持初始化,表达式在对象创建时运算</li>
+					<li>类成员初始化不能与变量赋值一样多成员赋值</li>
+					<li>类方法定义格式与函数定义一样,方法调用时也会有argv变量,还会有this变量指向对象本身</li>
+					<li>通过调用名字与类一样函数来创建对象,对象创建时会执行名为opInit的方法,其参数与调用对象创建函数的参数相同,opInit方法不是必须</li>
+					<li>对象销毁时,会先调用名为opDestroy的方法,但不会传入任何参数,opDestroy方法也不是必须,不能通过调用opDestroy方法来销毁对象,当一个对象没有被任何变量引用时,对象会自动被销毁</li>
+					<li>类成员访问:<code>对象.成员</code></li>
+					<li>类方法调用:<code>对象.方法(参数)</code></li>
+					<li>类方法内调用本类方法时,可以省略this.方法()</li>
+					<li>若一个类继承了父类,则这个类拥有了父类的所有成员和方法和父类的父类</li>
+					<li>若子类的成员或方法名与父类的相同,可以用<code>父类名.成员</code>或<code>父类名.方法()</code>来访问父类成员或调用父类方法</li>
+					<li>类成员、方法、父类都不是必须的</li>
+					<li>可以通过<code>对象[参数...]</code>来调用方法opSubscript(参数...),这常用于参数作为索引的情况</li>
+					<li>
+						支持自定义运算方法,此方法参数有且只有一个,运算符与方法名的对应表:
+						<table border="1">
+							<tr><th>运算符</th><th>方法名</th></tr>
+							<tr><td>+</td><td>opAdd</td></tr>
+							<tr><td>-</td><td>opSub</td></tr>
+							<tr><td>*</td><td>opMul</td></tr>
+							<tr><td>/</td><td>opDiv</td></tr>
+							<tr><td>&</td><td>opAnd</td></tr>
+							<tr><td>|</td><td>opOr</td></tr>
+							<tr><td>and</td><td>opCand</td></tr>
+							<tr><td>or</td><td>opCor</td></tr>
+							<tr><td>&lt&lt</td><td>opLeft</td></tr>
+							<tr><td>&gt&gt</td><td>opRight</td></tr>
+							<tr><td>=</td><td>opEqual</td></tr>
+							<tr><td>!=</td><td>opNotEqual</td></tr>
+							<tr><td>&lt</td><td>opLthan</td></tr>
+							<tr><td>&gt</td><td>opGthan</td></tr>
+							<tr><td>&lt=</td><td>opLthanEqual</td></tr>
+							<tr><td>&gt=</td><td>opGthanEqual</td></tr>
+							<tr><td>%</td><td>opRem</td></tr>
+						</table>
+					</li>
+				</ul>
+				<hr/>
+				<h2><a id="string">字符串(string)</a></h2>
+				<h3>创建方式:</h3>
+				<ol>
+					<li>通过常量方式创建,如:<code>"this is a string"</code></li>
+					<li>通过类方式创建,如:<code>string("this is a string")</code></li>
+				</ol>
+				<p>支持的转义字符:\n(换行),\0(终止),\r(回车),\t(水平制表),\v(垂直制表),\a(响铃),\b(退格),\f(换页)。<br/>
+				本义字符:\",\',\\。</p>
+				<p>Pudron的string能通过"+"运算符连接字符串或格式化各常量,也能通过构造函数来连接字符串或格式化各常量,如:</p>
+				<pre><div class="code">
+str1="the number is"+1+1.23;
+str2=string("the number is",1,1.23);
+				</div></pre>
+				<p>string通过“=”运算符来判断两个字符串是否相等,通过下标如<code>str[n]</code>来访问第n-1个字符。</p>
+				<hr/>
+				<h2><a id="list">列表(List)</a></h2>
+				<h3>创建方式:</h3>
+				<ol>
+					<li>通过常量方式创建,如:<code>{123,45.6,"test"}</code></li>
+					<li>通过类方式创建,如:<code>List(123,45.6,"test")</code></li>
+				</ol>
+				<p>一个列表中可以含有不同类型的变量,通过下标如<code>list[n]</code>来访问第n-1个列表变量,可以为其赋值。</p>
+				<p>List中的add(element)方法能为列表添加列表变量。</p>
+				<hr/>
+				<h2><a id="print">函数print()</a></h2>
+				<h3>功能</h3>
+				<p>将参数格式化输出到屏幕上,可以有多个参数,返回值为整数0,没有意义。</p>
+				<p>你也可以用println()函数来输出并换行,其参数和返回值与print()一模一样。</p>
+				<h3>示例</h3>
+				<pre><div class="code">
+print("this is number ",123," and number ",45.6,"\n");
+println("this is number ",123," and number ",45.6);
+				</div></pre>
+				<hr/>
+				<h2><a id="input">函数input()</a></h2>
+				它返回用户输入的一行字符串。
+				<hr/>
+				<h2><a id="range">函数range()</a></h2>
+				<p>range()的功能为产生一个有序整数列表,常为<a href="#statfor">for循环</a>产生列表,它有三种形式</p>
+				<h3>range(count)</h3>
+				<p>返回一个起点为0,终点为count-1,步长为1的列表,简单来说,就是产生一个由0数到count-1共有count个数的列表。</p>
+				<h3>range(start,end)</h3>
+				<p>返回一个起点为start,终点为end,步长为1的列表,简单来说,就是产生一个由start数到end的列表。</p>
+				<h3>range(start,end,step)</h3>
+				<p>返回一个起点为start,终点为end,步长为step的列表。</p>
+				<hr/>
+				<h2><a id="compareClass">函数compareClass(object,type)</a></h2>
+				<p>比较对象object的类型是否是type,若是则返回true,不是则返回false。</p>
+				<hr/>
+				<h2><a id="exit">函数exit(id)</a></h2>
+				功能:以id为返回值退出程序。
+				<hr/>
+				<h2><a id="getPlatform">函数getPlatform()</a></h2>
+				它返回编译的平台,若为windows,返回1,若为linux,返回0。
+				<hr/>
+				<h2><a id="module">模块化编程</a></h2>
+				<h3>include</h3>
+				<p>你可以使用<code>include "文件全名";</code>来引入一个Pudron代码文件(后缀名为.pd)。</p>
+				<p>你也可以使用<code>include 文件名(不包括后缀名和路径);</code>来引入当前目录下的Pudron代码文件。</p>
+				<h3>import</h3>
+				<p>在编译时,你可以用<code>pd 代码文件名 -m 输出的模块文件名</code>来输出模块。</p>
+				<p>你可以使用<code>import "文件全名";</code>来引入一个Pudron编译过的模块文件(后缀名为.pdm)。</p>
+				<p>当你使用<code>import 文件名(不包括后缀名和路径);</code>时,Pudron会从其安装目录下的mod文件夹查找模块文件。</p>
+				<hr/>
+				<h2><a id="error">异常处理</a></h2>
+				<p>Pudron提供了Error类来储存异常信息,其成员id储存异常信息索引,成员message储存异常信息文本。<br/>
+				Error的构造函数为Error(id,message),直接为其成员赋值。</p>
+				<p>Pudron提供了一些异常信息索引,有:</p>
+				<ul>
+					<li>ERROR_INDEX:下标访问错误</li>
+					<li>ERROR_CALCULATION:运算错误,如除数为0</li>
+					<li>ERROR_FILE:文件操作错误</li>
+					<li>ERROR_ARGUMENT:参数传入错误</li>
+					<li>ERROR_MEMORY:内存操作错误</li>
+				</ul>
+				<p>这些索引在error模块里,若要使用它们,在代码中加上<code>import error;</code>。<br/>你也可以自定义异常信息索引,当你想报告一个错误并终止程序时,需返回一个Error类型的对象,例如:</p>
+				<pre><div class="code">
+import error;
+#除法函数#
+func div(a,b){
+	#必须有两个参数#
+	if(argv.count!=2){
+		return Error(ERROR_ARGUMENT,"it need 2 arguments.");
+	}
+	if(b=0){
+		return Error(ERROR_CALCULATION,"divisor can not be 0.");
+	}
+	return a/b;
+}
+				</div></pre>
+				<p>当你不想在出现错误后直接退出程序时,可以在可能返回错误的地方用try-catch语句包围,语句的格式如下:</p>
+				<pre><div class="code">
+try{
+	可能返回错误的代码块
+}catch(错误变量名){
+	处理错误代码块
+}
+				</div></pre>
+				<p>Pudron会先执行可能返回错误的代码块,当代码块中有一段代码返回了错误时,Pudron会将该错误对象赋值给错误变量,并执行处理错误代码块,然后继续往下执行代码(不会倒回去继续执行出错代码下面的代码)。</p>
+				<hr/>
+				<h2><a id="dll">动态链接(DLL)</a></h2>
+				<h3>编写动态库</h3>
+				<p>动态链接库必须用Pudron提供的头文件pdex.h里的数据结构来写,否则不能正常使用。</p>
+				<ol>
+					<li>引入pdex.h:<code>#include"pdex.h"</code></li>
+					<li>使用宏PD_FUNC_DEF(函数名)来定义函数</li>
+					<li>使用宏PD_ARG_COUNT来获得传入参数数量</li>
+					<li>使用宏PD_ARG(index)来获得第index-1个参数,通过其成员type来确定其类型,其类型有如下几种:
+					<ul>
+						<li>PVAL_INT(对应int)</li>
+						<li>PVAL_DOUBLE(对应double)</li>
+						<li>PVAL_STRING(对应string)</li>
+					</ul>
+					通过成员int num,double numd或wchar_t*str来分别访问其值(注意:str是宽字符类型,注意其用法)</li>
+					<li>使用宏PD_RETURN_INT(val)来返回整数val,PD_RETURN_DOUBLE(val)来返回小数val,PD_RETURN_STRING(val)来返回字符串val,若无返回语句,则默认返回整数0</li>
+					<li>使用宏PD_ERROR(id,message)来报告一个以id为索引,以message为错误信息的错误,Pudron提供的id:
+					<ul>
+						<li>PERROR_INDEX</li>
+						<li>PERROR_CALCULATION</li>
+						<li>PERROR_FILE</li>
+						<li>PERROR_ARGUMENT</li>
+						<li>PERROR_MEMORY</li>
+					</ul>
+					你也可以使用自定义id,但必须为int型</li>
+				</ol>
+				<h4>示例</h4>
+				<pre><div class="code">
+/*mysin.c*/
+#include"pdex.h"
+#include&ltmath.h&gt
+PD_FUNC_DEF(mysin){
+	if(PD_ARG_COUNT!=1){
+		PD_ERROR(PERROR_ARGUMENT,"only need 1 argument.");
+	}
+	if(PD_ARG(0).type!=PVAL_DOUBLE){
+		PD_ERROR(PERROR_ARGUMENT,"the argument type must be double.");
+	}
+	double result=sin(PD_ARG(0).numd);
+	PD_RETURN_DOUBLE(result);
+}
+				</div></pre>
+				<h4>编译</h4>
+				<p><code>gcc -Wall -shared mysin.c -o mysin.dll(在linux平台下写为libmysin.so)</code><br/>
+				别的编译器也行,只要能生成动态库就行。</p>
+				<h3>调用动态库</h3>
+				<p>使用DLL类来调用动态库。</p>
+				<h4>构造函数</h4>
+				<code>DLL(file)</code><br/>
+				读取动态库文件file并装载,若当前目录不存在file则在Pudron目录中的mod文件夹中查找。
+				<h4>获取函数方法</h4>
+				<code>getFunc(function)</code><br/>
+				读取动态库中的function函数并返回。
+				<h4>示例</h4>
+				<pre><div class="code">
+sinDLL=DLL("mysin.dll");#linux下为libmysin.so#
+sin=sinDLL.getFunc("mysin");
+println(sin(3.14));
+				</div></pre>
+			</section>
+		</div>
+	</body>
+</html>

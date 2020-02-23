@@ -1,5 +1,6 @@
 #ifndef _PD_EXTEND_H_
 #define _PD_EXTEND_H_
+#include"wchar.h"
 /*此文件为Pudron动态链接库扩展提供模板*/
 typedef struct{
     enum{
@@ -11,7 +12,7 @@ typedef struct{
     union{
         int num;
         double numd;
-        char*str;
+        wchar_t*str;
     };
 }_PValue;/*默认为整数0*/
 typedef struct{

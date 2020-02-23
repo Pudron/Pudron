@@ -230,7 +230,10 @@ Object*newErrorObject(VM*vm,ErrorType id,char*msg){
     Object*omsg=loadMember(vm,obj,"message",true);
     Object*len=loadMember(vm,omsg,"length",true);
     oid->num=id;
-    omsg->str=msg;
+    omsg->str=strtowstr(msg);
+    if(omsg->str==NULL){
+        vmError(vm,strerror(errno));
+    }
     len->num=strlen(msg);
     len->refCount--;
     omsg->refCount--;
@@ -271,8 +274,8 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             break;
         case CONST_STRING:
             obj=newStringObject(vm);
-            obj->str=(char*)memManage(NULL,strlen(con.str)+1);
-            strcpy(obj->str,con.str);
+            obj->str=(wchar_t*)memManage(NULL,(wcslen(con.str)+1)*sizeof(wchar_t));
+            wcscpy(obj->str,con.str);
             break;
         case CONST_FUNCTION:
             obj=newFuncObject(con.func);
@@ -377,7 +380,11 @@ void addClassString(Class*class,char*name,char*str){
     hashGet(&class->memberList,name,NULL,true);
     Const con;
     con.type=CONST_STRING;
-    con.str=str;
+    con.str=strtowstr(str);
+    if(con.str==NULL){
+        /*暂时用不了vmError和strerror了,(T_T)*/
+        con.str=L"<string error>";
+    }
     LIST_ADD(class->initFunc.constList,Const,con)
 }
 Func makeFunc(char*name,void*exe,int argCount,...){
@@ -396,37 +403,37 @@ Func makeFunc(char*name,void*exe,int argCount,...){
     return func;
 }
 FUNC_DEF(string_create)
-    char temp[50];
+    wchar_t temp[64];
     Object*obj,*this=loadVar(vm,unit,"this");
     Object*argv=loadVar(vm,unit,"argv");
     Object*cnt=loadMember(vm,argv,"count",true);
     Object*len=loadMember(vm,this,"length",true);
     this->type=OBJECT_STRING;
-    this->str=(char*)memManage(NULL,1);
-    this->str[0]='\0';
+    this->str=(wchar_t*)memManage(NULL,sizeof(wchar_t));
+    this->str[0]=L'\0';
     for(int i=1;i<cnt->num;i++){
         obj=argv->subObj[i];
         switch(obj->type){
             case OBJECT_INT:
-                sprintf(temp,"%d",obj->num);
-                this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
-                strcat(this->str,temp);
+                swprintf(temp,63,L"%d",obj->num);
+                this->str=(wchar_t*)memManage(this->str,(wcslen(this->str)+wcslen(temp)+1)*sizeof(wchar_t));
+                wcscat(this->str,temp);
                 break;
             case OBJECT_DOUBLE:
-                sprintf(temp,"%lf",obj->numd);
-                this->str=(char*)memManage(this->str,strlen(this->str)+strlen(temp)+1);
-                strcat(this->str,temp);
+                swprintf(temp,63,L"%lf",obj->numd);
+                this->str=(wchar_t*)memManage(this->str,(wcslen(this->str)+wcslen(temp)+1)*sizeof(wchar_t));
+                wcscat(this->str,temp);
                 break;
             case OBJECT_STRING:
-                this->str=(char*)memManage(this->str,strlen(this->str)+strlen(obj->str)+1);
-                strcat(this->str,obj->str);
+                this->str=(wchar_t*)memManage(this->str,(wcslen(this->str)+wcslen(obj->str)+1)*sizeof(wchar_t));
+                wcscat(this->str,obj->str);
                 break;
             default:
                 vmError(vm,"expected string,int or double when creating string.");
                 break;
         }
     }
-    len->num=strlen(this->str);
+    len->num=wcslen(this->str);
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
     reduceRef(vm,unit,len);
@@ -435,11 +442,35 @@ FUNC_END()
 FUNC_DEF(string_add)
     Object*this=loadVar(vm,unit,"this"),*obj=loadVar(vm,unit,"element");
     Object*str=newStringObject(vm);
-    str->str=(char*)memManage(str->str,strlen(this->str)+strlen(obj->str)+1);
-    sprintf(str->str,"%s%s",this->str,obj->str);
-    Object*len=loadMember(vm,str,"length",true);
-    len->num=strlen(str->str);
-    reduceRef(vm,unit,len);
+    wchar_t temp[64];
+    size_t len;
+    switch(obj->type){
+        case OBJECT_INT:
+            swprintf(temp,63,L"%d",obj->num);
+            str->str=(wchar_t*)memManage(str->str,(wcslen(this->str)+wcslen(temp)+1)*sizeof(wchar_t));
+            wcscpy(str->str,this->str);
+            wcscat(str->str,temp);
+            break;
+        case OBJECT_DOUBLE:
+            swprintf(temp,63,L"%lf",obj->numd);
+            str->str=(wchar_t*)memManage(str->str,(wcslen(this->str)+wcslen(temp)+1)*sizeof(wchar_t));
+            wcscpy(str->str,this->str);
+            wcscat(str->str,temp);
+            break;
+        case OBJECT_STRING:
+            len=wcslen(this->str)+wcslen(obj->str)+1;
+            str->str=(wchar_t*)memManage(str->str,len*sizeof(wchar_t));
+            swprintf(str->str,len,L"%ls%ls",wcslen(this->str)+wcslen(obj->str),this->str,obj->str);
+            break;
+        default:
+            len=wcslen(this->str)+9;
+            str->str=(wchar_t*)memManage(str->str,len*sizeof(wchar_t));
+            swprintf(str->str,len,L"%ls<object>",wcslen(this->str)+8,this->str);
+            break;
+    }
+    Object*olen=loadMember(vm,str,"length",true);
+    olen->num=wcslen(str->str);
+    reduceRef(vm,unit,olen);
     reduceRef(vm,unit,this);
     PUSH(str);
     return;
@@ -448,7 +479,7 @@ FUNC_DEF(string_subscript)
     Object*this=loadVar(vm,unit,"this"),*ind=loadVar(vm,unit,"index");
     confirmObjectType(vm,ind,OBJECT_INT);
     Object*err;
-    if(ind->num>strlen(this->str)){
+    if(ind->num>wcslen(this->str)){
         err=newErrorObject(vm,ERR_INDEX,"string overflow.");
         PUSH(err);
         return;
@@ -468,7 +499,7 @@ FUNC_DEF(string_equal)
     Object*rt;
     if(st->type!=OBJECT_STRING){
         rt=newIntObject(false);
-    }else if(strcmp(this->str,st->str)==0){
+    }else if(wcscmp(this->str,st->str)==0){
         rt=newIntObject(true);
     }else{
         rt=newIntObject(false);
@@ -546,7 +577,7 @@ FUNC_DEF(mprint)
                 printf("%lf",obj->numd);
                 break;
             case OBJECT_STRING:
-                printf("%s",obj->str);
+                printf("%ls",obj->str);
                 break;
             default:
                 printf("<object>");
@@ -621,10 +652,16 @@ FUNC_END()
 FUNC_DEF(minput)
     Object*st=newStringObject(vm);
     Object*len=loadMember(vm,st,"length",true);
-    st->str=(char*)memManage(NULL,MAX_WORD_LENGTH+1);
+    char temp[MAX_WORD_LENGTH+1];
     //scanf("%[^\n]",st->str);
-    fgets(st->str,MAX_WORD_LENGTH,stdin);
-    len->num=strlen(st->str);
+    fgets(temp,MAX_WORD_LENGTH,stdin);
+    size_t leng=strlen(temp)+1;
+    st->str=(wchar_t*)memManage(NULL,sizeof(wchar_t)*leng);
+    mbstowcs_s(&leng,st->str,leng,temp,leng);
+    if(leng<=0){
+        vmError(vm,strerror(errno));
+    }
+    len->num=wcslen(st->str);
     reduceRef(vm,unit,len);
     PUSH(st);
     return;
@@ -662,13 +699,18 @@ FUNC_DEF(dll_create)
     Object*st=loadVar(vm,unit,"path");
     this->type=OBJECT_DLL;
     confirmObjectType(vm,st,OBJECT_STRING);
-    Dllptr dptr=DLL_OPEN(st->str);
+    char*fname=wstrtostr(st->str);
+    if(fname==NULL){
+        vmError(vm,strerror(errno));
+    }
+    Dllptr dptr=DLL_OPEN(fname);
     if(dptr==NULL){
-        char*path=(char*)memManage(NULL,strlen(vm->path)+strlen(st->str)+6);
-        sprintf(path,"%s/mod/%s",vm->path,st->str);
+        char*path=(char*)memManage(NULL,strlen(vm->path)+strlen(fname)+6);
+        sprintf(path,"%s/mod/%s",vm->path,fname);
         dptr=DLL_OPEN(path);
         free(path);
     }
+    free(fname);
     if(dptr==NULL){
         #ifdef LINUX
             vmError(vm,"DLL:%s.",dlerror());
@@ -720,11 +762,12 @@ FUNC_DEF(dll_func)
                 pval.type=PVAL_DOUBLE;
                 pval.numd=obj->numd;
                 break;
-            case OBJECT_STRING:
+            case OBJECT_STRING:{
                 pval.type=PVAL_STRING;
-                pval.str=(char*)memManage(NULL,strlen(obj->str)+1);
-                strcpy(pval.str,obj->str);
+                pval.str=(wchar_t*)memManage(NULL,(wcslen(obj->str)+1)*sizeof(wchar_t));
+                wcscpy(pval.str,obj->str);
                 break;
+            }
             default:
                 vmError(vm,"dll function only accept type int,double and string arguments.");
                 break;
@@ -744,13 +787,18 @@ FUNC_DEF(dll_func)
             obj=newStringObject(vm);
             Object*len=loadMember(vm,obj,"length",true);
             obj->str=pdat.rval.str;
-            len->num=strlen(obj->str);
+            len->num=wcslen(obj->str);
             reduceRef(vm,unit,len);
             break;
         }
-        case PVAL_ERROR:
-            obj=newErrorObject(vm,pdat.err_id,pdat.rval.str);
+        case PVAL_ERROR:{
+            char*msg=wstrtostr(pdat.rval.str);
+            if(msg==NULL){
+                vmError(vm,strerror(errno));
+            }
+            obj=newErrorObject(vm,pdat.err_id,msg);
             break;
+        }
         default:
             vmError(vm,"unknown dll function return type:%d.",pdat.rval.type);
             break;
@@ -765,7 +813,11 @@ FUNC_DEF(dll_get_func)
     confirmObjectType(vm,fname,OBJECT_STRING);
     Func dfunc=newFunc(NULL);
     dfunc.dllID=id->num;
-    DllFunc df=DLL_GET(vm->dlist.vals[id->num].dllptr,fname->str);
+    char*funcName=wstrtostr(fname->str);
+    if(funcName==NULL){
+        vmError(vm,strerror(errno));
+    }
+    DllFunc df=DLL_GET(vm->dlist.vals[id->num].dllptr,funcName);
     if(df==NULL){
         #ifdef LINUX
             vmError(vm,"DLL:%s.",dlerror());
@@ -773,6 +825,8 @@ FUNC_DEF(dll_get_func)
             vmError(vm,"can not get the dll function,error code:%ld.",GetLastError());
         #endif
     }
+    free(funcName);
+    funcName=NULL;
     dfunc.dllFuncID=vm->dlist.vals[dfunc.dllID].dflist.count;
     LIST_ADD(vm->dlist.vals[dfunc.dllID].dflist,DllFunc,df)
     dfunc.exe=dll_func;

@@ -5,8 +5,10 @@
 #include<string.h>
 #include<stdarg.h>
 #include<stdbool.h>
+#include<wchar.h>
 /*尽量不用memcpy(),用它老是出现莫名其妙的错误,用它操作过的指针free()时都出错*/
 #define MAX_WORD_LENGTH 128
+#define MAX_STRING 1024
 #define FILE_CODE_POSTFIX ".pd"
 #define FILE_MODULE_POSTFIX ".pdm"
 #define FILE_SIGN 5201314
@@ -17,7 +19,6 @@
 #define STD_FUNC_COUNT 7
 
 /*List Operations*/
-//#define LIST_UNIT_SIZE 10
 #define LIST_DECLARE(type) \
         typedef struct{\
             int count;\
@@ -75,12 +76,6 @@
     }\
     memcpy(list.vals+position+1,list.vals+position,(list.count-position)*sizeof(type));\
     list.vals[position]=val;
-
-/*bool type
-typedef enum{
-    false=0,
-    true
-}bool;(now use stdbool.h)*/
 
 typedef enum{
     TOKEN_END,
@@ -213,6 +208,7 @@ typedef struct{
         int num;
         double numd;
         char*word;
+        wchar_t*str;
     };
     int start,end,column,line;
 }Token;
@@ -309,7 +305,7 @@ struct ConstDef{
     union{
         int num;
         double numd;
-        char*str;
+        wchar_t*str;
         Func func;
         Class class;
     };
@@ -330,7 +326,7 @@ struct ObjectDef{
     union{
         int num;
         double numd;
-        char*str;
+        wchar_t*str;
         Func func;
         Class class;
         Object**subObj;/*用于list*/
@@ -385,4 +381,6 @@ void expandHashList(HashList*hl,int size);
 HashList hashMerge(HashList hl1,HashList hl2);
 HashList hashCopy(HashList hl);
 void hashPrint(HashList hl);
+wchar_t*strtowstr(char*str);
+char*wstrtostr(wchar_t*wstr);
 #endif

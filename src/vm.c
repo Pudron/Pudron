@@ -66,8 +66,8 @@ Object copyObject(VM*vm,Unit*unit,Object*obj,int refCount){
         }
     }
     if(obj->type==OBJECT_STRING){
-        val.str=(char*)memManage(NULL,strlen(obj->str)+1);
-        strcpy(val.str,obj->str);
+        val.str=(wchar_t*)memManage(NULL,(wcslen(obj->str)+1)*sizeof(wchar_t));
+        wcscpy(val.str,obj->str);
     }else if(obj->type==OBJECT_LIST){
         Object*cnt=loadMember(vm,obj,"count",true);
         val.subObj=(Object**)memManage(NULL,cnt->num*sizeof(Object*));
@@ -326,11 +326,9 @@ bool checkError(VM*vm,Unit*unit,int*ptr){
         }else{
             Object*omsg=loadMember(vm,obj,"message",true);
             confirmObjectType(vm,omsg,OBJECT_STRING);
-            char*msg=omsg->str;
-            reduceRef(vm,unit,omsg);
             delObj(vm,unit,obj);
             free(obj);
-            vmError(vm,msg);
+            vmError(vm,"%ls",omsg->str);
         }
         return true;
     }else{

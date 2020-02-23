@@ -105,7 +105,7 @@ int addConst(Unit*unit,Const con){
                 return i;
             }
         }else if(ct.type==CONST_STRING && con.type==CONST_STRING){
-            if(strcmp(ct.str,con.str)==0){
+            if(wcscmp(ct.str,con.str)==0){
                 return i;
             }
         }
@@ -150,7 +150,7 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
     }else if(token.type==TOKEN_STRING){
         Const con;
         con.type=CONST_STRING;
-        con.str=token.word;
+        con.str=token.str;
         addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
     }else if(token.type==TOKEN_PARE1){
         compileExpression(cp,unit,0,false,msgStart,env);

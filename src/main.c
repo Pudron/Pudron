@@ -2,6 +2,7 @@
 #include"compiler.h"
 #include"core.h"
 #include"vm.h"
+#include<locale.h>
 char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "compile and run:pd [file]\n"
 "run pdm file:pd [file]\n"
@@ -9,6 +10,7 @@ char*statement="Pudron\nexcellent and free programming language.\nusage:\n"
 "-m [module file name]:make module\n"
 "-v:see the version\n";
 int run(char*fileName,char*outputName){
+    setlocale(LC_CTYPE,"");
     PdSTD pstd=makeSTD();
     Module mod;
     char*pt=(char*)malloc(MAX_WORD_LENGTH);

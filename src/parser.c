@@ -67,7 +67,7 @@ const Keyword keywordList[]={
 };
 /*Token*/
 Token getToken(Parser*parser){
-    char word[1024];
+    char word[MAX_STRING];
     Msg msg;
     Token token;
     bool isFound;
@@ -162,7 +162,7 @@ Token getToken(Parser*parser){
         msg.column=parser->column;
         msg.start=parser->ptr;
         for(i=0;(c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_' || (c>='0' && c<='9');i++){
-            if(i>=1023){
+            if(i>=MAX_STRING-1){
                 msg.type=MSG_ERROR;
                 msg.end=msg.start+99;
                 strcpy(msg.text,"too long word.");
@@ -194,7 +194,7 @@ Token getToken(Parser*parser){
                 strcpy(msg.text,"expected \' after the name.");
                 reportMsg(msg);
             }
-            if(i>=1023){
+            if(i>=MAX_STRING-1){
                 msg.end=msg.start+99;
                 strcpy(msg.text,"the name is too long.");
                 reportMsg(msg);
@@ -232,7 +232,7 @@ Token getToken(Parser*parser){
                 strcpy(msg.text,"expected \" after the string.");
                 reportMsg(msg);
             }
-            if(i>=1023){
+            if(i>=MAX_STRING-1){
                 msg.end=parser->ptr;
                 strcpy(msg.text,"the string is too long.");
                 reportMsg(msg);
@@ -302,8 +302,12 @@ Token getToken(Parser*parser){
         }
         parser->ptr++;
         word[i]='\0';
-        token.word=(char*)malloc(i+1);
-        strcpy(token.word,word);
+        token.str=strtowstr(word);
+        if(token.str==NULL){
+            msg.end=parser->ptr;
+            strcpy(msg.text,strerror(errno));
+            reportMsg(msg);
+        }
         token.type=TOKEN_STRING;
         token.end=parser->ptr;
         return token;
