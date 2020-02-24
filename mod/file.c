@@ -23,12 +23,19 @@ PD_FUNC_DEF(readTextFile){
     int len=ftell(fp);
     rewind(fp);
     wchar_t*text=(wchar_t*)malloc((len+1)*sizeof(wchar_t));
-    if(text==NULL){
+    char*temp=(char*)malloc(len+1);
+    if(text==NULL || temp==NULL){
         PD_ERROR(PERROR_MEMORY,L"memory error.");
     }
-    len=fread(text,sizeof(wchar_t),len,fp);
+    len=fread(temp,1,len,fp);
+    temp[len]='\0';
+    size_t len2=mbstowcs(text,temp,len);
     fclose(fp);
-    text[len]=L'\0';
+    free(temp);
+    if(len2<=0){
+        PD_ERROR(PERROR_FILE,L"invalid characters");
+    }
+    text[len2]=L'\0';
     PD_RETURN_STRING(text);
 }
 PD_FUNC_DEF(writeTextFile){
@@ -52,6 +59,14 @@ PD_FUNC_DEF(writeTextFile){
     if(fp==NULL){
         PD_ERROR(PERROR_FILE,L"can not open the file.");
     }
-    fwrite(vstr.str,sizeof(wchar_t),wcslen(vstr.str),fp);
+    size_t len=wcslen(vstr.str);
+    char*temp=(char*)malloc((len+1)*4);
+    len=mbstowcs(vstr.str,temp,len+1);
+    if(len<=0){
+        PD_ERROR(PERROR_FILE,L"invalid characters");
+    }
+    temp[len]='\0';
+    fwrite(temp,1,len,fp);
     fclose(fp);
+    free(temp);
 }

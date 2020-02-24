@@ -7,15 +7,15 @@
 #include<dlfcn.h>
 #include<unistd.h>
 typedef void* Dllptr;
-#define DLL_OPEN(fname) dlopen(fname,RTLD_LAZY)
-#define DLL_GET(dptr,fname) (DllFunc)dlsym(dptr,fname)
-#define DLL_CLOSE(dptr) dlclose(dptr)
+#define DLL_OPEN(f_name) dlopen(f_name,RTLD_LAZY)
+#define DLL_GET(d_ptr,f_name) (DllFunc)dlsym(d_ptr,f_name)
+#define DLL_CLOSE(d_ptr) dlclose(d_ptr)
 #else
 #include<windows.h>
 typedef HINSTANCE Dllptr;
-#define DLL_OPEN(fname) LoadLibrary(TEXT(fname))
-#define DLL_GET(dptr,fname) (DllFunc)GetProcAddress(dptr,TEXT(fname))
-#define DLL_CLOSE(dptr) FreeLibrary(dptr)
+#define DLL_OPEN(f_name) LoadLibrary(TEXT(f_name))
+#define DLL_GET(d_ptr,f_name) (DllFunc)GetProcAddress(d_ptr,TEXT(f_name))
+#define DLL_CLOSE(d_ptr) FreeLibrary(d_ptr)
 #endif
 typedef void (*DllFunc)(_PDat*pdat);
 LIST_DECLARE(DllFunc)

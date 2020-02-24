@@ -453,6 +453,7 @@ wchar_t*strtowstr(char*str){
     }
     size_t len1=strlen(str),len2=MAX_STRING;
     wchar_t*wstr=(wchar_t*)memManage(NULL,len1*sizeof(wchar_t));
+    //memset(wstr,0,len1*sizeof(wchar_t));
     char*ptr1=str;
     wchar_t*ptr2=wstr;
     if((int)iconv(cd,&ptr1,&len1,(char**)&ptr2,&len2)<0){

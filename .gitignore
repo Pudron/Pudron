@@ -1,3 +1,4 @@
-build/*
+build/objs
+build/pudron
 note.md
 deplib

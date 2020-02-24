@@ -12,3 +12,4 @@ I=Person("I");
 you=Person("Blue");
 I.love(you);#
 import file;
+println(readTextFile(".gitignore"));

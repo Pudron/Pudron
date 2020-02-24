@@ -134,6 +134,7 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode,int*i
                 reduceRef(vm,unit,POP());
             }
             reduceRef(vm,unit,iobj);
+            this->isInit=true;/*this->isInit在callFunction里被弄为false了*/
         }
     }
     return this;
