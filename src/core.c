@@ -655,11 +655,10 @@ FUNC_DEF(minput)
     char temp[MAX_WORD_LENGTH+1];
     //scanf("%[^\n]",st->str);
     fgets(temp,MAX_WORD_LENGTH,stdin);
-    size_t leng=strlen(temp)+1;
-    st->str=(wchar_t*)memManage(NULL,sizeof(wchar_t)*leng);
-    mbstowcs_s(&leng,st->str,leng,temp,leng);
-    if(leng<=0){
-        vmError(vm,strerror(errno));
+    size_t leng=strlen(temp);
+    st->str=(wchar_t*)memManage(NULL,sizeof(wchar_t)*(leng+1));
+    if(mbstowcs(st->str,temp,leng)<0){
+        vmError(vm,"invalid characters.");
     }
     len->num=wcslen(st->str);
     reduceRef(vm,unit,len);
@@ -701,7 +700,7 @@ FUNC_DEF(dll_create)
     confirmObjectType(vm,st,OBJECT_STRING);
     char*fname=wstrtostr(st->str);
     if(fname==NULL){
-        vmError(vm,strerror(errno));
+        vmError(vm,"open dll:%s",strerror(errno));
     }
     Dllptr dptr=DLL_OPEN(fname);
     if(dptr==NULL){
@@ -794,7 +793,7 @@ FUNC_DEF(dll_func)
         case PVAL_ERROR:{
             char*msg=wstrtostr(pdat.rval.str);
             if(msg==NULL){
-                vmError(vm,strerror(errno));
+                vmError(vm,"dll return error:%s",strerror(errno));
             }
             obj=newErrorObject(vm,pdat.err_id,msg);
             break;
@@ -815,7 +814,7 @@ FUNC_DEF(dll_get_func)
     dfunc.dllID=id->num;
     char*funcName=wstrtostr(fname->str);
     if(funcName==NULL){
-        vmError(vm,strerror(errno));
+        vmError(vm,"get dll function:%s",strerror(errno));
     }
     DllFunc df=DLL_GET(vm->dlist.vals[id->num].dllptr,funcName);
     if(df==NULL){

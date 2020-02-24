@@ -10,6 +10,7 @@
 ## 已编译版
 在[Release](https://gitee.com/pudron/Pudron/releases/v1.0-beta.1)中下载。
 ## 编译
+依赖libiconv,请预先安装好  
 在命令行中输入 `make`
 build目录中的pudron即为编译结果  
 注意：在linux上编译时，加上参数 `PLATFORM=LINUX`

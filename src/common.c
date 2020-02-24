@@ -448,15 +448,16 @@ int addName(NameList*nlist,char*name){
 }
 wchar_t*strtowstr(char*str){
     iconv_t cd=iconv_open("wchar_t","UTF-8");
-    if(cd<0){
+    if(cd==(void*)((size_t)-1)){
         return NULL;
     }
     size_t len1=strlen(str),len2=MAX_STRING;
     wchar_t*wstr=(wchar_t*)memManage(NULL,len1*sizeof(wchar_t));
     char*ptr1=str;
     wchar_t*ptr2=wstr;
-    if(iconv(cd,&ptr1,&len1,(char**)&ptr2,&len2)<0){
+    if((int)iconv(cd,&ptr1,&len1,(char**)&ptr2,&len2)<0){
         free(wstr);
+        iconv_close(cd);
         return NULL;
     }
     *ptr2=L'\0';
@@ -464,12 +465,58 @@ wchar_t*strtowstr(char*str){
     return wstr;
 }
 char*wstrtostr(wchar_t*wstr){
-    size_t len=wcslen(wstr)+1;
-    char*str=(char*)memManage(NULL,len*sizeof(char));
-    wcstombs_s(&len,str,len,wstr,len);
-    if(len<=0){
+    /*size_t len=wcslen(wstr);
+    char*str=(char*)memManage(NULL,(len+1)*sizeof(char));
+    //wcstombs_s(&len,str,len,wstr,len);
+    len=wcstombs(str,wstr,len);
+    if(len<0){
         free(str);
         return NULL;
     }
+    str[len]='\0';
+    return str;*/
+    /*size_t len1=MAX_STRING,len2=wcslen(wstr);
+    char*str=(char*)memManage(NULL,(len2+1)*sizeof(char));
+    iconv_t cd=iconv_open("ASCII","wchar_t");
+    if(cd==(void*)((size_t)-1)){
+        free(str);
+        return NULL;
+    }
+    char*ptr1=str;
+    wchar_t*ptr2=wstr;
+    if((int)iconv(cd,(char**)&ptr2,&len2,&ptr1,&len1)<0){
+        free(str);
+        iconv_close(cd);
+        return NULL;
+    }
+    *ptr1='\0';
+    iconv_close(cd);
+    return str;*/
+    size_t len=wcslen(wstr);
+    char*str=(char*)memManage(NULL,(len+1)*sizeof(char));
+    len=wcstombs(str,wstr,len);
+    if(len<0){
+        free(str);
+        return NULL;
+    }
+    str[len]='\0';
     return str;
+    size_t len2=MAX_STRING;
+    char*str2=(char*)memManage(NULL,(len+1)*sizeof(char));
+    iconv_t cd=iconv_open("ASCII","char");
+    if(cd==(void*)((size_t)-1)){
+        free(str2);
+        return NULL;
+    }
+    char*ptr1=str;
+    char*ptr2=str2;
+    if((int)iconv(cd,&ptr1,&len,&ptr2,&len2)<0){
+        free(str);
+        iconv_close(cd);
+        return NULL;
+    }
+    *ptr2='\0';
+    iconv_close(cd);
+    free(str);
+    return str2;
 }

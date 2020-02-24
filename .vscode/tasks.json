@@ -6,7 +6,8 @@
         {
             "label": "make",
             "type": "shell",
-            "command": ["make"]
+            "command": ["make"],
+            "args": ["BUILD=DEBUG"]
         }
     ]
 }

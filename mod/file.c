@@ -10,7 +10,12 @@ PD_FUNC_DEF(readTextFile){
     if(vstr.type!=PVAL_STRING){
         PD_ERROR(PERROR_ARGUMENT,L"expected file name argument.");
     }
-    FILE*fp=_wfopen(vstr.str,L"rt");
+    size_t leng=wcslen(vstr.str);
+    char*fname=(char*)malloc(leng+1);
+    leng=wcstombs(fname,vstr.str,leng);
+    fname[leng]='\0';
+    FILE*fp=fopen(fname,"rt");
+    free(fname);
     if(fp==NULL){
         PD_ERROR(PERROR_FILE,L"can not open the file.");
     }
@@ -38,7 +43,12 @@ PD_FUNC_DEF(writeTextFile){
     if(vstr.type!=PVAL_STRING){
         PD_ERROR(PERROR_ARGUMENT,L"expected output text argument.");
     }
-    FILE*fp=_wfopen(vfname.str,L"wt");
+    size_t leng=wcslen(vfname.str);
+    char*fname=(char*)malloc(leng+1);
+    wcstombs(fname,vfname.str,leng);
+    fname[leng]='\0';
+    FILE*fp=fopen(fname,"wt");
+    free(fname);
     if(fp==NULL){
         PD_ERROR(PERROR_FILE,L"can not open the file.");
     }
