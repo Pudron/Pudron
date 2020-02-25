@@ -18,7 +18,7 @@
 #define VERSION_MIN 1
 
 #define STD_CLASS_COUNT 8
-#define STD_FUNC_COUNT 9
+#define STD_FUNC_COUNT 10
 
 /*List Operations*/
 #define LIST_DECLARE(type) \

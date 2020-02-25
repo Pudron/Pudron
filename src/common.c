@@ -468,7 +468,7 @@ wchar_t*strtowstr(char*str){
     iconv_close(cd);
     return wstr;
 }
-/*不能用strerror(errno)获得错误信息
+/*可以用strerror(errno)获得错误信息
 *转成utf-8
 */
 char*wstrtostr(wchar_t*wstr){

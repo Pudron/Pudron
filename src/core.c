@@ -2,6 +2,7 @@
 #include"vm.h"
 #include"pio.h"
 #include<locale.h>
+#include<iconv.h>
 void doexit(VM*vm,Unit*unit){
     while(vm->stackCount>0){
         reduceRef(vm,vm->unit,POP());
@@ -708,7 +709,7 @@ FUNC_DEF(dll_create)
     confirmObjectType(vm,st,OBJECT_STRING);
     char*fname=wstrtostr(st->str);
     if(fname==NULL){
-        vmError(vm,L"open dll:%s.","invalid characters");
+        vmError(vm,L"open dll:%s.",strerror(errno));
     }
     Dllptr dptr=DLL_OPEN(fname);
     if(dptr==NULL){
@@ -797,7 +798,7 @@ FUNC_DEF(dll_func)
         case PVAL_ERROR:{
             char*msg=wstrtostr(pdat.rval.str);
             if(msg==NULL){
-                vmError(vm,L"dll return error:%s.","invalid characters");
+                vmError(vm,L"dll return error:%s.",strerror(errno));
             }
             obj=newErrorObject(vm,pdat.err_id,msg);
             break;
@@ -818,7 +819,7 @@ FUNC_DEF(dll_get_func)
     dfunc.dllID=id->num;
     char*funcName=wstrtostr(fname->str);
     if(funcName==NULL){
-        vmError(vm,L"get dll function:%s.","invalid characters");
+        vmError(vm,L"get dll function:%s.",strerror(errno));
     }
     DllFunc df=DLL_GET(vm->dlist.vals[id->num].dllptr,funcName);
     if(df==NULL){
@@ -870,6 +871,9 @@ FUNC_DEF(read_text_file)
     Object*fname=loadVar(vm,unit,"file");
     confirmObjectType(vm,fname,OBJECT_STRING);
     char*fileName=wstrtostr(fname->str);
+    if(fileName==NULL){
+        vmError(vm,L"readTextFile:%s.",strerror(errno));
+    }
     char*str=readTextFile(fileName);
     free(fileName);
     if(str==NULL){
@@ -893,11 +897,11 @@ FUNC_DEF(write_text_file)
     confirmObjectType(vm,st,OBJECT_STRING);
     char*fileName=wstrtostr(fname->str);
     if(fileName==NULL){
-        vmError(vm,L"writeTextFile:invalid file name characters.");
+        vmError(vm,L"writeTextFile:%s.",strerror(errno));
     }
     char*str=wstrtostr(st->str);
     if(str==NULL){
-        vmError(vm,L"writeTextFile:invalid file text characters.");
+        vmError(vm,L"writeTextFile:%s.",strerror(errno));
     }
     if(!writeTextFile(fileName,str)){
         Object*err=newErrorObject(vm,ERR_FILE,strerror(errno));
@@ -906,7 +910,21 @@ FUNC_DEF(write_text_file)
     }
 FUNC_END()
 FUNC_DEF(change_charset)
-
+    Object*st=loadVar(vm,unit,"text");
+    Object*toc=loadVar(vm,unit,"toCode");
+    Object*foc=loadVar(vm,unit,"fromCode");
+    char*toCode=wstrtostr(toc->str);
+    char*fromCode=wstrtostr(foc->str);
+    char*fstr=wstrtostr(st->str);
+    if(toCode==NULL || fromCode==NULL || dstStr==NULL){
+        vmError(vm,L"changeCharset:%s.",strerror(errno));
+    }
+    iconv_t cd=iconv_open(toCode,fromCode);
+    if(cd==(iconv_t)-1){
+        vmError(vm,L"changeCharset:%s.",strerror(errno));
+    }
+    char*dstPtr=(char*);
+    size_t flen=strlen(fstr);
 FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
@@ -1002,6 +1020,11 @@ PdSTD makeSTD(){
     func=makeFunc("writeTextFile",write_text_file,2,"file","text");
     pstd.stdFunc[8]=func;
     hashGet(&pstd.hl,"writeTextFile",NULL,true);
+
+    func=makeFunc("changeCharset",change_charset,3,"text","toCode","fromCode");
+    pstd.stdFunc[9]=func;
+    hashGet(&pstd.hl,"changeCharset",NULL,true);
+
     return pstd;
 }
 void makeSTDObject(VM*vm,PdSTD*pstd){
