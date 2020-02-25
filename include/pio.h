@@ -7,6 +7,7 @@ typedef struct{
     int ptr;
 }Bin;
 char*readTextFile(char*fileName);
+bool writeTextFile(char*fileName,char*text);
 void exportModule(char*fileName,Module mod);
 Module importModule(char*fileName);
 #endif

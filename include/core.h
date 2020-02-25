@@ -74,7 +74,7 @@ typedef enum{
 #define METHOD_NAME_REM "opRem"
 
 void doexit(VM*vm,Unit*unit);
-void vmError(VM*vm,char*text,...);
+void vmError(VM*vm,wchar_t*text,...);
 void reduceRef(VM*vm,Unit*unit,Object*obj);
 Object*loadConst(VM*vm,Unit*unit,int index);
 PdSTD makeSTD();
@@ -87,7 +87,7 @@ Object*newIntObject(int num);
 Object*newDoubleObject(double numd);
 Object*newClassObject(Class class);
 Object*newFuncObject(Func func);
-Object*newStringObject(VM*vm);
+Object*newStringObject(VM*vm,wchar_t*wstr);
 Object*newListObject(VM*vm,int count);
 Object*newErrorObject(VM*vm,ErrorType id,char*msg);
 void confirmObjectType(VM*vm,Object*obj,char type);

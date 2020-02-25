@@ -2,7 +2,7 @@
 char*readTextFile(char*fileName){
     FILE*fp=fopen(fileName,"r");
     if(fp==NULL){
-        printf("error:can not open the file \"%s\"!\n",fileName);
+        //wprintf(L"error:can not open the file \"%s\"!\n",fileName);
         return NULL;
     }
     fseek(fp,0,SEEK_END);
@@ -13,6 +13,15 @@ char*readTextFile(char*fileName){
     fclose(fp);
     text[len]='\0';
     return text;
+}
+bool writeTextFile(char*fileName,char*text){
+    FILE*fp=fopen(fileName,"wt");
+    if(fp==NULL){
+        return false;
+    }
+    fwrite(text,sizeof(char),strlen(text),fp);
+    fclose(fp);
+    return true;
 }
 /*当结构体元素顺序改变时，相应的顺序也要改变*/
 #define WRITE_LIST(dat,list,type) \
@@ -166,7 +175,7 @@ void writeConst(charList*dat,Const con){
             writeClass(dat,con.class);
             break;
         default:
-            printf("export error:unknown constant type:%d.\n",con.type);
+            wprintf(L"export error:unknown constant type:%d.\n",con.type);
             exit(-1);
             break;
     }
@@ -191,7 +200,7 @@ Const readConst(Bin*bin){
             con.class=readClass(bin);
             break;
         default:
-            printf("import error:unknown constant type:%d.\n",con.type);
+            wprintf(L"import error:unknown constant type:%d.\n",con.type);
             exit(-1);
             break;
     }
@@ -252,7 +261,7 @@ void exportModule(char*fileName,Module mod){
     writeModule(&dat,mod);
     FILE*fp=fopen(fileName,"wb");
     if(fp==NULL){
-        printf("export error:can not open the file \"%s\".\n",fileName);
+        wprintf(L"export error:can not open the file \"%s\".\n",fileName);
         exit(-1);
     }
     fwrite(dat.vals,1,dat.count,fp);
@@ -263,7 +272,7 @@ Module importModule(char*fileName){
     Bin bin;
     FILE*fp=fopen(fileName,"rb");
     if(fp==NULL){
-        printf("import error:can not open the file \"%s\".\n",fileName);
+        wprintf(L"import error:can not open the file \"%s\".\n",fileName);
         exit(-1);
     }
     fseek(fp,0,SEEK_END);
@@ -274,17 +283,17 @@ Module importModule(char*fileName){
     bin.count=fread(bin.dat,1,bin.count,fp);
     fclose(fp);
     if(bin.count<2*sizeof(int)){
-        printf("import error:%s is not a Pudron Module File.",fileName);
+        wprintf(L"import error:%s is not a Pudron Module File.",fileName);
         exit(-1);
     }
     int dat=readInt(&bin);
     if(dat!=FILE_SIGN){
-        printf("import error:%s is not a Pudron Module File.",fileName);
+        wprintf(L"import error:%s is not a Pudron Module File.",fileName);
         exit(-1);
     }
     dat=readInt(&bin);
     if(dat<VERSION_MIN){
-        printf("import error:the version of the module is out of date.");
+        wprintf(L"import error:the version of the module is out of date.");
         exit(-1);
     }
     Module mod=readModule(&bin);

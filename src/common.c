@@ -145,20 +145,23 @@ char*getPath(char*text){
     path[end+1]='\0';
     return path;
 }
-void reportMsg(Msg msg){
-    char*text,temp[10];
+void reportMsg(Msg msg,wchar_t*str,...){
+    char*text;
     text=cutText(msg.code,msg.start,msg.end);
     if(msg.type==MSG_ERROR){
-        strcpy(temp,"error");
+        wprintf(L"%s:%d:%d:  error:\n",msg.fileName,msg.line,msg.column);
     }else{
-        strcpy(temp,"warning");
+        wprintf(L"%s:%d:%d:  warning:\n",msg.fileName,msg.line,msg.column);
     }
     if(text!=NULL){
-        printf("%s:%d:%d:  %s:\n     %s\n%s\n",msg.fileName,msg.line,msg.column,temp,text,msg.text);
+        wprintf(L"    %s\n",text);
         free(text);
-    }else{
-        printf("%s:%d:%d:  %s:%s\n",msg.fileName,msg.line,msg.column,temp,msg.text);
     }
+    va_list vl;
+    va_start(vl,str);
+    vwprintf(str,vl);
+    va_end(vl);
+    wprintf(L"\n");
     if(msg.type==MSG_ERROR){
         exit(1);
     }
@@ -225,59 +228,59 @@ Unit getFuncUnit(Func func){
 }
 void printBlanks(int count){
     while(count--){
-        printf("    ");
+        wprintf(L"    ");
     }
 }
 void printConstMsg(Const con,int blankCount){
     int i;
     switch(con.type){
         case CONST_INT:
-            printf("(%d)",con.num);
+            wprintf(L"(%d)",con.num);
             break;
         case CONST_DOUBLE:
-            printf("(%lf)",con.numd);
+            wprintf(L"(%lf)",con.numd);
             break;
         case CONST_STRING:
-            printf("(\"%ls\")",con.str);
+            wprintf(L"(\"%ls\")",con.str);
             break;
         case CONST_CLASS:
-            printf("(class %s",con.class.name);
+            wprintf(L"(class %s",con.class.name);
             /*if(con.class.parentList.count>1){
-                printf(":");
+                wprintf(L":");
                 for(int i=0;i<con.class.parentList.count;i++){
-                    printf("%s",con.class.parentList.vals[i].name);
+                    wprintf(L"%s",con.class.parentList.vals[i].name);
                     if(i!=con.class.parentList.count-1){
-                        printf(",");
+                        wprintf(L",");
                     }
                 }
             }*/
-            printf("{");
+            wprintf(L"{");
             for(int i=0;i<con.class.varList.count;i++){
-                printf(con.class.varList.vals[i]);
+                wprintf(L"%s",con.class.varList.vals[i]);
                 if(i!=con.class.varList.count-1){
-                    printf(",");
+                    wprintf(L",");
                 }
             }
-            printf("}initFunc{\n");
+            wprintf(L"}initFunc{\n");
             printCmds(getFuncUnit(con.class.initFunc),blankCount+1);
             printBlanks(blankCount);
-            printf("})");
+            wprintf(L"})");
             break;
         case CONST_FUNCTION:
-            printf("(function %s(",con.func.name);
+            wprintf(L"(function %s(",con.func.name);
             for(i=0;i<con.func.argCount;i++){
-                printf(con.func.nlist.vals[i]);
+                wprintf(L"%s",con.func.nlist.vals[i]);
                 if(i!=con.func.argCount-1){
-                    printf(",");
+                    wprintf(L",");
                 }
             }
-            printf("){\n");
+            wprintf(L"){\n");
             printCmds(getFuncUnit(con.func),blankCount+1);
             printBlanks(blankCount);
-            printf("})");
+            wprintf(L"})");
             break;
         default:
-            printf("(others)");
+            wprintf(L"(others)");
             break;
     }
 }
@@ -291,14 +294,14 @@ void printCmds(Unit unit,int blankCount){
         if(c>=0){
             part=unit.plist.vals[c];
             opm=opcodeList[unit.clist.vals[++i]];
-            printf("%d(%d:%d):%s",i-1,part.line,part.column,opm.name);
+            wprintf(L"%d(%d:%d):%s",i-1,part.line,part.column,opm.name);
         }else{
             opm=opcodeList[unit.clist.vals[++i]];
-            printf("%d:%s",i-1,opm.name);
+            wprintf(L"%d:%s",i-1,opm.name);
         }
         if(opm.argCount>0){
             c=unit.clist.vals[++i];
-            printf(" %d",c);
+            wprintf(L" %d",c);
             switch(opm.opcode){
                 case OPCODE_LOAD_CONST:
                     printConstMsg(unit.constList.vals[c],blankCount);
@@ -308,31 +311,31 @@ void printCmds(Unit unit,int blankCount){
                 case OPCODE_LOAD_METHOD:
                 case OPCODE_CLASS_EXTEND:
                 case OPCODE_GET_FOR_INDEX:
-                    printf("(%s)",unit.nlist.vals[c]);
+                    wprintf(L"(%s)",unit.nlist.vals[c]);
                     break;
                 case OPCODE_ASSIGN:
                     if(c<0){
-                        printf("(EQUAL)");
+                        wprintf(L"(EQUAL)");
                     }else{
-                        printf("(%s)",opcodeList[c].name);
+                        wprintf(L"(%s)",opcodeList[c].name);
                     }
                     break;
                 case OPCODE_LOAD_MODULE:{
                     Unit munit=getModuleUnit(unit.mlist.vals[c]);
-                    printf("(Module %s{\n",unit.mlist.vals[c].name);
+                    wprintf(L"(Module %s{\n",unit.mlist.vals[c].name);
                     printCmds(munit,blankCount+1);
                     printBlanks(blankCount);
-                    printf("})\n");
+                    wprintf(L"})\n");
                     break;
                 }
                 default:
                     break;
             }
             for(int i2=1;i2<opm.argCount;i2++){
-                printf(",%d",unit.clist.vals[++i]);
+                wprintf(L",%d",unit.clist.vals[++i]);
             }
         }
-        printf("\n");
+        wprintf(L"\n");
     }
 }
 void expandHashList(HashList*hl,int size){
@@ -424,18 +427,18 @@ HashList hashMerge(HashList hl1,HashList hl2){
     return hl;
 }
 void hashPrint(HashList hl){
-    printf("HashList(capacity:%d):\n",hl.capacity);
+    wprintf(L"HashList(capacity:%d):\n",hl.capacity);
     for(int i=0;i<hl.capacity;i++){
         if(hl.slot[i].isUsed){
-            printf("%d.name:%s,nextSlot:%d,",i,hl.slot[i].name,hl.slot[i].nextSlot);
+            wprintf(L"%d.name:%s,nextSlot:%d,",i,hl.slot[i].name,hl.slot[i].nextSlot);
         }
         if(hl.slot[i].obj==NULL){
-            printf("None\n");
+            wprintf(L"None\n");
         }else{
-            printf("Object(class:%s,refCount:%d)\n",hl.slot[i].obj->classNameList.vals[0],hl.slot[i].obj->refCount);
+            wprintf(L"Object(class:%s,refCount:%d)\n",hl.slot[i].obj->classNameList.vals[0],hl.slot[i].obj->refCount);
         }
     }
-    printf("HashList End\n");
+    wprintf(L"HashList End\n");
 }
 int addName(NameList*nlist,char*name){
     for(int i=0;i<nlist->count;i++){
@@ -446,17 +449,17 @@ int addName(NameList*nlist,char*name){
     LIST_ADD((*nlist),Name,name)
     return nlist->count-1;
 }
+/*可以用strerror(errno)获得错误信息*/
 wchar_t*strtowstr(char*str){
     iconv_t cd=iconv_open("wchar_t","UTF-8");
-    if(cd==(void*)((size_t)-1)){
+    if(cd==(iconv_t)-1){
         return NULL;
     }
-    size_t len1=strlen(str),len2=MAX_STRING;
+    size_t len1=strlen(str),len2=len1*sizeof(wchar_t);
     wchar_t*wstr=(wchar_t*)memManage(NULL,(len1+1)*sizeof(wchar_t));
-    //memset(wstr,0,len1*sizeof(wchar_t));
     char*ptr1=str;
     wchar_t*ptr2=wstr;
-    if((int)iconv(cd,&ptr1,&len1,(char**)&ptr2,&len2)<0){
+    if(iconv(cd,&ptr1,&len1,(char**)&ptr2,&len2)==(size_t)-1){
         free(wstr);
         iconv_close(cd);
         return NULL;
@@ -465,6 +468,9 @@ wchar_t*strtowstr(char*str){
     iconv_close(cd);
     return wstr;
 }
+/*不能用strerror(errno)获得错误信息
+*转成utf-8
+*/
 char*wstrtostr(wchar_t*wstr){
     /*size_t len=wcslen(wstr);
     char*str=(char*)memManage(NULL,(len+1)*sizeof(char));
@@ -476,24 +482,25 @@ char*wstrtostr(wchar_t*wstr){
     }
     str[len]='\0';
     return str;*/
-    /*size_t len1=MAX_STRING,len2=wcslen(wstr);
-    char*str=(char*)memManage(NULL,(len2+1)*sizeof(char));
-    iconv_t cd=iconv_open("ASCII","wchar_t");
-    if(cd==(void*)((size_t)-1)){
+    size_t len1=wcslen(wstr)*4,len2=wcslen(wstr)*sizeof(wchar_t);
+    char*str=(char*)memManage(NULL,(len1+1)*sizeof(char));
+    iconv_t cd=iconv_open("UTF-8","wchar_t");
+    if(cd==(iconv_t)-1){
         free(str);
         return NULL;
     }
     char*ptr1=str;
     wchar_t*ptr2=wstr;
-    if((int)iconv(cd,(char**)&ptr2,&len2,&ptr1,&len1)<0){
+    if(iconv(cd,(char**)&ptr2,&len2,&ptr1,&len1)==(size_t)-1){
+        perror("iconv");
         free(str);
         iconv_close(cd);
         return NULL;
     }
     *ptr1='\0';
     iconv_close(cd);
-    return str;*/
-    size_t len=wcslen(wstr);
+    return str;
+    /*size_t len=wcslen(wstr);
     char*str=(char*)memManage(NULL,(len+1)*sizeof(char));
     len=wcstombs(str,wstr,len);
     if(len<0){
@@ -519,5 +526,5 @@ char*wstrtostr(wchar_t*wstr){
     *ptr2='\0';
     iconv_close(cd);
     free(str);
-    return str2;
+    return str2;*/
 }

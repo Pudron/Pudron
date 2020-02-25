@@ -18,7 +18,7 @@
 #define VERSION_MIN 1
 
 #define STD_CLASS_COUNT 8
-#define STD_FUNC_COUNT 7
+#define STD_FUNC_COUNT 9
 
 /*List Operations*/
 #define LIST_DECLARE(type) \
@@ -222,7 +222,7 @@ typedef struct{
     }type;
     char*code;
     char*fileName;
-    char text[500];
+    //char text[500];
     int line,column,start,end;
 }Msg;
 typedef struct{
@@ -366,7 +366,7 @@ char*cutPath(char*text);
 char*getPath(char*text);
 /*pow2():求大于等于num的最小２次冪*/
 int pow2(int num);
-void reportMsg(Msg msg);
+void reportMsg(Msg msg,wchar_t*str,...);
 unsigned int hashString(char*str);
 Unit newUnit();
 void setModuleUnit(Module*mod,Unit unit);

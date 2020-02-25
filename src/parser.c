@@ -103,8 +103,7 @@ Token getToken(Parser*parser){
                         }else{
                             msg.end=msg.start+20;
                         }
-                        strcpy(msg.text,"unterminated comment.");
-                        reportMsg(msg);
+                        reportMsg(msg,L"unterminated comment.");
                     }
                     parser->column++;
                     if(c=='\n'){
@@ -165,8 +164,7 @@ Token getToken(Parser*parser){
             if(i>=MAX_STRING-1){
                 msg.type=MSG_ERROR;
                 msg.end=msg.start+99;
-                strcpy(msg.text,"too long word.");
-                reportMsg(msg);
+                reportMsg(msg,L"too long word.");
             }
             word[i]=c;
             parser->column++;
@@ -192,13 +190,11 @@ Token getToken(Parser*parser){
                 }else{
                     msg.end=parser->ptr;
                 }
-                strcpy(msg.text,"expected \' after the name.");
-                reportMsg(msg);
+                reportMsg(msg,L"expected \' after the name.");
             }
             if(i>=MAX_STRING-1){
                 msg.end=msg.start+99;
-                strcpy(msg.text,"the name is too long.");
-                reportMsg(msg);
+                reportMsg(msg,L"the name is too long.");
             }
             if(c=='\n'){
                 parser->line++;
@@ -230,13 +226,11 @@ Token getToken(Parser*parser){
                 }else{
                     msg.end=parser->ptr;
                 }
-                strcpy(msg.text,"expected \" after the string.");
-                reportMsg(msg);
+                reportMsg(msg,L"expected \" after the string.");
             }
             if(i>=MAX_STRING-1){
                 msg.end=parser->ptr;
-                strcpy(msg.text,"the string is too long.");
-                reportMsg(msg);
+                reportMsg(msg,L"the string is too long.");
             }
             if(c=='\n'){
                 parser->line++;
@@ -307,8 +301,7 @@ Token getToken(Parser*parser){
         token.str=strtowstr(word);
         if(token.str==NULL){
             msg.end=parser->ptr;
-            strcpy(msg.text,strerror(errno));
-            reportMsg(msg);
+            reportMsg(msg,L"%s",strerror(errno));
         }
         token.type=TOKEN_STRING;
         token.end=parser->ptr;
@@ -338,8 +331,7 @@ Token getToken(Parser*parser){
         msg.line=parser->line;
         msg.end=parser->ptr;
         msg.type=MSG_ERROR;
-        sprintf(msg.text,"unknown charactor \"%c\"(%d).",c,c);
-        reportMsg(msg);
+        reportMsg(msg,L"unknown charactor \"%c\"(%d).",c,c);
     }
     /*查找关键字*/
     if(token.type==TOKEN_WORD){
@@ -374,8 +366,7 @@ Token nextToken(Parser*parser){
         msg.start=0;
         msg.end=0;
         msg.type=MSG_ERROR;
-        strcpy(msg.text,"next token overflow");
-        reportMsg(msg);
+        reportMsg(msg,L"next token overflow");
     }
     Token token=parser->tokenList.vals[++parser->curToken];
     parser->ptr=token.end;
@@ -393,8 +384,7 @@ Token lastToken(Parser*parser){
         msg.start=0;
         msg.end=0;
         msg.type=MSG_ERROR;
-        strcpy(msg.text,"last token overflow");
-        reportMsg(msg);
+        reportMsg(msg,L"last token overflow");
     }
     Token token;
     parser->curToken--;
@@ -417,8 +407,7 @@ Token matchToken(Parser*parser,Tokentype et,char*str,int start){
         msg.column=parser->column;
         msg.start=start;
         msg.end=parser->ptr;
-        sprintf(msg.text,"expected %s.",str);
-        reportMsg(msg);
+        reportMsg(msg,L"expected %s.",str);
     }
     return token;
 }
@@ -432,6 +421,7 @@ Parser newParser(char*fileName){
     parser.curToken=-1;
     parser.code=readTextFile(fileName);
     if(parser.code==NULL){
+        wprintf(L"error:can not open the text file \"%s\":%s.",fileName,strerror(errno));
         exit(-1);
     }
     LIST_INIT(parser.tokenList)

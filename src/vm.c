@@ -2,13 +2,13 @@
 #ifdef DEBUG
 #define ASSERT(condition,message,...) \
     if(condition){\
-        printf(message,##__VA_ARGS__);\
+        wprintf(message,##__VA_ARGS__);\
         getchar();\
     }
 #else
 #define ASSERT(condition,message,...)
 #endif
-#define checkStack(num) ASSERT(vm->stackCount<num,"file:%s,line:%d,ptr:%d:expected %d slots but only %d slots in stack.",__FILE__,__LINE__,vm->ptr,num,vm->stackCount)
+#define checkStack(num) ASSERT(vm->stackCount<num,L"file:%s,line:%d,ptr:%d:expected %d slots but only %d slots in stack.",__FILE__,__LINE__,vm->ptr,num,vm->stackCount)
 VM newVM(char*fileName,char*path,PdSTD pstd){
     VM vm;
     vm.stackCount=0;
@@ -161,7 +161,7 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode,int*i
                     c=newDoubleObject((double)a->num opt b->numd);\
                     break;\
                 default:\
-                    vmError(vm,"unsupported type for int operation");\
+                    vmError(vm,L"unsupported type for int operation");\
                     break;\
             }\
             reduceRef(vm,unit,a);\
@@ -177,7 +177,7 @@ Object*createObject(VM*vm,Unit*unit,Class class,ArgList*argList,int opcode,int*i
                     c=newDoubleObject(a->numd opt b->numd);\
                     break;\
                 default:\
-                    vmError(vm,"unsupported type for double operation");\
+                    vmError(vm,L"unsupported type for double operation");\
                     break;\
             }\
             reduceRef(vm,unit,a);\
@@ -261,7 +261,7 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
         Object*mobj=loadMember(vm,a,mName,true);
         confirmObjectType(vm,mobj,OBJECT_FUNCTION);
         if(mobj->func.argCount!=2){
-            vmError(vm,"the count of operator method must be 1 but %d is here.",mobj->func.argCount);
+            vmError(vm,L"the count of operator method must be 1 but %d is here.",mobj->func.argCount);
         }
         Object*oldThis=vm->this;
         vm->this=a;
@@ -314,7 +314,7 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
     }else if(this->type==OBJECT_DOUBLE){\
         obj=newDoubleObject(opt this->numd);\
     }else{\
-        vmError(vm,"unsupported prefix operation.");\
+        vmError(vm,L"unsupported prefix operation.");\
     }\
     PUSH(obj);\
     reduceRef(vm,unit,this);
@@ -329,7 +329,7 @@ bool checkError(VM*vm,Unit*unit,int*ptr){
             confirmObjectType(vm,omsg,OBJECT_STRING);
             delObj(vm,unit,obj);
             free(obj);
-            vmError(vm,"%ls",omsg->str);
+            vmError(vm,L"%ls",omsg->str);
         }
         return true;
     }else{
@@ -352,7 +352,7 @@ void execute(VM*vm,Unit*unit){
             vm->part=unit->plist.vals[c];
         }
         vm->ptr=i;
-        //printf("cmd:%d:%s\n",i,opcodeList[unit->clist.vals[i+1]].name);
+        //wprintf(L"cmd:%d:%s\n",i,opcodeList[unit->clist.vals[i+1]].name);
         c=unit->clist.vals[++i];
         switch(c){
             case OPCODE_NOP:
@@ -473,7 +473,7 @@ void execute(VM*vm,Unit*unit){
                 }else if(obj->type==OBJECT_CLASS){
                     PUSH(createObject(vm,unit,obj->class,&argList,c,&i));
                 }else{
-                    vmError(vm,"expected class or function when calling.");
+                    vmError(vm,L"expected class or function when calling.");
                 }
                 if(c==OPCODE_CALL_METHOD){
                     vm->this=oldThis;
@@ -588,7 +588,7 @@ void execute(VM*vm,Unit*unit){
                 unit->lvlist.slot[c].obj=vm->errObj;
                 break;
             default:
-                vmError(vm,"unknown opcode %d.",c);
+                vmError(vm,L"unknown opcode %d.",c);
                 break;
         }
     }

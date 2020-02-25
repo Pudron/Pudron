@@ -1,22 +1,2 @@
-#this is only a demo to test
-class Person{
-    name;
-    func opInit(argName){
-        name=argName;
-    }
-    func love(person){
-        println("I love you,",person.name,"!");
-    }
-}
-I=Person("I");
-you=Person("Blue");
-I.love(you);#
-
-if(getPlatform()=0){
-    file="libfile.so";
-}else{
-    file="file.dll";
-}
-fdll=DLL(file);
-readTextFile=fdll.getFunc("readTextFile");
-writeTextFile=fdll.getFunc("writeTextFile");
+str=readTextFile("README.md");
+println(str);

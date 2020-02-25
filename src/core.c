@@ -1,5 +1,7 @@
 #include"core.h"
 #include"vm.h"
+#include"pio.h"
+#include<locale.h>
 void doexit(VM*vm,Unit*unit){
     while(vm->stackCount>0){
         reduceRef(vm,vm->unit,POP());
@@ -14,7 +16,7 @@ void doexit(VM*vm,Unit*unit){
     }
     LIST_DELETE(vm->dlist)
 }
-void vmError(VM*vm,char*text,...){
+void vmError(VM*vm,wchar_t*text,...){
     Msg msg;
     Part part=vm->part;
     msg.fileName=part.fileName;
@@ -26,45 +28,46 @@ void vmError(VM*vm,char*text,...){
     msg.type=MSG_ERROR;
     va_list valist;
     va_start(valist,text);
-    vsprintf(msg.text,text,valist);
+    wchar_t temp[MAX_STRING];
+    vswprintf(temp,MAX_STRING-1,text,valist);
     for(int i=0;i<vm->plist.count;i++){
         part=vm->plist.vals[i];
-        printf("from:%s:%d:%d:\n",part.fileName,part.line,part.column);
+        wprintf(L"from:%s:%d:%d:\n",part.fileName,part.line,part.column);
     }
     va_end(valist);
     doexit(vm,vm->unit);
-    reportMsg(msg);
+    reportMsg(msg,L"%ls",temp);
 }
 void confirmObjectType(VM*vm,Object*obj,char type){
     if(obj->type!=type){
         switch(type){
             case OBJECT_INT:
-                vmError(vm,"expected an int type object.");
+                vmError(vm,L"expected an int type object.");
                 break;
             case OBJECT_DOUBLE:
-                vmError(vm,"expected a double type object.");
+                vmError(vm,L"expected a double type object.");
                 break;
             case OBJECT_FUNCTION:
-                vmError(vm,"expected a Func type object.");
+                vmError(vm,L"expected a Func type object.");
                 break;
             case OBJECT_CLASS:
-                vmError(vm,"expected a Class type object.");
+                vmError(vm,L"expected a Class type object.");
                 break;
             case OBJECT_LIST:
-                vmError(vm,"expected a list type object.");
+                vmError(vm,L"expected a list type object.");
                 break;
             case OBJECT_STRING:
-                vmError(vm,"expected a string type object.");
+                vmError(vm,L"expected a string type object.");
                 break;
             default:
-                vmError(vm,"object type do not equal.");
+                vmError(vm,L"object type do not equal.");
                 break;
         }
     }
 }
 void setHash(VM*vm,HashList*hl,char*name,Object*obj){
     if(hashGet(hl,name,obj,false)<0){
-        vmError(vm,"the variable \"%s\" no found.",name);
+        vmError(vm,L"the variable \"%s\" no found.",name);
     }
 }
 void freeHashList(VM*vm,Unit*unit,HashList*hl){
@@ -190,16 +193,23 @@ Object*newFuncObject(Func func){
     obj->func=func;
     return obj;
 }
-Object*newStringObject(VM*vm){
+Object*newStringObject(VM*vm,wchar_t*wstr){
     Class class=vm->pstd.stdClass[OBJECT_STRING];
     Object*obj=newObject(OBJECT_STRING);
     LIST_ADD(obj->classNameList,Name,"string")
-    obj->str=NULL;
     obj->member=hashCopy(class.memberList);
     Unit unit=getFuncUnit(class.initFunc);
     for(int i=0;i<class.varList.count;i++){
         setHash(vm,&obj->member,class.varList.vals[i],loadConst(vm,&unit,i));
     }
+    obj->str=wstr;
+    Object*len=loadMember(vm,obj,"length",true);
+    if(wstr==NULL){
+        len->num=0;
+    }else{
+        len->num=wcslen(wstr);
+    }
+    len->refCount--;
     return obj;
 }
 Object*newListObject(VM*vm,int count){
@@ -232,9 +242,9 @@ Object*newErrorObject(VM*vm,ErrorType id,char*msg){
     oid->num=id;
     omsg->str=strtowstr(msg);
     if(omsg->str==NULL){
-        vmError(vm,strerror(errno));
+        vmError(vm,L"%s",strerror(errno));
     }
-    len->num=strlen(msg);
+    len->num=wcslen(omsg->str);
     len->refCount--;
     omsg->refCount--;
     oid->refCount--;
@@ -265,6 +275,7 @@ Class newClass(char*name){
 Object*loadConst(VM*vm,Unit*unit,int index){
     Object*obj=NULL;
     Const con=unit->constList.vals[index];
+    wchar_t*wstr=NULL;
     switch(con.type){
         case CONST_INT:
             obj=newIntObject(con.num);
@@ -273,9 +284,9 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             obj=newDoubleObject(con.numd);
             break;
         case CONST_STRING:
-            obj=newStringObject(vm);
-            obj->str=(wchar_t*)memManage(NULL,(wcslen(con.str)+1)*sizeof(wchar_t));
-            wcscpy(obj->str,con.str);
+            wstr=(wchar_t*)memManage(NULL,(wcslen(con.str)+1)*sizeof(wchar_t));
+            wcscpy(wstr,con.str);
+            obj=newStringObject(vm,wstr);
             break;
         case CONST_FUNCTION:
             obj=newFuncObject(con.func);
@@ -284,7 +295,7 @@ Object*loadConst(VM*vm,Unit*unit,int index){
             obj=newClassObject(con.class);
             break;
         default:
-            vmError(vm,"unknown constant type:%d.",con.type);
+            vmError(vm,L"unknown constant type:%d.",con.type);
             break;
     }
     //obj->isInit=false;
@@ -300,7 +311,7 @@ Object*loadVar(VM*vm,Unit*unit,char*name){
         if(index<0){
             index=hashGet(&unit->gvlist,name,NULL,false);
             if(index<0){
-                vmError(vm,"variable \"%s\" no found.",name);
+                vmError(vm,L"variable \"%s\" no found.",name);
             }
             if(unit->gvlist.slot[index].obj==NULL){
                 unit->gvlist.slot[index].obj=newIntObject(0);
@@ -331,7 +342,7 @@ Object*loadMember(VM*vm,Object*this,char*name,bool confirm){
         if(!confirm){
             return NULL;
         }
-        vmError(vm,"member \"%s\" in class \"%s\" no found.",name,this->classNameList.vals[0]);
+        vmError(vm,L"member \"%s\" in class \"%s\" no found.",name,this->classNameList.vals[0]);
     }
     obj=this->member.slot[index].obj;
     obj->refCount++;
@@ -429,7 +440,7 @@ FUNC_DEF(string_create)
                 wcscat(this->str,obj->str);
                 break;
             default:
-                vmError(vm,"expected string,int or double when creating string.");
+                vmError(vm,L"expected string,int or double when creating string.");
                 break;
         }
     }
@@ -441,7 +452,7 @@ FUNC_DEF(string_create)
 FUNC_END()
 FUNC_DEF(string_add)
     Object*this=loadVar(vm,unit,"this"),*obj=loadVar(vm,unit,"element");
-    Object*str=newStringObject(vm);
+    Object*str=newStringObject(vm,NULL);
     wchar_t temp[64];
     size_t len;
     switch(obj->type){
@@ -543,7 +554,7 @@ FUNC_DEF(list_subscript)
     Object*ind=loadVar(vm,unit,"index");
     confirmObjectType(vm,ind,OBJECT_INT);
     if(ind->num>=cnt->num){
-        vmError(vm,"only %d but not %d objects in the list.",cnt->num,ind->num+1);
+        vmError(vm,L"only %d but not %d objects in the list.",cnt->num,ind->num+1);
     }
     Object*rt=this->subObj[ind->num];
     rt->refCount++;
@@ -571,16 +582,16 @@ FUNC_DEF(mprint)
         obj=argv->subObj[i];
         switch(obj->type){
             case OBJECT_INT:
-                printf("%d",obj->num);
+                wprintf(L"%d",obj->num);
                 break;
             case OBJECT_DOUBLE:
-                printf("%lf",obj->numd);
+                wprintf(L"%lf",obj->numd);
                 break;
             case OBJECT_STRING:
-                printf("%ls",obj->str);
+                wprintf(L"%ls",obj->str);
                 break;
             default:
-                printf("<object>");
+                wprintf(L"<object>");
                 break;
         }
     }
@@ -589,7 +600,7 @@ FUNC_DEF(mprint)
 FUNC_END()
 FUNC_DEF(mprintln)
     mprint(vm,unit,func);
-    printf("\n");
+    wprintf(L"\n");
 FUNC_END()
 FUNC_DEF(range)
     Object*argv=loadVar(vm,unit,"argv");
@@ -611,7 +622,7 @@ FUNC_DEF(range)
         confirmObjectType(vm,a,OBJECT_INT);
         confirmObjectType(vm,b,OBJECT_INT);
         if(a->num>b->num){
-            vmError(vm,"the start index(%d) must be less than the end index(%d).",a->num,b->num);
+            vmError(vm,L"the start index(%d) must be less than the end index(%d).",a->num,b->num);
         }
         count=b->num-a->num+1;
         list=newListObject(vm,count);
@@ -628,10 +639,10 @@ FUNC_DEF(range)
         confirmObjectType(vm,b,OBJECT_INT);
         confirmObjectType(vm,c,OBJECT_INT);
         if(a->num>b->num){
-            vmError(vm,"the start index(%d) must be less than the end index(%d).",a->num,b->num);
+            vmError(vm,L"the start index(%d) must be less than the end index(%d).",a->num,b->num);
         }
         if(c->num<=0){
-            vmError(vm,"the step length must be positive integer but not %d.",c->num);
+            vmError(vm,L"the step length must be positive integer but not %d.",c->num);
         }
         count=b->num-a->num+1;
         list=newListObject(vm,count);
@@ -642,7 +653,7 @@ FUNC_DEF(range)
         reduceRef(vm,unit,b);
         reduceRef(vm,unit,c);
     }else{
-        vmError(vm,"the number of the arguments must be 1,2 or 3 for range().");
+        vmError(vm,L"the number of the arguments must be 1,2 or 3 for range().");
     }
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
@@ -650,18 +661,15 @@ FUNC_DEF(range)
     return;
 FUNC_END()
 FUNC_DEF(minput)
-    Object*st=newStringObject(vm);
-    Object*len=loadMember(vm,st,"length",true);
     char temp[MAX_WORD_LENGTH+1];
     //scanf("%[^\n]",st->str);
     fgets(temp,MAX_WORD_LENGTH,stdin);
     size_t leng=strlen(temp);
-    st->str=(wchar_t*)memManage(NULL,sizeof(wchar_t)*(leng+1));
-    if(mbstowcs(st->str,temp,leng)<0){
-        vmError(vm,"invalid characters.");
+    wchar_t*wstr=(wchar_t*)memManage(NULL,sizeof(wchar_t)*(leng+1));
+    if(mbstowcs(wstr,temp,leng)<0){
+        vmError(vm,L"invalid characters.");
     }
-    len->num=wcslen(st->str);
-    reduceRef(vm,unit,len);
+    Object*st=newStringObject(vm,wstr);
     PUSH(st);
     return;
 FUNC_END()
@@ -700,7 +708,7 @@ FUNC_DEF(dll_create)
     confirmObjectType(vm,st,OBJECT_STRING);
     char*fname=wstrtostr(st->str);
     if(fname==NULL){
-        vmError(vm,"open dll:%s",strerror(errno));
+        vmError(vm,L"open dll:%s.","invalid characters");
     }
     Dllptr dptr=DLL_OPEN(fname);
     if(dptr==NULL){
@@ -712,9 +720,9 @@ FUNC_DEF(dll_create)
     free(fname);
     if(dptr==NULL){
         #ifdef LINUX
-            vmError(vm,"DLL:%s.",dlerror());
+            vmError(vm,L"DLL:%s.",dlerror());
         #else
-            vmError(vm,"can not open the dll file,error code:%ld.",GetLastError());
+            vmError(vm,L"can not open the dll file,error code:%ld.",GetLastError());
         #endif
     }
     Dllinfo dllinfo;
@@ -740,7 +748,7 @@ FUNC_DEF(dll_func)
     Object*cnt=loadMember(vm,argv,"count",true);
     Dllinfo di=vm->dlist.vals[func->dllID];
     if(di.dllptr==NULL){
-        vmError(vm,"the dll function has been closed");
+        vmError(vm,L"the dll function has been closed");
     }
     DllFunc df=di.dflist.vals[func->dllFuncID];
     _PDat pdat;
@@ -768,7 +776,7 @@ FUNC_DEF(dll_func)
                 break;
             }
             default:
-                vmError(vm,"dll function only accept type int,double and string arguments.");
+                vmError(vm,L"dll function only accept type int,double and string arguments.");
                 break;
         }
         LIST_ADD(pdat.argList,_PValue,pval)
@@ -783,23 +791,19 @@ FUNC_DEF(dll_func)
             obj=newDoubleObject(pdat.rval.numd);
             break;
         case PVAL_STRING:{
-            obj=newStringObject(vm);
-            Object*len=loadMember(vm,obj,"length",true);
-            obj->str=pdat.rval.str;
-            len->num=wcslen(obj->str);
-            reduceRef(vm,unit,len);
+            obj=newStringObject(vm,pdat.rval.str);
             break;
         }
         case PVAL_ERROR:{
             char*msg=wstrtostr(pdat.rval.str);
             if(msg==NULL){
-                vmError(vm,"dll return error:%s",strerror(errno));
+                vmError(vm,L"dll return error:%s.","invalid characters");
             }
             obj=newErrorObject(vm,pdat.err_id,msg);
             break;
         }
         default:
-            vmError(vm,"unknown dll function return type:%d.",pdat.rval.type);
+            vmError(vm,L"unknown dll function return type:%d.",pdat.rval.type);
             break;
     }
     PUSH(obj);
@@ -814,14 +818,14 @@ FUNC_DEF(dll_get_func)
     dfunc.dllID=id->num;
     char*funcName=wstrtostr(fname->str);
     if(funcName==NULL){
-        vmError(vm,"get dll function:%s",strerror(errno));
+        vmError(vm,L"get dll function:%s.","invalid characters");
     }
     DllFunc df=DLL_GET(vm->dlist.vals[id->num].dllptr,funcName);
     if(df==NULL){
         #ifdef LINUX
-            vmError(vm,"DLL:%s.",dlerror());
+            vmError(vm,L"DLL:%s.",dlerror());
         #else
-            vmError(vm,"can not get the dll function,error code:%ld.",GetLastError());
+            vmError(vm,L"can not get the dll function,error code:%ld.",GetLastError());
         #endif
     }
     free(funcName);
@@ -861,6 +865,48 @@ FUNC_DEF(get_platform)
     #endif
     PUSH(obj);
     return;
+FUNC_END()
+FUNC_DEF(read_text_file)
+    Object*fname=loadVar(vm,unit,"file");
+    confirmObjectType(vm,fname,OBJECT_STRING);
+    char*fileName=wstrtostr(fname->str);
+    char*str=readTextFile(fileName);
+    free(fileName);
+    if(str==NULL){
+        Object*err=newErrorObject(vm,ERR_FILE,strerror(errno));
+        PUSH(err);
+        return;
+    }
+    wchar_t*wstr=strtowstr(str);
+    if(wstr==NULL){
+        vmError(vm,L"%s",strerror(errno));
+    }
+    Object*ret=newStringObject(vm,wstr);
+    reduceRef(vm,unit,fname);
+    PUSH(ret);
+    return;
+FUNC_END()
+FUNC_DEF(write_text_file)
+    Object*fname=loadVar(vm,unit,"file");
+    Object*st=loadVar(vm,unit,"text");
+    confirmObjectType(vm,fname,OBJECT_STRING);
+    confirmObjectType(vm,st,OBJECT_STRING);
+    char*fileName=wstrtostr(fname->str);
+    if(fileName==NULL){
+        vmError(vm,L"writeTextFile:invalid file name characters.");
+    }
+    char*str=wstrtostr(st->str);
+    if(str==NULL){
+        vmError(vm,L"writeTextFile:invalid file text characters.");
+    }
+    if(!writeTextFile(fileName,str)){
+        Object*err=newErrorObject(vm,ERR_FILE,strerror(errno));
+        PUSH(err);
+        return;
+    }
+FUNC_END()
+FUNC_DEF(change_charset)
+
 FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
@@ -949,6 +995,13 @@ PdSTD makeSTD(){
     pstd.stdFunc[6]=func;
     hashGet(&pstd.hl,"getPlatform",NULL,true);
 
+    func=makeFunc("readTextFile",read_text_file,1,"file");
+    pstd.stdFunc[7]=func;
+    hashGet(&pstd.hl,"readTextFile",NULL,true);
+
+    func=makeFunc("writeTextFile",write_text_file,2,"file","text");
+    pstd.stdFunc[8]=func;
+    hashGet(&pstd.hl,"writeTextFile",NULL,true);
     return pstd;
 }
 void makeSTDObject(VM*vm,PdSTD*pstd){

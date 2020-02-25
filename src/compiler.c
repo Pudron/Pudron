@@ -42,7 +42,7 @@ void addCmds(Unit*unit,Command cmds){
         LIST_ADD(unit->clist,int,cmds.code[i])
     }
 }
-void compileMsg(char msgType,Compiler*cp,char*text,int msgStart,...){
+void compileMsg(char msgType,Compiler*cp,wchar_t*text,int msgStart,...){
     Msg msg;
     msg.fileName=cp->parser.fileName;
     msg.code=cp->parser.code;
@@ -57,10 +57,11 @@ void compileMsg(char msgType,Compiler*cp,char*text,int msgStart,...){
     }
     va_list valist;
     va_start(valist,msgStart);
-    vsprintf(msg.text,text,valist);
+    wchar_t temp[MAX_STRING];
+    vswprintf(temp,MAX_STRING-1,text,valist);
     va_end(valist);
     msg.type=msgType;
-    reportMsg(msg);
+    reportMsg(msg,L"%ls",temp);
 }
 Compiler newCompiler(Parser parser,char*path,PdSTD pstd){
     Compiler compiler;
@@ -206,7 +207,7 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
             lastToken(&cp->parser);
         }
     }else{
-        compileMsg(MSG_ERROR,cp,"expected an expression.",msgStart);
+        compileMsg(MSG_ERROR,cp,L"expected an expression.",msgStart);
     }
     while(1){
         token=nextToken(&cp->parser);
@@ -230,7 +231,7 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
                     }else if(token.type==TOKEN_PARE2){
                         break;
                     }else{
-                        compileMsg(MSG_ERROR,cp,"expected \")\" or \",\" in the reference of method.",msgStart);
+                        compileMsg(MSG_ERROR,cp,L"expected \")\" or \",\" in the reference of method.",msgStart);
                     }
                 }
                 addCmd1(unit,OPCODE_CALL_METHOD,count);
@@ -250,7 +251,7 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
                 }else if(token.type==TOKEN_BRACKET2){
                     break;
                 }else{
-                    compileMsg(MSG_ERROR,cp,"expected \",\" or \"]\" in subscript.",msgStart);
+                    compileMsg(MSG_ERROR,cp,L"expected \",\" or \"]\" in subscript.",msgStart);
                 }
             }
             addCmd1(unit,OPCODE_LOAD_SUBSCRIPT,argCount);
@@ -348,7 +349,7 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
             opt=OPCODE_REM;
             break;
         default:
-            compileMsg(MSG_ERROR,cp,"expected assignment operator or \";\".",msgStart);
+            compileMsg(MSG_ERROR,cp,L"expected assignment operator or \";\".",msgStart);
             break;
     }
     if(scount>1){
@@ -370,18 +371,18 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
             unit->plist.vals[pt].end=token.end;
             break;
         }else{
-            compileMsg(MSG_ERROR,cp,"expected \";\" or \",\" in assignment.",msgStart);
+            compileMsg(MSG_ERROR,cp,L"expected \";\" or \",\" in assignment.",msgStart);
         }
     }
     if(gcount>scount){
-        compileMsg(MSG_ERROR,cp,"too many assignment.",msgStart);
+        compileMsg(MSG_ERROR,cp,L"too many assignment.",msgStart);
     }
 }
 /*不允许重复*/
 void addNameNoRepeat(Compiler*cp,NameList*nlist,char*name,char*message,int msgStart){
     for(int i=0;i<nlist->count;i++){
         if(strcmp(name,nlist->vals[i])==0){
-            compileMsg(MSG_ERROR,cp,"the %s \"%s\" has already existed.",msgStart,message,name);
+            compileMsg(MSG_ERROR,cp,L"the %s \"%s\" has already existed.",msgStart,message,name);
         }
     }
     LIST_ADD((*nlist),Name,name)
@@ -478,7 +479,7 @@ void compileClass(Compiler*cp,Unit*unit){
         }
     }
     if(token.type!=TOKEN_BRACE1){
-        compileMsg(MSG_ERROR,cp,"expected \"{\" in class definition.",msgStart);
+        compileMsg(MSG_ERROR,cp,L"expected \"{\" in class definition.",msgStart);
     }
     hashGet(&funit.lvlist,"this",NULL,true);
     int pt;
@@ -502,14 +503,14 @@ void compileClass(Compiler*cp,Unit*unit){
             }
             funit.plist.vals[pt].end=token.end;
             if(token.type!=TOKEN_SEMI){
-                compileMsg(MSG_ERROR,cp,"expected \";\" after class member definition.",msgStart);
+                compileMsg(MSG_ERROR,cp,L"expected \";\" after class member definition.",msgStart);
             }
         }else if(token.type==TOKEN_FUNC){
             compileFunction(cp,&funit,true,env);
         }else if(token.type==TOKEN_CLASS){
             compileClass(cp,&funit);
         }else{
-            compileMsg(MSG_ERROR,cp,"expected class member",msgStart);
+            compileMsg(MSG_ERROR,cp,L"expected class member",msgStart);
         }
     }
     setFuncUnit(&class.initFunc,funit);
@@ -710,7 +711,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
         msgStart=token.start;
         if(token.type==TOKEN_END){
             if(!isGlobal){
-                compileMsg(MSG_ERROR,cp,"expect \"}\" after block.",msgStart);
+                compileMsg(MSG_ERROR,cp,L"expect \"}\" after block.",msgStart);
             }
             break;
         }else if(token.type==TOKEN_BRACE2 && !isGlobal){
@@ -725,7 +726,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             compileForState(cp,unit,env);
         }else if(token.type==TOKEN_BREAK){
             if(env.breakList==NULL){
-                compileMsg(MSG_ERROR,cp,"invalid break.",token.start);
+                compileMsg(MSG_ERROR,cp,L"invalid break.",token.start);
             }
             int pt=setPart(cp,unit,token.start);
             token=matchToken(&cp->parser,TOKEN_SEMI,"\";\" after break",token.start);
@@ -734,7 +735,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             LIST_ADD((*env.breakList),int,unit->clist.count-1)
         }else if(token.type==TOKEN_CONTINUE){
             if(env.jumpTo<0){
-                compileMsg(MSG_ERROR,cp,"invalid continue.",token.start);
+                compileMsg(MSG_ERROR,cp,L"invalid continue.",token.start);
             }
             int pt=setPart(cp,unit,token.start);
             token=matchToken(&cp->parser,TOKEN_SEMI,"\";\" after break",token.start);
@@ -763,7 +764,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
                 modName=cutPostfix(temp);
                 free(temp);
             }else{
-                compileMsg(MSG_ERROR,cp,"expected a file name to include.",msgStart);
+                compileMsg(MSG_ERROR,cp,L"expected a file name to include.",msgStart);
             }
             matchToken(&cp->parser,TOKEN_SEMI,"\";\" after include.",msgStart);
             if(checkModuleName(unit->mlist,modName)){
@@ -790,7 +791,7 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             }else{
                 free(modName);
                 free(fileName);
-                compileMsg(MSG_ERROR,cp,"expected a file name to import.",msgStart);
+                compileMsg(MSG_ERROR,cp,L"expected a file name to import.",msgStart);
             }
             matchToken(&cp->parser,TOKEN_SEMI,"\";\" after import",msgStart);
             if(checkModuleName(unit->mlist,modName)){

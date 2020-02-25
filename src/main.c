@@ -18,7 +18,7 @@ int run(char*fileName,char*outputName){
     int len=-1;
     len=readlink("/proc/self/exe",pt,MAX_WORD_LENGTH-1);
     if(len<0){
-        printf("error:failed to get pudron path.\n");
+        wprintf(L"error:failed to get pudron path.\n");
         exit(-1);
     }
     pt[len]='\0';
@@ -53,7 +53,7 @@ int run(char*fileName,char*outputName){
 }
 int main(int argc,char**argv){
     if(argc==1){
-        printf("%s",statement);
+        wprintf(L"%s",statement);
         return 0;
     }
     bool isVersion=false;
@@ -63,20 +63,20 @@ int main(int argc,char**argv){
             if(argv[i][1]=='m'){
                 i++;
                 if(i>=argc){
-                    printf("error:expected output file name.\n");
+                    wprintf(L"error:expected output file name.\n");
                     return -1;
                 }
                 outputName=argv[i];
             }else if(argv[i][1]=='v'){
-                printf("version:%d\n",VERSION);
+                wprintf(L"version:%d\n",VERSION);
                 isVersion=true;
             }else{
-                printf("error:unknown argument \"%s\".\n",argv[i]);
+                wprintf(L"error:unknown argument \"%s\".\n",argv[i]);
                 return -1;
             }
         }else{
             if(fileName!=NULL){
-                printf("error:can only compile one file.\n");
+                wprintf(L"error:can only compile one file.\n");
                 return -1;
             }
             fileName=argv[i];
@@ -86,7 +86,7 @@ int main(int argc,char**argv){
         if(isVersion){
             return 0;
         }
-        printf("error:expected a file.\n");
+        wprintf(L"error:expected a file.\n");
         return -1;
     }
     return run(fileName,outputName);
