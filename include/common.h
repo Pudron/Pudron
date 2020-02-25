@@ -1,5 +1,6 @@
 #ifndef _PD_COMMON_H_
 #define _PD_COMMON_H_
+#define _XOPEN_SOURCE 500/*定义了这个东西才能在c11标准下使用readlink等函数*/
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>

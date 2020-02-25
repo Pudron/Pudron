@@ -174,7 +174,8 @@ Token getToken(Parser*parser){
         }
         word[i]='\0';
         parser->column+=i;
-        token.word=(char*)malloc(i+1);        strcpy(token.word,word);
+        token.word=(char*)malloc(i+1);
+        strcpy(token.word,word);
         token.type=TOKEN_WORD;
         token.end=parser->ptr;
     }else if(c=='\''){
@@ -246,6 +247,7 @@ Token getToken(Parser*parser){
             }else if(c=='\r'){
                 i--;
                 c=parser->code[++parser->ptr];
+                continue;
             }else if(c=='\\'){
                 switch(parser->code[parser->ptr+1]){
                     case 'n':
