@@ -68,6 +68,7 @@ Compiler newCompiler(Parser parser,char*path,PdSTD pstd){
     compiler.parser=parser;
     compiler.pstd=pstd;
     compiler.path=path;
+    compiler.charsetCode="UTF-8";
     return compiler;
 }
 Module compileAll(char*fileName,char*path,PdSTD pstd){
@@ -151,7 +152,10 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
     }else if(token.type==TOKEN_STRING){
         Const con;
         con.type=CONST_STRING;
-        con.str=token.str;
+        con.str=strtowstr(token.word,cp->charsetCode);
+        if(con.str==NULL){
+            compileMsg(MSG_ERROR,cp,L"%s.",msgStart,strerror(errno));
+        }
         addCmd1(unit,OPCODE_LOAD_CONST,addConst(unit,con));
     }else if(token.type==TOKEN_PARE1){
         compileExpression(cp,unit,0,false,msgStart,env);
@@ -805,6 +809,15 @@ void compileBlock(Compiler*cp,Unit*unit,Env env){
             }
         }else if(token.type==TOKEN_TRY){
             compileTry(cp,unit,env);
+        }else if(token.type==TOKEN_RIGHT){
+            token=matchToken(&cp->parser,TOKEN_WORD,"a setting option",msgStart);
+            if(strcmp(token.word,"charset")==0){
+                token=matchToken(&cp->parser,TOKEN_WORD,"a charset",msgStart);
+                cp->charsetCode=token.word;
+            }else{
+                compileMsg(MSG_ERROR,cp,L"unknown setting option \"%s\".",msgStart,token.word);
+            }
+            matchToken(&cp->parser,TOKEN_SEMI,"\";\" after setting",msgStart);
         }else{
             lastToken(&cp->parser);
             compileAssignment(cp,unit,env);

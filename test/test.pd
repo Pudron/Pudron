@@ -1,2 +1,3 @@
-import math;
-println("result:",ceil(1.23));
+>>charset GBK;
+'文本'="阿萨德";
+println("char:",'文本'[0]);

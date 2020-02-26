@@ -211,7 +211,7 @@ Token getToken(Parser*parser){
         token.word=(char*)malloc(i+1);
         strcpy(token.word,word);
         token.type=TOKEN_WORD;
-        token.end=parser->ptr;
+        token.end=parser->ptr++;
     }else if(c=='\"'){
         int i=0;
         msg.line=parser->line;
@@ -298,11 +298,8 @@ Token getToken(Parser*parser){
         }
         parser->ptr++;
         word[i]='\0';
-        token.str=strtowstr(word,"UTF-8");
-        if(token.str==NULL){
-            msg.end=parser->ptr;
-            reportMsg(msg,L"%s",strerror(errno));
-        }
+        token.word=(char*)malloc((i+1)*sizeof(char));
+        strcpy(token.word,word);
         token.type=TOKEN_STRING;
         token.end=parser->ptr;
         return token;

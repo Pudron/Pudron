@@ -496,7 +496,10 @@ FUNC_DEF(string_subscript)
         PUSH(err);
         return;
     }
-    Object*sto=newIntObject(this->str[ind->num]);
+    wchar_t*wstr=(wchar_t*)memManage(NULL,2*sizeof(wchar_t));
+    wstr[0]=this->str[ind->num];
+    wstr[1]=L'\0';
+    Object*sto=newStringObject(vm,wstr);
     PUSH(sto);
     return;
 FUNC_END()

@@ -22,6 +22,7 @@ typedef struct{
     Parser parser;
     char*path;
     PdSTD pstd;
+    char*charsetCode;/*字符编码*/
 }Compiler;
 int addConst(Unit*unit,Const con);
 Module compileAll(char*fileName,char*path,PdSTD pstd);

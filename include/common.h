@@ -210,7 +210,6 @@ typedef struct{
         int num;
         double numd;
         char*word;
-        wchar_t*str;
     };
     int start,end,column,line;
 }Token;
