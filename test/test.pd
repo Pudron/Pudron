@@ -1,1 +1,2 @@
-writeTextFile("test.txt","奥术大师多","UTF-8");
+import math;
+println("result:",ceil(1.23));
