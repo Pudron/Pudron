@@ -1,2 +1,1 @@
-str=readTextFile("README.md");
-println(str);
+writeTextFile("test.txt","奥术大师多","UTF-8");

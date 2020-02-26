@@ -298,7 +298,7 @@ Token getToken(Parser*parser){
         }
         parser->ptr++;
         word[i]='\0';
-        token.str=strtowstr(word);
+        token.str=strtowstr(word,"UTF-8");
         if(token.str==NULL){
             msg.end=parser->ptr;
             reportMsg(msg,L"%s",strerror(errno));

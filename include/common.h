@@ -18,7 +18,7 @@
 #define VERSION_MIN 1
 
 #define STD_CLASS_COUNT 8
-#define STD_FUNC_COUNT 10
+#define STD_FUNC_COUNT 9
 
 /*List Operations*/
 #define LIST_DECLARE(type) \
@@ -383,6 +383,6 @@ void expandHashList(HashList*hl,int size);
 HashList hashMerge(HashList hl1,HashList hl2);
 HashList hashCopy(HashList hl);
 void hashPrint(HashList hl);
-wchar_t*strtowstr(char*str);
-char*wstrtostr(wchar_t*wstr);
+wchar_t*strtowstr(char*str,char*fromCode);
+char*wstrtostr(wchar_t*wstr,char*toCode);
 #endif

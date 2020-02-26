@@ -17,7 +17,7 @@ else
 	EXE=
 	/ =$(strip \)
 	PD_FILE=pd.exe
-	RM=del /Q
+	RM=rmdir /s /q
 endif
 ifeq ($(BUILD),RELEASE)
 	CFLAGS+= -O2
@@ -62,5 +62,5 @@ debug:build$/pudron$/$(PD_FILE) test$/test.pd
 
 .PHONY:clean
 clean:
-	-$(RM) build$/objs
-	-$(RM) build$/pudron
+	-rm -r build$/objs
+	-rm -r build$/pudron

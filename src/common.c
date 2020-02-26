@@ -450,8 +450,8 @@ int addName(NameList*nlist,char*name){
     return nlist->count-1;
 }
 /*可以用strerror(errno)获得错误信息*/
-wchar_t*strtowstr(char*str){
-    iconv_t cd=iconv_open("wchar_t","UTF-8");
+wchar_t*strtowstr(char*str,char*fromCode){
+    iconv_t cd=iconv_open("wchar_t",fromCode);
     if(cd==(iconv_t)-1){
         return NULL;
     }
@@ -468,10 +468,8 @@ wchar_t*strtowstr(char*str){
     iconv_close(cd);
     return wstr;
 }
-/*可以用strerror(errno)获得错误信息
-*转成utf-8
-*/
-char*wstrtostr(wchar_t*wstr){
+/*可以用strerror(errno)获得错误信息*/
+char*wstrtostr(wchar_t*wstr,char*toCode){
     /*size_t len=wcslen(wstr);
     char*str=(char*)memManage(NULL,(len+1)*sizeof(char));
     //wcstombs_s(&len,str,len,wstr,len);
@@ -484,7 +482,7 @@ char*wstrtostr(wchar_t*wstr){
     return str;*/
     size_t len1=wcslen(wstr)*4,len2=wcslen(wstr)*sizeof(wchar_t);
     char*str=(char*)memManage(NULL,(len1+1)*sizeof(char));
-    iconv_t cd=iconv_open("UTF-8","wchar_t");
+    iconv_t cd=iconv_open(toCode,"wchar_t");
     if(cd==(iconv_t)-1){
         free(str);
         return NULL;

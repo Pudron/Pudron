@@ -241,7 +241,7 @@ Object*newErrorObject(VM*vm,ErrorType id,char*msg){
     Object*omsg=loadMember(vm,obj,"message",true);
     Object*len=loadMember(vm,omsg,"length",true);
     oid->num=id;
-    omsg->str=strtowstr(msg);
+    omsg->str=strtowstr(msg,"UTF-8");
     if(omsg->str==NULL){
         vmError(vm,L"%s",strerror(errno));
     }
@@ -392,7 +392,7 @@ void addClassString(Class*class,char*name,char*str){
     hashGet(&class->memberList,name,NULL,true);
     Const con;
     con.type=CONST_STRING;
-    con.str=strtowstr(str);
+    con.str=strtowstr(str,"UTF-8");
     if(con.str==NULL){
         /*暂时用不了vmError和strerror了,(T_T)*/
         con.str=L"<string error>";
@@ -707,7 +707,7 @@ FUNC_DEF(dll_create)
     Object*st=loadVar(vm,unit,"path");
     this->type=OBJECT_DLL;
     confirmObjectType(vm,st,OBJECT_STRING);
-    char*fname=wstrtostr(st->str);
+    char*fname=wstrtostr(st->str,"UTF-8");
     if(fname==NULL){
         vmError(vm,L"open dll:%s.",strerror(errno));
     }
@@ -796,7 +796,7 @@ FUNC_DEF(dll_func)
             break;
         }
         case PVAL_ERROR:{
-            char*msg=wstrtostr(pdat.rval.str);
+            char*msg=wstrtostr(pdat.rval.str,"UTF-8");
             if(msg==NULL){
                 vmError(vm,L"dll return error:%s.",strerror(errno));
             }
@@ -817,7 +817,7 @@ FUNC_DEF(dll_get_func)
     confirmObjectType(vm,fname,OBJECT_STRING);
     Func dfunc=newFunc(NULL);
     dfunc.dllID=id->num;
-    char*funcName=wstrtostr(fname->str);
+    char*funcName=wstrtostr(fname->str,"UTF-8");
     if(funcName==NULL){
         vmError(vm,L"get dll function:%s.",strerror(errno));
     }
@@ -870,7 +870,7 @@ FUNC_END()
 FUNC_DEF(read_text_file)
     Object*fname=loadVar(vm,unit,"file");
     confirmObjectType(vm,fname,OBJECT_STRING);
-    char*fileName=wstrtostr(fname->str);
+    char*fileName=wstrtostr(fname->str,"UTF-8");
     if(fileName==NULL){
         vmError(vm,L"readTextFile:%s.",strerror(errno));
     }
@@ -881,11 +881,25 @@ FUNC_DEF(read_text_file)
         PUSH(err);
         return;
     }
-    wchar_t*wstr=strtowstr(str);
+    wchar_t*wstr;
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*len=loadMember(vm,argv,"count",true);
+    if(len->num==2){
+        Object*ch=loadVar(vm,unit,"charset");
+        confirmObjectType(vm,ch,OBJECT_STRING);
+        char*code=wstrtostr(ch->str,"UTF-8");
+        wstr=strtowstr(str,code);
+        free(code);
+        reduceRef(vm,unit,ch);
+    }else{
+        wstr=strtowstr(str,"UTF-8");
+    }
     if(wstr==NULL){
         vmError(vm,L"%s",strerror(errno));
     }
     Object*ret=newStringObject(vm,wstr);
+    reduceRef(vm,unit,len);
+    reduceRef(vm,unit,argv);
     reduceRef(vm,unit,fname);
     PUSH(ret);
     return;
@@ -895,11 +909,23 @@ FUNC_DEF(write_text_file)
     Object*st=loadVar(vm,unit,"text");
     confirmObjectType(vm,fname,OBJECT_STRING);
     confirmObjectType(vm,st,OBJECT_STRING);
-    char*fileName=wstrtostr(fname->str);
+    char*fileName=wstrtostr(fname->str,"UTF-8");
     if(fileName==NULL){
         vmError(vm,L"writeTextFile:%s.",strerror(errno));
     }
-    char*str=wstrtostr(st->str);
+    char*str;
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*len=loadMember(vm,argv,"count",true);
+    if(len->num==3){
+        Object*ch=loadVar(vm,unit,"charset");
+        confirmObjectType(vm,ch,OBJECT_STRING);
+        char*code=wstrtostr(ch->str,"UTF-8");
+        str=wstrtostr(st->str,code);
+        free(code);
+        reduceRef(vm,unit,ch);
+    }else{
+        str=wstrtostr(st->str,"UTF-8");
+    }
     if(str==NULL){
         vmError(vm,L"writeTextFile:%s.",strerror(errno));
     }
@@ -908,7 +934,12 @@ FUNC_DEF(write_text_file)
         PUSH(err);
         return;
     }
+    reduceRef(vm,unit,len);
+    reduceRef(vm,unit,argv);
+    reduceRef(vm,unit,st);
+    reduceRef(vm,unit,fname);
 FUNC_END()
+/*暂时没什么用处
 FUNC_DEF(change_charset)
     Object*st=loadVar(vm,unit,"text");
     Object*toc=loadVar(vm,unit,"toCode");
@@ -916,16 +947,32 @@ FUNC_DEF(change_charset)
     char*toCode=wstrtostr(toc->str);
     char*fromCode=wstrtostr(foc->str);
     char*fstr=wstrtostr(st->str);
-    if(toCode==NULL || fromCode==NULL || dstStr==NULL){
+    if(toCode==NULL || fromCode==NULL || fstr==NULL){
         vmError(vm,L"changeCharset:%s.",strerror(errno));
     }
     iconv_t cd=iconv_open(toCode,fromCode);
     if(cd==(iconv_t)-1){
         vmError(vm,L"changeCharset:%s.",strerror(errno));
     }
-    char*dstPtr=(char*);
-    size_t flen=strlen(fstr);
-FUNC_END()
+    size_t flen=strlen(fstr),dlen=flen*2;
+    char*dstr=(char*)memManage(NULL,(dlen+1)*sizeof(char));
+    char*dptr=dstr,*fptr=fstr;
+    if(iconv(cd,&fptr,&flen,&dptr,&dlen)==(size_t)-1){
+        vmError(vm,L"changeCharset:%s.",strerror(errno));
+    }
+    iconv_close(cd);
+    wchar_t*wstr=strtowstr(dstr);
+    Object*rt=newStringObject(vm,wstr);
+    free(toCode);
+    free(fromCode);
+    free(fstr);
+    free(dstr);
+    reduceRef(vm,unit,foc);
+    reduceRef(vm,unit,toc);
+    reduceRef(vm,unit,st);
+    PUSH(rt);
+    return;
+FUNC_END()*/
 PdSTD makeSTD(){
     PdSTD pstd;
     Class class;
@@ -1013,17 +1060,13 @@ PdSTD makeSTD(){
     pstd.stdFunc[6]=func;
     hashGet(&pstd.hl,"getPlatform",NULL,true);
 
-    func=makeFunc("readTextFile",read_text_file,1,"file");
+    func=makeFunc("readTextFile",read_text_file,2,"file","charset");
     pstd.stdFunc[7]=func;
     hashGet(&pstd.hl,"readTextFile",NULL,true);
 
-    func=makeFunc("writeTextFile",write_text_file,2,"file","text");
+    func=makeFunc("writeTextFile",write_text_file,3,"file","text","charset");
     pstd.stdFunc[8]=func;
     hashGet(&pstd.hl,"writeTextFile",NULL,true);
-
-    func=makeFunc("changeCharset",change_charset,3,"text","toCode","fromCode");
-    pstd.stdFunc[9]=func;
-    hashGet(&pstd.hl,"changeCharset",NULL,true);
 
     return pstd;
 }
