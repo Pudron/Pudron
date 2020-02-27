@@ -45,10 +45,10 @@ mkd:
 	$(MKD3)
 
 pd:$(OBJS)
-	$(CC) $(addprefix build$/objs$/,$(OBJS)) -o build$/pudron$/pd $(LIBS)
+	$(CC) $(addprefix build/objs/,$(OBJS)) -o $(realpath build/pudron)/pd $(LIBS)
 
 $(OBJS):%.o:%.c
-	$(CC) -c $(CFLAGS) $< -o build$/objs$/$@
+	$(CC) -c $(CFLAGS) $(realpath $<) -o $(realpath build/objs)/$@
 
 include mod/makefile
 

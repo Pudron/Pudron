@@ -414,6 +414,41 @@ Func makeFunc(char*name,void*exe,int argCount,...){
     va_end(valist);
     return func;
 }
+void printObjectValue(VM*vm,Unit*unit,Object*obj){
+    switch(obj->type){
+        case OBJECT_INT:
+            wprintf(L"%d",obj->num);
+            break;
+        case OBJECT_DOUBLE:
+            wprintf(L"%lf",obj->numd);
+            break;
+        case OBJECT_STRING:
+            wprintf(L"%ls",obj->str);/*不能直接只传递字符串,防止被格式化(%xxx)*/
+            break;
+        case OBJECT_CLASS:
+            wprintf(L"<%s>",obj->classNameList.vals[0]);
+            break;
+        case OBJECT_FUNCTION:
+            wprintf(L"<function>");
+            break;
+        case OBJECT_LIST:{
+            Object*cnt=loadMember(vm,obj,"count",true);
+            wprintf(L"{");
+            for(int i=0;i<cnt->num;i++){
+                printObjectValue(vm,unit,obj->subObj[i]);
+                if(i!=cnt->num-1){
+                    wprintf(L",");
+                }
+            }
+            wprintf(L"}");
+            reduceRef(vm,unit,cnt);
+            break;
+        }
+        default:
+            wprintf(L"<object>");
+            break;
+    }
+}
 FUNC_DEF(string_create)
     wchar_t temp[64];
     Object*obj,*this=loadVar(vm,unit,"this");
@@ -489,18 +524,55 @@ FUNC_DEF(string_add)
 FUNC_END()
 FUNC_DEF(string_subscript)
     Object*this=loadVar(vm,unit,"this"),*ind=loadVar(vm,unit,"index");
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*argc=loadMember(vm,argv,"count",true);
     confirmObjectType(vm,ind,OBJECT_INT);
     Object*err;
-    if(ind->num>wcslen(this->str)){
+    int wslen=wcslen(this->str);
+    if(ind->num>wslen){
         err=newErrorObject(vm,ERR_INDEX,"string overflow.");
         PUSH(err);
-        return;
+        goto fnd;
     }
-    wchar_t*wstr=(wchar_t*)memManage(NULL,2*sizeof(wchar_t));
-    wstr[0]=this->str[ind->num];
-    wstr[1]=L'\0';
-    Object*sto=newStringObject(vm,wstr);
-    PUSH(sto);
+    wchar_t*wstr;
+    Object*sto;
+    int index=(ind->num>=0)?ind->num:wslen+ind->num+1;
+    if(argc->num==2){/*包括this*/
+        wstr=(wchar_t*)memManage(NULL,2*sizeof(wchar_t));
+        wstr[0]=this->str[index];
+        wstr[1]=L'\0';
+        sto=newStringObject(vm,wstr);
+        PUSH(sto);
+    }else if(argc->num==3){
+        Object*end=loadVar(vm,unit,"end");
+        confirmObjectType(vm,end,OBJECT_INT);
+        int idend=(end->num>=0)?end->num:wslen+end->num+1;
+        if(end->num>wslen){
+            err=newErrorObject(vm,ERR_INDEX,"string end overflow.");
+            PUSH(err);
+        }else{
+            if(index<=idend){
+                wstr=cutWideText(this->str,index,idend);
+            }else{
+                int tlen=index-idend+1;
+                wstr=(wchar_t*)memManage(NULL,(tlen+1)*sizeof(wchar_t));
+                for(int i=0;i<tlen;i++){
+                    wstr[i]=this->str[index-i];
+                }
+                wstr[tlen]=L'\0';
+            }
+            sto=newStringObject(vm,wstr);
+            PUSH(sto);
+        }
+        reduceRef(vm,unit,end);
+    }else{
+        err=newErrorObject(vm,ERR_ARGUMENT,"invalid string subscript argument count.");
+        PUSH(err);
+    }
+    fnd:reduceRef(vm,unit,argc);
+    reduceRef(vm,unit,argv);
+    reduceRef(vm,unit,ind);
+    reduceRef(vm,unit,this);
     return;
 FUNC_END()
 FUNC_DEF(string_destroy)
@@ -556,12 +628,47 @@ FUNC_DEF(list_subscript)
     Object*this=loadVar(vm,unit,"this");
     Object*cnt=loadMember(vm,this,"count",true);
     Object*ind=loadVar(vm,unit,"index");
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*argc=loadMember(vm,argv,"count",true);
     confirmObjectType(vm,ind,OBJECT_INT);
-    if(ind->num>=cnt->num){
-        vmError(vm,L"only %d but not %d objects in the list.",cnt->num,ind->num+1);
+    int index=(ind->num>=0)?ind->num:cnt->num+ind->num;
+    Object*rt;
+    if(index>=cnt->num){
+        rt=newErrorObject(vm,ERR_INDEX,"list overflow.");
+    }else{
+        if(argc->num==2){
+            rt=this->subObj[index];
+            rt->refCount++;
+        }else if(argc->num==3){
+            Object*end=loadVar(vm,unit,"end");
+            confirmObjectType(vm,end,OBJECT_INT);
+            int idend=(end->num>=0)?end->num:cnt->num+end->num;
+            if(idend>=cnt->num){
+                rt=newErrorObject(vm,ERR_INDEX,"list overflow.");
+            }else{
+                int count;
+                if(index<=idend){
+                    count=idend-index+1;
+                    rt=newListObject(vm,count);
+                    for(int i=0;i<count;i++){
+                        rt->subObj[i]=this->subObj[index+i];
+                        rt->subObj[i]->refCount++;
+                    }
+                }else{
+                    count=index-idend+1;
+                    rt=newListObject(vm,count);
+                    for(int i=0;i<count;i++){
+                        rt->subObj[i]=this->subObj[index-i];
+                        rt->subObj[i]->refCount++;
+                    }
+                }
+            }
+        }else{
+            rt=newErrorObject(vm,ERR_ARGUMENT,"invalid list subscript argument count.");
+        }
     }
-    Object*rt=this->subObj[ind->num];
-    rt->refCount++;
+    reduceRef(vm,unit,argc);
+    reduceRef(vm,unit,argv);
     reduceRef(vm,unit,ind);
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,this);
@@ -579,25 +686,10 @@ FUNC_DEF(list_destroy)
     reduceRef(vm,unit,this);
 FUNC_END()
 FUNC_DEF(mprint)
-    Object*obj;
     Object*argv=loadVar(vm,unit,"argv");
     Object*cnt=loadMember(vm,argv,"count",true);
     for(int i=0;i<cnt->num;i++){
-        obj=argv->subObj[i];
-        switch(obj->type){
-            case OBJECT_INT:
-                wprintf(L"%d",obj->num);
-                break;
-            case OBJECT_DOUBLE:
-                wprintf(L"%lf",obj->numd);
-                break;
-            case OBJECT_STRING:
-                wprintf(L"%ls",obj->str);
-                break;
-            default:
-                wprintf(L"<object>");
-                break;
-        }
+        printObjectValue(vm,unit,argv->subObj[i]);
     }
     reduceRef(vm,unit,cnt);
     reduceRef(vm,unit,argv);
@@ -1001,7 +1093,7 @@ PdSTD makeSTD(){
     addClassInt(&class,"count",0);
     addClassFunc(&class,METHOD_NAME_INIT,list_create,0);
     addClassFunc(&class,"add",list_add,1,"element");
-    addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,1,"index");
+    addClassFunc(&class,METHOD_NAME_SUBSCRIPT,list_subscript,2,"index","end");
     addClassFunc(&class,METHOD_NAME_DESTROY,list_destroy,0);
     pstd.stdClass[OBJECT_LIST]=class;
     hashGet(&pstd.hl,"List",NULL,true);
@@ -1011,7 +1103,7 @@ PdSTD makeSTD(){
     addClassInt(&class,"length",0);
     addClassFunc(&class,METHOD_NAME_INIT,string_create,0);
     addClassFunc(&class,METHOD_NAME_ADD,string_add,1,"element");
-    addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,1,"index");
+    addClassFunc(&class,METHOD_NAME_SUBSCRIPT,string_subscript,2,"index","end");
     addClassFunc(&class,METHOD_NAME_DESTROY,string_destroy,0);
     addClassFunc(&class,METHOD_NAME_EQUAL,string_equal,1,"str");
     pstd.stdClass[OBJECT_STRING]=class;

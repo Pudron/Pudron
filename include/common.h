@@ -359,6 +359,7 @@ typedef struct{
 }PdSTD;
 void*memManage(void*ptr,size_t size);
 char*cutText(char*text,int start,int end);
+wchar_t*cutWideText(wchar_t*text,int start,int end);
 char*cutPostfix(char*text);
 char*getPostfix(char*text);
 char*cutPath(char*text);

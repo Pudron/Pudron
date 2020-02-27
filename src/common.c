@@ -67,16 +67,29 @@ int pow2(int num){
 }
 char*cutText(char*text,int start,int end){
     char*str;
-    int len=end-start;
+    int len=end-start+1;
     if(len<=0 || text==NULL){
         return NULL;
     }
-    str=(char*)malloc(len+1);
+    str=(char*)memManage(NULL,(len+1)*sizeof(char));
     for(int i=0;i<len;i++){
         str[i]=text[i+start];
     }
     str[len]='\0';
     return str;
+}
+wchar_t*cutWideText(wchar_t*text,int start,int end){
+    wchar_t*wstr;
+    int len=end-start+1;
+    if(len<=0 || text==NULL){
+        return NULL;
+    }
+    wstr=(wchar_t*)memManage(NULL,(len+1)*sizeof(wchar_t));
+    for(int i=0;i<len;i++){
+        wstr[i]=text[i+start];
+    }
+    wstr[len]=L'\0';
+    return wstr;
 }
 char*cutPostfix(char*text){
     char t[MAX_WORD_LENGTH];

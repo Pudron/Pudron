@@ -425,6 +425,7 @@ void execute(VM*vm,Unit*unit){
                 callFunction(vm,unit,obj->func,-1,argList);
                 reduceRef(vm,unit,obj);
                 LIST_DELETE(argList)
+                checkError(vm,unit,&i);
                 break;
             case OPCODE_STACK_COPY:
                 obj=vm->stack[vm->stackCount-unit->clist.vals[++i]-1];

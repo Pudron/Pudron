@@ -1,3 +1,2 @@
->>charset GBK;
-'文本'="阿萨德";
-println("char:",'文本'[0]);
+list={0,1,2,3,4,5};
+println(list[3,1,2]);
