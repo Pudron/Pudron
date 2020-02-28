@@ -228,7 +228,7 @@ Object*newListObject(VM*vm,int count){
     cnt->refCount--;
     return obj;
 }
-Object*newErrorObject(VM*vm,ErrorType id,char*msg){
+Object*newErrorObject(VM*vm,ErrorType id,wchar_t*msg,...){
     Class class=vm->pstd.stdClass[OBJECT_ERROR];
     Object*obj=newObject(OBJECT_ERROR);
     LIST_ADD(obj->classNameList,Name,"Error")
@@ -241,10 +241,12 @@ Object*newErrorObject(VM*vm,ErrorType id,char*msg){
     Object*omsg=loadMember(vm,obj,"message",true);
     Object*len=loadMember(vm,omsg,"length",true);
     oid->num=id;
-    omsg->str=strtowstr(msg,"UTF-8");
-    if(omsg->str==NULL){
-        vmError(vm,L"%s",strerror(errno));
-    }
+    int l=wcslen(msg)+MAX_WORD_LENGTH;
+    omsg->str=(wchar_t*)memManage(NULL,l*sizeof(wchar_t));
+    va_list vl;
+    va_start(vl,msg);
+    vswprintf(omsg->str,l,msg,vl);
+    va_end(vl);
     len->num=wcslen(omsg->str);
     len->refCount--;
     omsg->refCount--;
@@ -449,6 +451,115 @@ void printObjectValue(VM*vm,Unit*unit,Object*obj){
             break;
     }
 }
+bool writeObject(VM*vm,charList*dat,Object*obj){
+    if(obj==NULL){
+        LIST_ADD((*dat),char,-1);
+        return true;
+    }
+    LIST_ADD((*dat),char,obj->type);
+    switch(obj->type){
+        case OBJECT_INT:
+            writeInt(dat,obj->num);
+            break;
+        case OBJECT_DOUBLE:
+            writeDouble(dat,obj->numd);
+            break;
+        case OBJECT_STRING:
+            writeWideString(dat,obj->str);
+            break;
+        case OBJECT_FUNCTION:
+            if(!writeFunc(dat,obj->func)){
+                PUSH(newErrorObject(vm,ERR_FILE,L"can not write the inline function to the object file."));
+                return false;
+            }
+            break;
+        case OBJECT_CLASS:
+            writeClass(dat,obj->class);
+            break;
+        case OBJECT_LIST:{
+            Object*cnt=loadMember(vm,obj,"count",true);
+            writeInt(dat,cnt->num);
+            for(int i=0;i<cnt->num;i++){
+                writeObject(vm,dat,obj->subObj[i]);
+            }
+            cnt->refCount--;
+            break;
+        }
+        case OBJECT_DLL:
+            PUSH(newErrorObject(vm,ERR_FILE,L"can not write the DLL to the object file."));
+            return false;
+        default:{
+            WRITE_LIST(dat,obj->classNameList,String)
+            writeInt(dat,obj->member.capacity);
+            HashSlot slot;
+            for(int i=0;i<obj->member.capacity;i++){
+                slot=obj->member.slot[i];
+                LIST_ADD((*dat),char,slot.isUsed)
+                if(slot.isUsed){
+                    writeString(dat,slot.name);
+                    writeInt(dat,slot.nextSlot);
+                    writeObject(vm,dat,slot.obj);
+                }
+            }
+            break;
+        }
+    }
+    return true;
+}
+Object*readObject(VM*vm,Bin*bin){
+    char c=bin->dat[bin->ptr++];
+    if(c<0){
+        return NULL;
+    }
+    int count;
+    Object*obj;
+    switch(c){
+        case OBJECT_INT:
+            obj=newIntObject(readInt(bin));
+            break;
+        case OBJECT_DOUBLE:
+            obj=newDoubleObject(readDouble(bin));
+            break;
+        case OBJECT_STRING:
+            obj=newStringObject(vm,readWideString(bin));
+            break;
+        case OBJECT_FUNCTION:
+            obj=newFuncObject(readFunc(bin));
+            break;
+        case OBJECT_CLASS:
+            obj=newClassObject(readClass(bin));
+            break;
+        case OBJECT_LIST:{
+            int count=readInt(bin);
+            obj=newListObject(vm,count);
+            for(int i=0;i<count;i++){
+                obj->subObj[i]=readObject(vm,bin);
+                obj->subObj[i]->isInit=false;
+            }
+            break;
+        }
+        default:{
+            obj=newObject(c);
+            READ_LIST(bin,obj->classNameList,Name,String)
+            obj->member.capacity=readInt(bin);/*写入时capacity必须大于0*/
+            obj->member.slot=(HashSlot*)memManage(NULL,obj->member.capacity*sizeof(HashSlot));
+            HashSlot hs={NULL,-1,false,NULL};
+            for(int i=0;i<obj->member.capacity;i++){
+                obj->member.slot[i].isUsed=bin->dat[bin->ptr++];
+                if(obj->member.slot[i].isUsed){
+                    obj->member.slot[i].name=readString(bin);
+                    obj->member.slot[i].nextSlot=readInt(bin);
+                    obj->member.slot[i].obj=readObject(vm,bin);
+                    obj->member.slot[i].obj->isInit=false;
+                }else{
+                    obj->member.slot[i]=hs;
+                }
+            }
+            break;
+        }
+    }
+    return obj;
+}
 FUNC_DEF(string_create)
     wchar_t temp[64];
     Object*obj,*this=loadVar(vm,unit,"this");
@@ -530,7 +641,7 @@ FUNC_DEF(string_subscript)
     Object*err;
     int wslen=wcslen(this->str);
     if(ind->num>wslen){
-        err=newErrorObject(vm,ERR_INDEX,"string overflow.");
+        err=newErrorObject(vm,ERR_INDEX,L"string overflow.");
         PUSH(err);
         goto fnd;
     }
@@ -548,7 +659,7 @@ FUNC_DEF(string_subscript)
         confirmObjectType(vm,end,OBJECT_INT);
         int idend=(end->num>=0)?end->num:wslen+end->num+1;
         if(end->num>wslen){
-            err=newErrorObject(vm,ERR_INDEX,"string end overflow.");
+            err=newErrorObject(vm,ERR_INDEX,L"string end overflow.");
             PUSH(err);
         }else{
             if(index<=idend){
@@ -566,7 +677,7 @@ FUNC_DEF(string_subscript)
         }
         reduceRef(vm,unit,end);
     }else{
-        err=newErrorObject(vm,ERR_ARGUMENT,"invalid string subscript argument count.");
+        err=newErrorObject(vm,ERR_ARGUMENT,L"invalid string subscript argument count.");
         PUSH(err);
     }
     fnd:reduceRef(vm,unit,argc);
@@ -634,7 +745,7 @@ FUNC_DEF(list_subscript)
     int index=(ind->num>=0)?ind->num:cnt->num+ind->num;
     Object*rt;
     if(index>=cnt->num){
-        rt=newErrorObject(vm,ERR_INDEX,"list overflow.");
+        rt=newErrorObject(vm,ERR_INDEX,L"list overflow.");
     }else{
         if(argc->num==2){
             rt=this->subObj[index];
@@ -644,7 +755,7 @@ FUNC_DEF(list_subscript)
             confirmObjectType(vm,end,OBJECT_INT);
             int idend=(end->num>=0)?end->num:cnt->num+end->num;
             if(idend>=cnt->num){
-                rt=newErrorObject(vm,ERR_INDEX,"list overflow.");
+                rt=newErrorObject(vm,ERR_INDEX,L"list overflow.");
             }else{
                 int count;
                 if(index<=idend){
@@ -664,7 +775,7 @@ FUNC_DEF(list_subscript)
                 }
             }
         }else{
-            rt=newErrorObject(vm,ERR_ARGUMENT,"invalid list subscript argument count.");
+            rt=newErrorObject(vm,ERR_ARGUMENT,L"invalid list subscript argument count.");
         }
     }
     reduceRef(vm,unit,argc);
@@ -891,11 +1002,7 @@ FUNC_DEF(dll_func)
             break;
         }
         case PVAL_ERROR:{
-            char*msg=wstrtostr(pdat.rval.str,"UTF-8");
-            if(msg==NULL){
-                vmError(vm,L"dll return error:%s.",strerror(errno));
-            }
-            obj=newErrorObject(vm,pdat.err_id,msg);
+            obj=newErrorObject(vm,pdat.err_id,pdat.rval.str);
             break;
         }
         default:
@@ -967,12 +1074,16 @@ FUNC_DEF(read_text_file)
     confirmObjectType(vm,fname,OBJECT_STRING);
     char*fileName=wstrtostr(fname->str,"UTF-8");
     if(fileName==NULL){
-        vmError(vm,L"readTextFile:%s.",strerror(errno));
+        Object*err=newErrorObject(vm,ERR_FILE,L"readTextFile:%s",strerror(errno));
+        reduceRef(vm,unit,fname);
+        PUSH(err);
+        return;
     }
     char*str=readTextFile(fileName);
     free(fileName);
     if(str==NULL){
-        Object*err=newErrorObject(vm,ERR_FILE,strerror(errno));
+        Object*err=newErrorObject(vm,ERR_FILE,L"readTextFile:%s",strerror(errno));
+        reduceRef(vm,unit,fname);
         PUSH(err);
         return;
     }
@@ -1025,14 +1136,81 @@ FUNC_DEF(write_text_file)
         vmError(vm,L"writeTextFile:%s.",strerror(errno));
     }
     if(!writeTextFile(fileName,str)){
-        Object*err=newErrorObject(vm,ERR_FILE,strerror(errno));
+        Object*err=newErrorObject(vm,ERR_FILE,L"writeTextFile:%s",strerror(errno));
         PUSH(err);
-        return;
     }
     reduceRef(vm,unit,len);
     reduceRef(vm,unit,argv);
     reduceRef(vm,unit,st);
     reduceRef(vm,unit,fname);
+FUNC_END()
+FUNC_DEF(read_object_file)
+    Object*file=loadVar(vm,unit,"file");
+    confirmObjectType(vm,file,OBJECT_STRING);
+    char*fname=wstrtostr(file->str,"UTF-8");
+    if(fname==NULL){
+        vmError(vm,L"%s",strerror(errno));
+    }
+    FILE*fp=fopen(fname,"rb");
+    if(fp==NULL){
+        reduceRef(vm,unit,file);
+        free(fname);
+        PUSH(newErrorObject(vm,ERR_FILE,L"%s.",strerror(errno)));
+        return;
+    }
+    Bin bin;
+    bin.ptr=0;
+    fseek(fp,0,SEEK_END);
+    bin.count=ftell(fp);
+    rewind(fp);
+    bin.dat=(char*)memManage(NULL,bin.count*sizeof(char));
+    bin.count=fread(bin.dat,sizeof(char),bin.count,fp);
+    fclose(fp);
+    Object*rt;
+    if(bin.count<=sizeof(int)){
+        rt=newErrorObject(vm,ERR_FILE,L"it is not a object file.");
+    }else if(readInt(&bin)!=FILE_OBJECT_SIGN){
+        rt=newErrorObject(vm,ERR_FILE,L"it is not a object file.");
+    }else{
+        rt=readObject(vm,&bin);
+        if(rt==NULL){
+            rt=newErrorObject(vm,ERR_FILE,L"failed to analyze the object file.");
+        }
+    }
+    free(bin.dat);
+    free(fname);
+    PUSH(rt);
+    return;
+FUNC_END()
+FUNC_DEF(write_object_file)
+    Object*file=loadVar(vm,unit,"file");
+    Object*obj=loadVar(vm,unit,"obj");
+    confirmObjectType(vm,file,OBJECT_STRING);
+    char*fname=wstrtostr(file->str,"UTF-8");
+    if(fname==NULL){
+        vmError(vm,L"%s",strerror(errno));
+    }
+    charList dat;
+    LIST_INIT(dat)
+    writeInt(&dat,FILE_OBJECT_SIGN);
+    if(!writeObject(vm,&dat,obj)){
+        reduceRef(vm,unit,obj);
+        reduceRef(vm,unit,file);
+        return;
+    }
+    FILE*fp=fopen(fname,"wb");
+    if(fp==NULL){
+        reduceRef(vm,unit,obj);
+        reduceRef(vm,unit,file);
+        PUSH(newErrorObject(vm,ERR_FILE,L"%s.",strerror(errno)));
+        return;
+    }
+    fwrite(dat.vals,sizeof(char),dat.count,fp);
+    fclose(fp);
+    free(dat.vals);
+    free(fname);
+    reduceRef(vm,unit,obj);
+    reduceRef(vm,unit,file);
 FUNC_END()
 /*暂时没什么用处
 FUNC_DEF(change_charset)
@@ -1162,6 +1340,14 @@ PdSTD makeSTD(){
     func=makeFunc("writeTextFile",write_text_file,3,"file","text","charset");
     pstd.stdFunc[8]=func;
     hashGet(&pstd.hl,"writeTextFile",NULL,true);
+
+    func=makeFunc("writeObjectFile",write_object_file,2,"file","obj");
+    pstd.stdFunc[9]=func;
+    hashGet(&pstd.hl,"writeObjectFile",NULL,true);
+
+    func=makeFunc("readObjectFile",read_object_file,1,"file");
+    pstd.stdFunc[10]=func;
+    hashGet(&pstd.hl,"readObjectFile",NULL,true);
 
     return pstd;
 }

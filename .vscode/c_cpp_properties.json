@@ -6,7 +6,7 @@
                 "${workspaceFolder}/include"
             ],
             "defines": [],
-            "compilerPath": "D:/programming/msys64/mingw64/bin/gcc.exe",
+            "compilerPath": "D:\\msys64\\mingw64\\bin",
             "cStandard": "c11",
             "cppStandard": "c++20",
             "intelliSenseMode": "gcc-x64"
@@ -14,7 +14,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

@@ -14,11 +14,12 @@
 #define FILE_CODE_POSTFIX ".pd"
 #define FILE_MODULE_POSTFIX ".pdm"
 #define FILE_SIGN 5201314
+#define FILE_OBJECT_SIGN 18340
 #define VERSION 1
 #define VERSION_MIN 1
 
 #define STD_CLASS_COUNT 8
-#define STD_FUNC_COUNT 9
+#define STD_FUNC_COUNT 11
 
 /*List Operations*/
 #define LIST_DECLARE(type) \
@@ -288,7 +289,7 @@ typedef struct FuncDef{
 typedef struct ClassDef Class;
 LIST_DECLARE(Class)
 struct ClassDef{
-    /*确定对象类型时用字符串来确定,创建标准对象只能通过常量方式*/
+    /*确定对象类型时用字符串来确定*/
     char*name;
     ClassList parentList;
     HashList memberList;

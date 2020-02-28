@@ -1,2 +1,7 @@
-list={0,1,2,3,4,5};
-println(list[3,1,2]);
+class A{
+    x=123;
+}
+writeObjectFile("test.obj",A);
+B=readObjectFile("test.obj");
+b=B();
+println(b.x);

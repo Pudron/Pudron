@@ -444,6 +444,8 @@ void hashPrint(HashList hl){
     for(int i=0;i<hl.capacity;i++){
         if(hl.slot[i].isUsed){
             wprintf(L"%d.name:%s,nextSlot:%d,",i,hl.slot[i].name,hl.slot[i].nextSlot);
+        }else{
+            wprintf(L"%d.",i);
         }
         if(hl.slot[i].obj==NULL){
             wprintf(L"None\n");

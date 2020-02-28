@@ -24,21 +24,6 @@ bool writeTextFile(char*fileName,char*text){
     return true;
 }
 /*当结构体元素顺序改变时，相应的顺序也要改变*/
-#define WRITE_LIST(dat,list,type) \
-    writeInt(dat,list.count);\
-    for(int i=0;i<list.count;i++){\
-        write##type(dat,list.vals[i]);\
-    }
-
-/*READ_LIST()在使用前先定义变量int count;*/
-#define READ_LIST(bin,list,type,typeName) \
-    LIST_INIT(list)\
-    count=readInt(bin);\
-    for(int i=0;i<count;i++){\
-        LIST_ADD(list,type,read##typeName(bin))\
-    }
-void writeUnit(charList*dat,Unit unit);
-Unit readUnit(Bin*bin);
 void writeInt(charList*dat,int num){
     for(int i=0;i<sizeof(int);i++){
         LIST_ADD((*dat),char,num>>((sizeof(int)-i-1)*8))
@@ -67,6 +52,10 @@ double readDouble(Bin*bin){
 }
 /*不写入最后的'\0'*/
 void writeString(charList*dat,char*text){
+    if(text==NULL){
+        writeInt(dat,-1);
+        return;
+    }
     int len=strlen(text);
     writeInt(dat,len);
     for(int i=0;i<len;i++){
@@ -75,6 +64,9 @@ void writeString(charList*dat,char*text){
 }
 char*readString(Bin*bin){
     int len=readInt(bin);
+    if(len<0){
+        return NULL;
+    }
     char*text=(char*)memManage(NULL,len+1);
     for(int i=0;i<len;i++){
         text[i]=bin->dat[bin->ptr++];
@@ -126,10 +118,15 @@ HashList readHashList(Bin*bin){
     }
     return hl;
 }
-void writeFunc(charList*dat,Func func){
+/*当func.exe!=NULL时返回false*/
+bool writeFunc(charList*dat,Func func){
     writeString(dat,func.name);
     writeInt(dat,func.argCount);
     writeUnit(dat,getFuncUnit(func));
+    if(func.exe!=NULL){
+        return false;
+    }
+    return true;
 }
 Func readFunc(Bin*bin){
     Func func;

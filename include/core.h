@@ -89,7 +89,7 @@ Object*newClassObject(Class class);
 Object*newFuncObject(Func func);
 Object*newStringObject(VM*vm,wchar_t*wstr);
 Object*newListObject(VM*vm,int count);
-Object*newErrorObject(VM*vm,ErrorType id,char*msg);
+Object*newErrorObject(VM*vm,ErrorType id,wchar_t*msg,...);
 void confirmObjectType(VM*vm,Object*obj,char type);
 void setHash(VM*vm,HashList*hl,char*name,Object*obj);
 void delObj(VM*vm,Unit*unit,Object*obj);

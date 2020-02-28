@@ -8,16 +8,16 @@ CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(BUILD) -std=c18
 LIBS=-liconv
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
 ifeq ($(PLATFORM),LINUX)
-	EXE=./
 	/ =$(strip /)
 	LIBS+=-ldl
 	PD_FILE=pd
 	RM=rm -r
+	EXE_PD=./build/pudron/pd
 else
-	EXE=
 	/ =$(strip \)
 	PD_FILE=pd.exe
 	RM=rmdir /s /q
+	EXE_PD=build\pudron\pd.exe
 endif
 ifeq ($(BUILD),RELEASE)
 	CFLAGS+= -O2
@@ -36,7 +36,7 @@ else
 	MKD2=
 	MKD3=
 endif
-all:mkd pd mod
+all:mkd pd
 
 .PHONY:mkd
 mkd:
@@ -54,7 +54,7 @@ include mod/makefile
 
 .PHONY:test
 test:test$/test.pd
-	$(EXE)build$/pudron$/pd test$/test.pd
+	$(EXE_PD) test$/test.pd
 
 .PHONY:debug
 debug:build$/pudron$/$(PD_FILE) test$/test.pd
