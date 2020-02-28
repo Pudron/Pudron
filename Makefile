@@ -59,7 +59,7 @@ core.o:core.c $(OBJS_TXT) common.h pio.h pdex.h core.h vm.h
 vm.o:vm.c $(OBJS_TXT) common.h core.h vm.h
 	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
 
-include mod/Makefile
+include mod/mod.mk
 
 test:
 	$(EXE_PD) test/test.pd
