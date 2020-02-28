@@ -7,60 +7,59 @@ CC=gcc
 CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(BUILD) -std=c18
 LIBS=-liconv
 OBJS=main.o common.o pio.o parser.o compiler.o core.o vm.o
+DIR_SRC=src
+DIR_OBJS=build/objs
+OBJS_TXT=build/objs/objs.txt
 ifeq ($(PLATFORM),LINUX)
-	/ =$(strip /)
 	LIBS+=-ldl
-	PD_FILE=pd
 	RM=rm -r
 	EXE_PD=./build/pudron/pd
 else
-	/ =$(strip \)
-	PD_FILE=pd.exe
 	RM=rmdir /s /q
 	EXE_PD=build\pudron\pd.exe
 endif
-ifeq ($(BUILD),RELEASE)
-	CFLAGS+= -O2
-else
+
+ifeq ($(BUILD),DEBUG)
 	CFLAGS+= -g
-endif
-ifneq (build$/objs,$(wildcard build$/objs))
-	MKD1=mkdir build$/objs
 else
-	MKD1=
+	CFLAGS+= -O2
 endif
-ifneq (build$/pudron,$(wildcard build$/pudron))
-	MKD2=mkdir build$/pudron
-	MKD3=mkdir build$/pudron$/mod
-else
-	MKD2=
-	MKD3=
+
+.PHONY:all clean
+all:$(EXE_PD) mod
+
+$(EXE_PD):$(OBJS) build/pudron
+	$(CC) $(addprefix $(DIR_OBJS)/,$(OBJS)) $(LIBS) -o $(EXE_PD)
+
+build:
+ifneq (build,$(wildcard build))
+	mkdir build
 endif
-all:mkd pd
+$(OBJS_TXT):build
+ifneq (build/objs,$(wildcard build/objs))
+	mkdir build/objs
+	@echo "this objs directory" > $(OBJS_TXT)
+endif
+build/pudron:build
+ifneq (build/pudron,$(wildcard build/pudron))
+	mkdir build/pudron
+endif
+main.o:main.c $(OBJS_TXT) common.h compiler.h core.h vm.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
+common.o:common.c $(OBJS_TXT) common.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
+pio.o:pio.c $(OBJS_TXT) common.h pio.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
+parser.o:parser.c $(OBJS_TXT) common.h compiler.h parser.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
+compiler.o:compiler.c $(OBJS_TXT) common.h compiler.h parser.h core.h pio.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
+core.o:core.c $(OBJS_TXT) common.h pio.h pdex.h core.h vm.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
+vm.o:vm.c $(OBJS_TXT) common.h core.h vm.h
+	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
 
-.PHONY:mkd
-mkd:
-	$(MKD1)
-	$(MKD2)
-	$(MKD3)
+include mod/Makefile
 
-pd:$(OBJS)
-	$(CC) $(addprefix build/objs/,$(OBJS)) -o $(realpath build/pudron)/pd $(LIBS)
-
-$(OBJS):%.o:%.c
-	$(CC) -c $(CFLAGS) $(realpath $<) -o $(realpath build/objs)/$@
-
-include mod/makefile
-
-.PHONY:test
-test:test$/test.pd
-	$(EXE_PD) test$/test.pd
-
-.PHONY:debug
-debug:build$/pudron$/$(PD_FILE) test$/test.pd
-	gdb --args build$/pudron$/pd test$/test.pd
-
-.PHONY:clean
 clean:
-	-rm -r build$/objs
-	-rm -r build$/pudron
+	-rm -r build
