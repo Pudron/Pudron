@@ -1,8 +1,8 @@
 #include"core.h"
 #include"vm.h"
 #include"pio.h"
-#include<locale.h>
 #include<iconv.h>
+#include<time.h>
 void doexit(VM*vm,Unit*unit){
     while(vm->stackCount>0){
         reduceRef(vm,vm->unit,POP());
@@ -1246,6 +1246,40 @@ FUNC_DEF(change_charset)
     PUSH(rt);
     return;
 FUNC_END()*/
+FUNC_DEF(mrandom)
+    srand((unsigned)time(NULL));
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*argc=loadMember(vm,argv,"count",true);
+    if(argc->num==0){
+        PUSH(newIntObject(rand()));
+    }else if(argc->num==1){
+        Object*max=loadVar(vm,unit,"min");/*min才是第一个参数...(@_@)*/
+        confirmObjectType(vm,max,OBJECT_INT);
+        if(max->num==0){
+            PUSH(newErrorObject(vm,ERR_CALCULATION,L"the max number mustn't be 0."));
+        }else{
+            PUSH(newIntObject(rand()%max->num));
+        }
+        reduceRef(vm,unit,max);
+    }else if(argc->num==2){
+        Object*min=loadVar(vm,unit,"min");
+        confirmObjectType(vm,min,OBJECT_INT);
+        Object*max=loadVar(vm,unit,"max");
+        confirmObjectType(vm,max,OBJECT_INT);
+        if(min->num>=max->num){
+            PUSH(newErrorObject(vm,ERR_CALCULATION,L"the max number must be greater than the min number."));
+        }else{
+            PUSH(newIntObject(rand()%(max->num-min->num)+min->num));
+        }
+        reduceRef(vm,unit,max);
+        reduceRef(vm,unit,min);
+    }else{
+        PUSH(newErrorObject(vm,ERR_ARGUMENT,L"invalid random argument count."));
+    }
+    reduceRef(vm,unit,argc);
+    reduceRef(vm,unit,argv);
+    return;
+FUNC_END()
 PdSTD makeSTD(){
     PdSTD pstd;
     Class class;
@@ -1348,6 +1382,10 @@ PdSTD makeSTD(){
     func=makeFunc("readObjectFile",read_object_file,1,"file");
     pstd.stdFunc[10]=func;
     hashGet(&pstd.hl,"readObjectFile",NULL,true);
+
+    func=makeFunc("random",mrandom,2,"min","max");
+    pstd.stdFunc[11]=func;
+    hashGet(&pstd.hl,"random",NULL,true);
 
     return pstd;
 }

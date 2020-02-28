@@ -1,4 +1,4 @@
-![label PNG](img/label.png)
+![label PNG](docs/img/label.png)
 # Pudron
 ## 一门易用、轻巧、扩展性强、潜力巨大的解释型编程语言
 其极力简化编程，让人打起代码来更省力，把更多的精力集中在实现上。

@@ -25,7 +25,7 @@ else
 	CFLAGS+= -O2
 endif
 
-.PHONY:all clean
+.PHONY:all test debug clean
 all:$(EXE_PD) mod
 
 $(EXE_PD):$(OBJS) build/pudron
@@ -60,6 +60,12 @@ vm.o:vm.c $(OBJS_TXT) common.h core.h vm.h
 	$(CC) -c $(CFLAGS) $< -o $(DIR_OBJS)/$@
 
 include mod/Makefile
+
+test:
+	$(EXE_PD) test/test.pd
+
+debug:
+	gdb --args $(EXE_PD) test/test.pd
 
 clean:
 	-rm -r build

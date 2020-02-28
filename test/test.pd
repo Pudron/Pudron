@@ -1,7 +1,1 @@
-class A{
-    x=123;
-}
-writeObjectFile("test.obj",A);
-B=readObjectFile("test.obj");
-b=B();
-println(b.x);
+println(random(-50,-20));
