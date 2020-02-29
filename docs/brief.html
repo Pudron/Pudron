@@ -15,6 +15,8 @@
 				<ul class="left_nav">
 					<li><a href="#say">前言</a></li>
 					<li><a href="#note">注释</a></li>
+					<li><a href="#name">命名</a></li>
+					<li><a href="#setting">设置</a></li>
 					<li><a href="#exp">表达式</a></li>
 					<li><a href="#const">常量</a></li>
 					<li><a href="#var">变量</a></li>
@@ -29,11 +31,14 @@
 					<li><a href="#print">函数print()</a></li>
 					<li><a href="#input">函数input()</a></li>
 					<li><a href="#range">函数range()</a></li>
+					<li><a href="#random">函数random()</a></li>
 					<li><a href="#compareClass">函数compareClass(object,type)</a></li>
 					<li><a href="#exit">函数exit(id)</a></li>
 					<li><a href="#getPlatform">函数getPlatform()</a></li>
 					<li><a href="#readTextFile">函数readTextFile(file)</a></li>
 					<li><a href="#writeTextFile">函数writeTextFile(file,text)</a></li>
+					<li><a href="#readObjectFile">函数readObjectFile(file)</a></li>
+					<li><a href="#writeObjectFile">函数writeObjectFile(file)</a></li>
 					<li><a href="#module">模块化编程</a></li>
 					<li><a href="#error">异常处理</a></li>
 					<li><a href="#dll">动态链接(DLL)</a></li>
@@ -53,6 +58,15 @@
 					<li>单行注释:<code>##单行注释一直到换行</code></li>
 					<li>有头有尾的注释:<code>#这个注释即能插入又能多行#</code></li>
 				</ul></p><hr/>
+				<h2><a id="name">命名</a></h2>
+				<p>Pudron的关键字、变量等命名只支持英文大小写字母、下划线("_")和数字,数字不能在最前面。<br/>
+				若你想使用其他字符的命名,可以用单引号(')来包围名字,空格、换行符等也会算进名字内,不支持转义字符。</p>
+				<hr/>
+				<h2><a id="setting">设置</a></h2>
+				<p>格式:<code>>>设置名称 设置选项;</code></p>
+				<p>目前只能设置文件编码,格式:<code>>>charset '编码';</code>。<br/>
+				Pudron使用libiconv库来处理编码,支持的编码见<a href="http://www.gnu.org/software/libiconv/">libiconv官网</a>。</p>
+				<hr/>
 				<h2><a id="exp">表达式</a></h2>
 				<p>表达式由常量、变量、函数和运算符组成。</p>
 				<h3>运算符优先级:</h3>
@@ -75,8 +89,8 @@
 				<hr/>
 				<h2><a id="const">常量</a></h2>
 				<p>
-					Pudron的常量有:整数、小数、字符串和列表。<br/>
-					整数示例:<code>123,true,false</code>,(true和false在Pudron属于整数1和0,可以参与运算)<br/>
+					Pudron的常量有:整数、双精度小数、字符串和列表。<br/>
+					整数示例:<code>123,true,false</code>(true和false在Pudron属于整数1和0,可以参与运算)<br/>
 					小数示例:<code>1.23</code><br/>
 					字符串示例:<code>"this is a string"</code><br/>
 					列表示例:<code>{1,2,3}</code>
@@ -97,7 +111,7 @@
 if(条件1){
 	代码块1
 }elif(条件2){
-	代码块1
+	代码块2
 }elif
 ......
 else{
@@ -138,7 +152,7 @@ for(索引变量名,列表){
 }
 				</div></pre>
 				<h3>说明</h3>
-				<p>这将创建一个索引变量,它会在每次循环被依次赋予列表中的值,直到被赋予列表中的最后一个值后为止,for循环常使用<a href="#range">函数range()</a>产生列表。</p>
+				<p>这将创建一个索引变量,它会在每次循环被依次赋予列表中的值,直到被赋予列表中的最后一个值后为止。for循环常使用<a href="#range">函数range()</a>产生列表。</p>
 				<hr/>
 				<h2><a id="func">函数</a></h2>
 				<h3>定义格式</h3>
@@ -254,6 +268,15 @@ println("this is number ",123," and number ",45.6);
 				<h3>range(start,end,step)</h3>
 				<p>返回一个起点为start,终点为end,步长为step的列表。</p>
 				<hr/>
+				<h2><a id="random">函数random()</a></h2>
+				<p>产生一个随机整数,有三种形式</p>
+				<h3>random()</h3>
+				<p>产生一个以0为下限的随机数。</p>
+				<h3>random(max)</h3>
+				<p>产生一个以0为下限,以max为上限的随机数。</p>
+				<h3>random(min,max)</h3>
+				<p>产生一个以min为下限,以max为上限的随机数。</p>
+				<hr/>
 				<h2><a id="compareClass">函数compareClass(object,type)</a></h2>
 				<p>比较对象object的类型是否是type,若是则返回true,不是则返回false。</p>
 				<hr/>
@@ -263,11 +286,17 @@ println("this is number ",123," and number ",45.6);
 				<h2><a id="getPlatform">函数getPlatform()</a></h2>
 				它返回编译的平台,若为windows,返回1,若为linux,返回0。
 				<hr/>
-				<h2><a id="readTextFile">函数readTextFile(file)</a></h2>
-				<p>打开文本文件file并返回读取的内容,返回值为string类型。</p>
+				<h2><a id="readTextFile">函数readTextFile(file,charset)</a></h2>
+				<p>以编码charset打开文本文件file并返回读取的内容,返回值为string类型,若不指定charset,则默认为UTF-8。</p>
 				<hr/>
-				<h2><a id="writeTextFile">函数writeTextFile(file,text)</a></h2>
-				<p>打开文本文件file并向其写入text文本。</p>
+				<h2><a id="writeTextFile">函数writeTextFile(file,text,charset)</a></h2>
+				<p>打开文本文件file并以编码charset向其写入text文本,文件不存在则创建,若不指定charset,则默认为UTF-8。</p>
+				<hr/>
+				<h2><a id="readObjectFile">函数readObjectFile(file)</a></h2>
+				<p>打开Pudron对象文件并返回读取的对象。</p>
+				<hr/>
+				<h2><a id="writeObjectFile">函数writeObjectFile(file,obj)</a></h2>
+				<p>打开Pudron对象文件,文件不存在则创建,并将obj对象写入。</p>
 				<hr/>
 				<h2><a id="module">模块化编程</a></h2>
 				<h3>include</h3>

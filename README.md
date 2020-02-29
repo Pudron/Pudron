@@ -7,20 +7,19 @@
 * 支持多种编程方法，如面向对象、面向过程等
 * 可拓展性强，使用动态链接库来拓展Pudron库
 * 潜力巨大
-## 已编译版
-在[Release](https://gitee.com/pudron/Pudron/releases/v1.0-beta.1)中下载。
-## 编译
-依赖libiconv,请预先安装好  
-在命令行中输入 `make`
-build目录中的pudron即为编译结果  
-注意：在linux上编译时，加上参数 `PLATFORM=LINUX`
+## 下载
+在[Release](https://gitee.com/pudron/Pudron/releases/v1.0-beta.1)中选取相应的包下载。
 ## 用法
-在命令行打开pd来打印参数使用方法  
+`pd [参数] [Pudron代码文件]`
+### 参数
+* -v:查看版本
+* -m [库文件名]:输出Pudron库文件
+在命令行执行`pd`来打印参数具体使用方法  
 ## 开发缘由
 在我学习编程时，我发现许多编程语言的入门门槛很高，一开始就要接触对初学者来说很高大上的概念，
 而且语言格式有点难懂。在开发时实现一个简单的功能却要打大量繁琐的代码，所以我开发这门编程语言来尽量降低入门门槛，
 让编程更轻松。
 ## 文档
-Pudron文档见[这里](https://pudron.gitee.io/pudrondocs)。
+我为你们写好了一个简明文档,详细见[这里]()。
 ## 关于作者
 我的故事也写在文档里,欢迎大家阅读。

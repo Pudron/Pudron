@@ -15,19 +15,48 @@
 			<nav>
 				<ul class="left_nav">
 					<li><a href="#say">说明</a></li>
-					<li><a href="#file">file</a></li>
+					<li><a href="#error">error</a></li>
+					<li><a href="#math">math</a></li>
 				</ul>
 			</nav>
 			<section>
 				<h1><a id="say">Pudron标准模块</a></h1>
 				<p>本文档说明各Pudron标准模块的用法,在使用标准模块之前记得先加上代码<code>import 标准模块名;</code>。</p>
 				<hr/>
-				<h2><a id="file">file</a></h2>
-				<p>本模块用于操作文件。</p>
-				<h3>函数</h3>
+				<h2><a id="error">error</a></h2>
+				<p>本模块用于提供异常处理ID。</p>
+				<h3>提供的整数型ID</h3>
 				<ul>
-					<li><code>readTextFile(file)</code>:读取文件file并返回其文本内容(目前只能读取ACSII格式文件)</li>
-					<li><code>writeTextFile(file,text)</code>:将字符串text写入文件file中,文件不存在则创建</li>
+					<li>ERROR_INDEX:索引异常,常用于subscript</li>
+					<li>ERROR_CALCULATION:计算异常</li>
+					<li>ERROR_FILE:文件操作异常</li>
+					<li>ERROR_ARGUMENT:传入参数异常</li>
+					<li>ERROR_MEMORY:内存异常</li>
+				</ul>
+				<hr/>
+				<h2><a id="math">math</a></h2>
+				<p>本模块集成了常用的数学运算函数。</p>
+				<h3>函数(返回值为double,参数可以为int或double)</h3>
+				<ul>
+					<li><code>sqrt(a)</code>:计算a的开方</li>
+					<li><code>pow(a,b)</code>:计算a的b次方</li>
+					<li><code>acos(a)</code>:计算a的反余弦</li>
+					<li><code>asin(a)</code>:计算a的反正弦</li>
+                    <li><code>atan(a)</code>:计算a的反正切</li>
+                    <li><code>atan2(a,b)</code>:计算a/b的反正切</li>
+                    <li><code>cos(a)</code>:计算a的余弦</li>
+                    <li><code>cosh(a)</code>:计算a的双曲余弦</li>
+                    <li><code>sin(a)</code>:计算a的正弦</li>
+                    <li><code>sinh(a)</code>:计算a的双曲正弦</li>
+                    <li><code>tan(a)</code>:计算a的正切</li>
+                    <li><code>tanh(a)</code>:计算a的双曲正切</li>
+                    <li><code>exp(a)</code>:计算e的a次幂</li>
+                    <li><code>log(a)</code>:计算a的对数</li>
+                    <li><code>log10(a)</code>:计算以10为底a的对数</li>
+                    <li><code>ceil(a)</code>:计算大于或等于a的最小的整数值</li>
+                    <li><code>fabs(a)</code>:计算a的绝对值</li>
+                    <li><code>floor(a)</code>:计算小于或等于a的最大的整数值</li>
+                    <li><code>fmod(a,b)</code>:计算a除以b的余数</li>
 				</ul>
 			</section>
 		</div>

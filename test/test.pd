@@ -1,1 +1,2 @@
-writeTextFile("测试.txt","奥术大师大所大所大所大所大所大所多");
+>>charset 'UTF-8';
+println("啊是哒是哒");

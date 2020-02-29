@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="stylesheet" type="text/css" href="css/main.css"/>
+		<link rel="shortcut icon" href="img/logo.png"/>
+		<title>Pudron Brief Documents</title>
+	</head>
+	<body>
+		<header>
+			<img src="img/doc.png" width="600px" height="86px"/>
+		</header>
+		<div class="content">
+			<nav>
+				<ul class="left_nav">
+					<li><a href="#say">Preface</a></li>
+					<li><a href="#note">Note</a></li>
+					<li><a href="#name">Name</a></li>
+					<li><a href="#setting">Setting</a></li>
+					<li><a href="#exp">Expression</a></li>
+					<li><a href="#const">Constant</a></li>
+					<li><a href="#var">Variable</a></li>
+					<li><a href="#statif">Condition Statement(if)</a></li>
+					<li><a href="#statwhile">Loop Statement(while)</a></li>
+					<li><a href="#statdo">Loop Statement(do while)</a></li>
+					<li><a href="#statfor">Loop Statement(for)</a></li>
+					<li><a href="#func">Function</a></li>
+					<li><a href="#class">Class</a></li>
+					<li><a href="#string">Text(string)</a></li>
+					<li><a href="#list">Array(List)</a></li>
+					<li><a href="#print">The function print()</a></li>
+					<li><a href="#input">The function input()</a></li>
+					<li><a href="#range">The function range()</a></li>
+					<li><a href="#random">The function random()</a></li>
+					<li><a href="#compareClass">The function compareClass(object,type)</a></li>
+					<li><a href="#exit">The function exit(id)</a></li>
+					<li><a href="#getPlatform">The function getPlatform()</a></li>
+					<li><a href="#readTextFile">The function readTextFile(file)</a></li>
+					<li><a href="#writeTextFile">The function writeTextFile(file,text)</a></li>
+					<li><a href="#readObjectFile">The function readObjectFile(file)</a></li>
+					<li><a href="#writeObjectFile">The function writeObjectFile(file)</a></li>
+					<li><a href="#module">Modular Programming</a></li>
+					<li><a href="#error">Exception Handling</a></li>
+					<li><a href="#dll">Dynamic Link(DLL)</a></li>
+				</ul>
+			</nav>
+			<section>
+				<h1>Pudron Brief Documents</h1><hr/>
+				<h2><a id="say">Preface</a></h2>
+				<p>
+					It's a great honor for you to open to this page.You may have mastered Pudron or have your own opinions Pudron or just want to browse it.
+					Anyhow,I can't help showing the brief documents to you.<br/>
+					This document provides a concise overview of the various syntax and formats of the Pudron.
+				</p><hr/>
+				<h2><a id="note">Note</a></h2>
+				<p>Syntax:<br/>
+				<ul>
+					<li>one-line note:<code>##this is a one-line note</code></li>
+					<li>the note with head and end:<code>#this is the note than supports muti-line note#</code></li>
+				</ul></p><hr/>
+				<h2><a id="name">Name</a></h2>
+				<p>Putron's keywords, variables and other names only support English case letters, underscores("_") and numbers, and numbers cannot be at the top.<br/>
+				If you want to use the names of other characters, you can use single quotation marks (') to surround the names. Spaces, line breaks, etc. will also be included in the names. Escape characters are not supported.</p>
+				<hr/>
+				<h2><a id="setting">Setting</a></h2>
+				<p>Syntax:<code>>>setting option;</code></p>
+				<p>Currently, only the file code can be set,syntax:<code>>>charset 'file code';</code>.<br/>
+				Pudron uses libiconv library to process encoding.See supported encodings:<a href="http://www.gnu.org/software/libiconv/">libiconv official website</a>。</p>
+				<hr/>
+				<h2><a id="exp">Expression</a></h2>
+				<p>An expression consists of constants, variables, functions, and operators.</p>
+				<h3>Operator precedence:</h3>
+				<p>(Descending priority from top to bottom)</p>
+				<table border="1">
+					<tr>
+						<th>Priority</th>
+						<th>Operators</th>
+					</tr>
+					<tr><td>1</td><td>~</td></tr>
+					<tr><td>2</td><td>&lt&lt,&gt&gt</td></tr>
+					<tr><td>3</td><td>&,|</td></tr>
+					<tr><td>4</td><td>!</td></tr>
+					<tr><td>5</td><td>%,*,/</td></tr>
+					<tr><td>6</td><td>+,-</td></tr>
+					<tr><td>7</td><td>&lt,&gt,&lt=,&gt=,=,!=</td></tr>
+					<tr><td>8</td><td>and,or</td></tr>
+				</table>
+				<p>Note:“=” here is logical operator,not assignment operator.</p>
+				<hr/>
+				<h2><a id="const">Constant</a></h2>
+				<p>
+					Pudron's constants are: integer, double decimal, string, and list.<br/>
+					Integer example:<code>123,true,false</code>(The true and false in Pudron are integers.They can participate in calculations.)<br/>
+					Decimal example :<code>1.23</code><br/>
+					String example:<code>"this is a string"</code><br/>
+					List example:<code>{1,2,3}</code>
+				</p>
+				<hr/>
+				<h2><a id="var">Variable</a></h2>
+				<p>A variable in Pudron is an object.It can be an integer(int)、a decimal(double)、a text(string)、a list(List)、a function(Func)、 a class(Class) and so on.</p>
+				<h3>Create</h3>
+				<p>When you assign or reference an unknown variable, the unknown variable is created and the default value is the integer 0.</p>
+				<h3>Assignment</h3>
+				<p>Syntax:<code>var1,var2,var3,...=exp1,exp2,exp3,...;</code></p>
+				<p>Assignment symbols can be simplified:+=,-=,*=,/=,&=,|=,%=,&lt&lt=,&gt&gt=.</p>
+				<p>When there are more variables on the left than expressions on the right, the extra variables on the left are assigned the value of the last expression on the right.</p>
+				<hr/>
+				<h2><a id="statif">Condition statement (if)</a></h2>
+				<h3>Syntax</h3>
+				<pre><div class="code">
+if(condition1){
+	code block 1
+}elif(condition2){
+	code block 2
+}elif
+......
+else{
+	code block 3
+}
+				</div></pre>
+				<h3>Description</h3>
+				<p>A condition is an expression. When the result of the expression is not 0, the condition is true, otherwise it is not true.</p>
+				<p>When condition 1 is satisfied, code block 1 is executed; otherwise, condition 2 is judged. If the conditions are not satisfied, code block 3 is executed.<br/>
+					There can be multiple 'elifs' or none. There can be only one or no 'else'. The 'else' must be at the end.
+				</p>
+				<hr/>
+				<h2><a id="statwhile">Loop statement (while)</a></h2>
+				<h3>Syntax</h3>
+				<pre><div class="code">
+while(condition){
+	code block
+}
+				</div></pre>
+				<h3>Description</h3>
+				<p>When the condition is satisfied, the code block is executed and the condition is judged until the condition is not satisfied. </p>
+				<hr/>
+				<h2><a id="statdo">Loop statement (do while)</a></h2>
+				<h3>Syntax</h3>
+				<pre><div class="code">
+do{
+	code block
+}while(condition);
+				</div></pre>
+				<h3>Description</h3>
+				<p>The code block is executed first, and then the condition is judged. If the condition is satisfied, the code block is executed again until the condition is not established. </p>
+				<hr/>
+				<h2><a id="statfor">Loop statement (for)</a></h2>
+				<h3>Syntax</h3>
+				<pre><div class="code">
+for(Index variable name ,list){
+	code block
+}
+				</div></pre>
+				<h3>Description </h3>
+				<p>This will create an index variable, which will be assigned the value in the list in turn on each loop, until after the last value in the list.for statement usually use <a href="#range">the function range()</a>to produce a list.</p>
+				<hr/>
+				<h2><a id="func">Function</a></h2>
+				<h3>Define syntax</h3>
+				<pre><div class="code">
+func name(arg1,arg2,arg3,...){
+	code block
+}
+				</div></pre>
+				<h3>Description</h3>
+				<ul>
+					<li>A value will be returned by <code>return expression;</code></li>
+					<li>Each function (including class methods) will carry the argv variable, which is a list containing all the parameters passed in this call </li>
+					<li>The number of parameters passed in when calling the function can be different from the definition.The number of parameters passed in to the function is obtained by accessing the count of the members of argv,which is <code>argv.count</code></li>
+					<li>All functions and methods return an integer of 0 by default</li>
+					<li>A function is also an object that can be used for assignment</li>
+				</ul>
+				<hr/>
+				<h2><a id="class">Class</a></h2>
+				<h3>Syntax</h3>
+				<pre><div class="code">
+class name:parent class 1,parent class 2,...{
+	member 1;
+	member 2=expression;
+	......
+	func method(arg1,arg2,arg3,...){
+		code block
+	}
+	......
+}
+				</div></pre>
+				<h3>Description</h3>
+				<ul>
+					<li>Class members support initialization, and expressions are evaluated when objects are created</li>
+					<li>Class member initialization cannot be as many member assignments as variable assignments</li>
+					<li>The class method definition format is the same as the function definition.When the method is called, there will also be the argv variable, and this variable will point to the object itself</li>
+					<li>Create an object by calling a function with the same name as the class.When the object is created, a method named opInit is executed.The parameters are the same as those of the calling object creation function. </li>
+					<li>When an object is destroyed, a method named opDestroy is called first, but no parameters are passed in.The opDestroy method is not necessary.The object cannot be destroyed by calling the opDestroy method.When an object is not referenced by any variable, the object is automatically destroy </li>
+					<li>Class member access:<code>object.member</code></li>
+					<li>Class method call :<code>object.method(arguments)</code></li>
+					<li>When calling this class method within a class method,you can ellipsis 'this.method()'</li>
+					<li>If a class inherits a parent class, this class has all members and methods of the parent class and the parent class of the parent class</li>
+					<li>If the member or method name of the subclass is the same as that of the parent class,you can use <code>parent.member</code> or <code>parent.method()</code> to access parent class members or call parent class methods</li>
+					<li>Class members, methods, and parent classes are not required by force</li>
+					<li>Method 'opSubscript(arguments...) can be called by <code>object[arguments...]</code>.This is often used when parameters are used as indexes</li>
+					<li>
+						Custom calculation method is supported,which has one and only one argument.Correspondence table of operators and method names:
+						<table border="1">
+							<tr><th>Operator</th><th>Method name</th></tr>
+							<tr><td>+</td><td>opAdd</td></tr>
+							<tr><td>-</td><td>opSub</td></tr>
+							<tr><td>*</td><td>opMul</td></tr>
+							<tr><td>/</td><td>opDiv</td></tr>
+							<tr><td>&</td><td>opAnd</td></tr>
+							<tr><td>|</td><td>opOr</td></tr>
+							<tr><td>and</td><td>opCand</td></tr>
+							<tr><td>or</td><td>opCor</td></tr>
+							<tr><td>&lt&lt</td><td>opLeft</td></tr>
+							<tr><td>&gt&gt</td><td>opRight</td></tr>
+							<tr><td>=</td><td>opEqual</td></tr>
+							<tr><td>!=</td><td>opNotEqual</td></tr>
+							<tr><td>&lt</td><td>opLthan</td></tr>
+							<tr><td>&gt</td><td>opGthan</td></tr>
+							<tr><td>&lt=</td><td>opLthanEqual</td></tr>
+							<tr><td>&gt=</td><td>opGthanEqual</td></tr>
+							<tr><td>%</td><td>opRem</td></tr>
+						</table>
+					</li>
+				</ul>
+				<hr/>
+				<h2><a id="string">Text(string)</a></h2>
+				<h3>Create:</h3>
+				<ol>
+					<li>Created by constant,such as:<code>"this is a string"</code></li>
+					<li>Created by class,such as:<code>string("this is a string")</code></li>
+				</ol>
+				<p>Escape characters are supported:\n(Newline),\0(termination),\r(Enter),\t(Horizontal tab ),\v(Vertical tabulation),\a(Bell ),\b(Backspace),\f(Form feed)。<br/>
+					Literal character:\",\',\\。</p>
+				<p>Pudron's string can be used to concatenate strings or format constants using the "+" operator, and can also be used to concatenate strings or format constants through constructors, such as:</p>
+				<pre><div class="code">
+str1="the number is"+1+1.23;
+str2=string("the number is",1,1.23);
+				</div></pre>
+				<p>string uses the "=" operator to determine whether two strings are equal, and accesses the (n-1)th character through subscripts such as <code>str[n]</code>.</p>
+				<hr/>
+				<h2><a id="list">Array(List)</a></h2>
+				<h3>Create:</h3>
+				<ol>
+					<li>Created by constant,such as:<code>{123,45.6,"test"}</code></li>
+					<li>Created by class,such as:<code>List(123,45.6,"test")</code></li>
+				</ol>
+				<p>A list can contain different types of variables. You can assign values ​​to the (n-1)th list variable through subscripts such as <code>list[n]</code>.</p>
+				<p>List's method 'add(element)' can add the element to the list.</p>
+				<hr/>
+				<h2><a id="print">Function print()</a></h2>
+				<h3>Description</h3>
+				<p>Format the parameters on the screen. There can be multiple parameters. The return value is an integer of 0, which is meaningless.</p>
+				<p>You can also use println () function to output and newline, its parameters and return value are exactly the same as print (). </p>
+				<h3>Example</h3>
+				<pre><div class="code">
+print("this is number ",123," and number ",45.6,"\n");
+println("this is number ",123," and number ",45.6);
+				</div></pre>
+				<hr/>
+				<h2><a id="input">Function input()</a></h2>
+				It returns a line of string entered by the user.
+				<hr/>
+				<h2><a id="range">Function range()</a></h2>
+				<p>The function of range () is to generate an ordered list of integers, often for <a href="#statfor">for loop</a>, which has three forms</p>
+				<h3>range(count)</h3>
+				<p>Returns a list with a starting point of 0, an ending point of count-1, and a step size of 1. In simple terms, it is to generate a list of counts from 0 to count-1.</p>
+				<h3>range(start,end)</h3>
+				<p>Returns a list with a start point of start, an end point of end, and a step size of 1. In simple terms, it generates a list from start to end.</p>
+				<h3>range(start,end,step)</h3>
+				<p>Returns a list with a start point of start, an end point of end, and a step size of step.</p>
+				<hr/>
+				<h2><a id="random">Function random()</a></h2>
+				<p>It generates a random integer,which has three forms</p>
+				<h3>random()</h3>
+				<p>Generate a random number with a lower limit of 0.</p>
+				<h3>random(max)</h3>
+				<p>Generate a random number with 0 as the lower limit and max as the upper limit。</p>
+				<h3>random(min,max)</h3>
+				<p>enerate a random number with min as the lower limit and max as the upper limit.</p>
+				<hr/>
+				<h2><a id="compareClass">Function compareClass(object,type)</a></h2>
+				<p>Compares whether the type of object object is type, returns true if it is, false otherwise.</p>
+				<hr/>
+				<h2><a id="exit">Function exit(id)</a></h2>
+				Function: Exit the program with id as the return value.
+				<hr/>
+				<h2><a id="getPlatform">Function getPlatform()</a></h2>
+				It returns the compiled platform, if it is Windows, it returns 1, if it is Linux, it returns 0. 
+				<hr/>
+				<h2><a id="readTextFile">Function readTextFile(file,charset)</a></h2>
+				<p>Open the text file file with encoded charset and return the read content. The return value is string type. If charset is not specified, it defaults to UTF-8.</p>
+				<hr/>
+				<h2><a id="writeTextFile">Function writeTextFile(file,text,charset)</a></h2>
+				<p>Open the text file file and write the text to it with the encoded charset. If there is no charset, the default is UTF-8.</p>
+				<hr/>
+				<h2><a id="readObjectFile">Function readObjectFile(file)</a></h2>
+				<p>Open the Pudron object file and return the read object.</p>
+				<hr/>
+				<h2><a id="writeObjectFile">Function writeObjectFile(file,obj)</a></h2>
+				<p>Open the putron object file, create it if it does not exist, and write the obj object.</p>
+				<hr/>
+				<h2><a id="module">Modular programming</a></h2>
+				<h3>include</h3>
+				<p>You can use <code>include "full file name";</code> to include a Pudron code file (with a .pd extension). </p>
+				<p>You can also use <code>include file name (excluding suffix and path);</code> to import Pudron code files in the current directory. 。</p>
+				<h3>import</h3>
+				<p>At compile time, you can use <code>pd code file name -m output module file name</code> to output the module.</p>
+				<p>You can use <code> import "full file name"; </code> to import a Pudron-compiled module file(suffix .pdm).</p>
+				<p>When you use the <code>import file name (excluding the suffix and path);</code>, Pudron will look for the module file from the mod folder in its installation directory.</p>
+				<hr/>
+				<h2><a id="error">Exception handling</a></h2>
+				<p>Pudron provides the Error class to store exception information, its member 'id' stores the exception information index, and member 'message' stores the exception information text.<br/>
+					The constructor of Error is 'Error(id, message)', which assigns values ​​to its members.</p>
+				<p>Pudron provides some exception information indexes, including:</p>
+				<ul>
+					<li>ERROR_INDEX:Subscript access error</li>
+					<li>ERROR_CALCULATION:Operation error, such as the divisor is 0</li>
+					<li>ERROR_FILE:File operation error </li>
+					<li>ERROR_ARGUMENT:Parameter incoming error</li>
+					<li>ERROR_MEMORY:Memory operation error</li>
+				</ul>
+				<p>These indexes are in the error module. To use them, add <code>import error;</code> to your code. <br/> You can also customize the exception information index. When you want to report an error and terminate the program, you need to return an object of type Error, for example:</p>
+				<pre><div class="code">
+import error;
+#Division function #
+func div(a,b){
+	#Must have two parameters#
+	if(argv.count!=2){
+		return Error(ERROR_ARGUMENT,"it need 2 arguments.");
+	}
+	if(b=0){
+		return Error(ERROR_CALCULATION,"divisor can not be 0.");
+	}
+	return a/b;
+}
+				</div></pre>
+				<p>When you do not want to exit the program directly after an error occurs, you can surround it with a try-catch statement where the error may be returned.The format of the statement is as follows:</p>
+				<pre><div class="code">
+try{
+	code block which may return Error object
+}catch(Error variable name){
+	code block handling error
+}
+				</div></pre>
+				<p>Pudron will first execute the code block that may return an error.When a piece of code in the code block returns an error, Pudron will assign the error object to the error variable, and execute the processing of the error code block, and then continue to execute the code (it will not go back and continue executing the code below the error code). </p>
+				<hr/>
+				<h2><a id="dll">Dynamic link (DLL)</a></h2>
+				<h3>Writing dynamic libraries</h3>
+				<p>The dynamic link library must be written using the data structure in the header file pdex.h provided by Pudron, otherwise it cannot be used normally.</p>
+				<ol>
+					<li>use pdex.h:<code>#include"pdex.h"</code></li>
+					<li>Use the macro PD_FUNC_DEF(function name) to define a function</li>
+					<li>Use the macro PD_ARG_COUNT to get the number of incoming parameters</li>
+					<li>Use the macro PD_ARG(index) to obtain the (index-1)th parameter, and determine its type by its member type.The types are as follows:
+					<ul>
+						<li>PVAL_INT(int)</li>
+						<li>PVAL_DOUBLE(double)</li>
+						<li>PVAL_STRING(string)</li>
+					</ul>
+					Access its value through the members 'int num', 'double numd' or 'wchar_t *str' respectively (note: str is a wide character type, pay attention to its usage)</li>
+					<li>Use the macro PD_RETURN_INT(val) to return the integer val, PD_RETURN_DOUBLE(val) to return the decimal val, and PD_RETURN_STRING(val) to return the string val. If there is no return statement, the integer 0 is returned by default</li>
+					<li>Use the macro PD_ERROR (id, message) to report an error with id as the index and message as the error message. The id provided by Pudron:
+					<ul>
+						<li>PERROR_INDEX</li>
+						<li>PERROR_CALCULATION</li>
+						<li>PERROR_FILE</li>
+						<li>PERROR_ARGUMENT</li>
+						<li>PERROR_MEMORY</li>
+					</ul>
+					You can also use a custom id, but it must be int</li>
+				</ol>
+				<h4>Example</h4>
+				<pre><div class="code">
+/*mysin.c*/
+#include"pdex.h"
+#include&ltmath.h&gt
+PD_FUNC_DEF(mysin){
+	if(PD_ARG_COUNT!=1){
+		PD_ERROR(PERROR_ARGUMENT,"only need 1 argument.");
+	}
+	if(PD_ARG(0).type!=PVAL_DOUBLE){
+		PD_ERROR(PERROR_ARGUMENT,"the argument type must be double.");
+	}
+	double result=sin(PD_ARG(0).numd);
+	PD_RETURN_DOUBLE(result);
+}
+				</div></pre>
+				<h4>Compile</h4>
+				<p><code>gcc -Wall -shared mysin.c -o mysin.dll(Written as libmysin.so under linux platform)</code><br/>
+					Other compilers are fine, as long as they can generate dynamic libraries.</p>
+				<h3>Calling the dynamic library</h3>
+				<p>Use DLL classes to call dynamic libraries.</p>
+				<h4>Constructor function</h4>
+				<code>DLL(file)</code><br/>
+				Read the dynamic library file file and load it. If the file does not exist in the current directory, look in the 'mod' folder in the 'Pudron' directory.
+				<h4>Get function method</h4>
+				<code>getFunc(function)</code><br/>
+				Read the function in the dynamic library and return it.
+				<h4>Example</h4>
+				<pre><div class="code">
+sinDLL=DLL("mysin.dll");#linux下为libmysin.so#
+sin=sinDLL.getFunc("mysin");
+println(sin(3.14));
+				</div></pre>
+			</section>
+		</div>
+	</body>
+</html>

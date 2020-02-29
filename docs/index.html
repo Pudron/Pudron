@@ -4,11 +4,11 @@
 		<meta charset="utf-8" />
 		<link rel="stylesheet" type="text/css" href="css/main.css"/>
 		<link rel="shortcut icon" href="img/logo.png"/>
-		<title>Pudron文档</title>
+		<title>Pudron</title>
 	</head>
 	<body>
 		<header>
-			<img src="img/doc_cn.png" width="578px" height="86px"/>
+			<img src="img/label.png" width="903px" height="356px"/>
 		</header>
 		<div class="content">
 			<nav>
@@ -17,11 +17,11 @@
 					<li><a href="brief.html">简明文档</a></li>
 					<li><a href="tutorial.html">详细教学</a></li>
 					<li><a href="module.html">标准模块</a></li>
-					<li><a href="">我的故事</a></li>
+					<li><a href="story.html">我的故事</a></li>
 				</ul>
 			</nav>
 			<section>
-				<h1>引言</h1><hr/>
+				<h1>自我介绍</h1><hr/>
 				<p><strong>Pudron</strong>是一门易用、轻巧、扩展性强、潜力巨大的解释型编程语言。</p>
 				<p>
 					<h3>Pudron自认为骄傲的地方:</h3>
@@ -43,20 +43,17 @@
 				<p>
 					我希望大家能积极学习使用Pudron,毕竟他的潜力还是很大的,我将致力让Pudron用最简单的语句呈现最强大的功能。
 				</p>
+				<h2>下载</h2>
+				<p>在<a href="">Release</a>页选取相应的包下载。</p>
 				<p>
 					<h3>编译</h3>
-					<p>
-						编译比较简单,直接一个<code>make</code>就行了,默认为Windows编译模式,在Linux下编译需要加上参数<code>PLATFORM=LINUX</code>。
-					</p>
+					<ul>
+						<li>Windows:使用<a target="_blank" href="https://www.msys2.org/">Msys2</a>编译,记得先安装gcc和make,运行<code>make PLATFORM=WINDOWS</code></li>
+						<li>Linux:编译前先安装<a target="_blank" href="http://www.gnu.org/software/libiconv/">libiconv库</a>,运行<code>make PLATFORM=LINUX</code></li>
+					</ul>
 				</p>
 				<p>
-					<h3>获取</h3>
-					<p>
-						如果你不想编译,可以在[这里]()下载编译好的版本。
-					</p>
-				</p>
-				<p>
-					<h3>使用</h3>
+					<h3>文档</h3>
 					如果你是第一次接触Pudron或者第一次接触编程,可以看<a href="tutorial.html">详细教学</a>,如果你认为你已经有所了解,可以看<a href="brief.html">简明文档</a>。
 					<br/><strong>你们学习和使用Pudron就是对我最大的支持!</strong>
 				</p>

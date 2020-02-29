@@ -1,4 +1,4 @@
-#this is only a demo to test
+#this is only a demo to test#
 class Person{
     name;
     func opInit(argName){
@@ -10,4 +10,4 @@ class Person{
 }
 I=Person("I");
 you=Person("Blue");
-I.love(you);#
+I.love(you);
