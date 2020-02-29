@@ -1,1 +1,1 @@
-println(random(-50,-20));
+writeTextFile("测试.txt","奥术大师大所大所大所大所大所大所多");

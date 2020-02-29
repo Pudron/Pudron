@@ -1072,7 +1072,7 @@ FUNC_END()
 FUNC_DEF(read_text_file)
     Object*fname=loadVar(vm,unit,"file");
     confirmObjectType(vm,fname,OBJECT_STRING);
-    char*fileName=wstrtostr(fname->str,"UTF-8");
+    char*fileName=wstrtostr(fname->str,"char");
     if(fileName==NULL){
         Object*err=newErrorObject(vm,ERR_FILE,L"readTextFile:%s",strerror(errno));
         reduceRef(vm,unit,fname);
@@ -1115,7 +1115,7 @@ FUNC_DEF(write_text_file)
     Object*st=loadVar(vm,unit,"text");
     confirmObjectType(vm,fname,OBJECT_STRING);
     confirmObjectType(vm,st,OBJECT_STRING);
-    char*fileName=wstrtostr(fname->str,"UTF-8");
+    char*fileName=wstrtostr(fname->str,"char");
     if(fileName==NULL){
         vmError(vm,L"writeTextFile:%s.",strerror(errno));
     }
@@ -1147,7 +1147,7 @@ FUNC_END()
 FUNC_DEF(read_object_file)
     Object*file=loadVar(vm,unit,"file");
     confirmObjectType(vm,file,OBJECT_STRING);
-    char*fname=wstrtostr(file->str,"UTF-8");
+    char*fname=wstrtostr(file->str,"char");
     if(fname==NULL){
         vmError(vm,L"%s",strerror(errno));
     }
@@ -1186,7 +1186,7 @@ FUNC_DEF(write_object_file)
     Object*file=loadVar(vm,unit,"file");
     Object*obj=loadVar(vm,unit,"obj");
     confirmObjectType(vm,file,OBJECT_STRING);
-    char*fname=wstrtostr(file->str,"UTF-8");
+    char*fname=wstrtostr(file->str,"char");
     if(fname==NULL){
         vmError(vm,L"%s",strerror(errno));
     }

@@ -1,7 +1,7 @@
 vpath %.h include
 vpath %.c src
 vpath %.o build/objs
-BUILD ?= DEBUG
+BUILD ?= RELEASE
 PLATFORM ?= WINDOWS
 CC=gcc
 CFLAGS=-Iinclude -Wall -D$(PLATFORM) -D$(BUILD) -std=c18
