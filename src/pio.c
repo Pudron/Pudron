@@ -105,7 +105,7 @@ HashList readHashList(Bin*bin){
     HashList hl;
     hl.capacity=readInt(bin);
     hl.slot=(HashSlot*)memManage(NULL,hl.capacity*sizeof(HashSlot));
-    HashSlot hs={NULL,-1,false,NULL};
+    HashSlot hs=HASH_NULL;
     for(int i=0;i<hl.capacity;i++){
         hl.slot[i].isUsed=bin->dat[bin->ptr++];
         if(hl.slot[i].isUsed){

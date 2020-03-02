@@ -18,7 +18,7 @@
 #define VERSION 1
 #define VERSION_MIN 1
 
-#define STD_CLASS_COUNT 8
+#define STD_CLASS_COUNT 9
 #define STD_FUNC_COUNT 12
 
 /*List Operations*/
@@ -80,6 +80,7 @@
     memcpy(list.vals+position+1,list.vals+position,(list.count-position)*sizeof(type));\
     list.vals[position]=val;
 
+#define ABS(x) ((x)>=0?(x):(-x)) /*绝对值*/
 typedef enum{
     TOKEN_END,
     TOKEN_UNKNOWN,
@@ -246,7 +247,10 @@ LIST_DECLARE(Const)
 LIST_DECLARE(Module)
 typedef struct ObjectDef Object;
 typedef struct{
-    char*name;
+    union{
+        char*name;
+        Object*objKey;
+    };
     int nextSlot;
     bool isUsed;
     Object*obj;
@@ -255,6 +259,7 @@ typedef struct{
     int capacity;
     HashSlot*slot;
 }HashList;
+#define HASH_NULL ((HashSlot){{NULL},-1,false,NULL})
 struct ModuleDef{
     char*name;
     /*unit start*/
@@ -322,6 +327,7 @@ struct ObjectDef{
         OBJECT_LIST,
         OBJECT_DLL,
         OBJECT_ERROR,
+        OBJECT_MAP,
         OBJECT_OTHERS
     }type;
     NameList classNameList;
@@ -332,6 +338,7 @@ struct ObjectDef{
         Func func;
         Class class;
         Object**subObj;/*用于list*/
+        HashList map;
     };
     HashList member;
     int refCount;
@@ -383,7 +390,9 @@ HashList newHashList();
 void expandHashList(HashList*hl,int size);
 HashList hashMerge(HashList hl1,HashList hl2);
 HashList hashCopy(HashList hl);
-void hashPrint(HashList hl);
+int hashAdd(HashList*hl,Object*objKey,Object*objVal);
+Object*hashSearch(HashList*hl,Object*objKey);
+void hashPrint(HashList hl,bool isObj);
 wchar_t*strtowstr(char*str,char*fromCode);
 char*wstrtostr(wchar_t*wstr,char*toCode);
 #endif

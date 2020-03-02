@@ -543,7 +543,7 @@ Object*readObject(VM*vm,Bin*bin){
             READ_LIST(bin,obj->classNameList,Name,String)
             obj->member.capacity=readInt(bin);/*写入时capacity必须大于0*/
             obj->member.slot=(HashSlot*)memManage(NULL,obj->member.capacity*sizeof(HashSlot));
-            HashSlot hs={NULL,-1,false,NULL};
+            HashSlot hs=HASH_NULL;
             for(int i=0;i<obj->member.capacity;i++){
                 obj->member.slot[i].isUsed=bin->dat[bin->ptr++];
                 if(obj->member.slot[i].isUsed){
@@ -1212,40 +1212,68 @@ FUNC_DEF(write_object_file)
     reduceRef(vm,unit,obj);
     reduceRef(vm,unit,file);
 FUNC_END()
-/*暂时没什么用处
-FUNC_DEF(change_charset)
-    Object*st=loadVar(vm,unit,"text");
-    Object*toc=loadVar(vm,unit,"toCode");
-    Object*foc=loadVar(vm,unit,"fromCode");
-    char*toCode=wstrtostr(toc->str);
-    char*fromCode=wstrtostr(foc->str);
-    char*fstr=wstrtostr(st->str);
-    if(toCode==NULL || fromCode==NULL || fstr==NULL){
-        vmError(vm,L"changeCharset:%s.",strerror(errno));
+FUNC_DEF(map_create)
+    Object*this=loadVar(vm,unit,"this");
+    Object*cap=loadVar(vm,unit,"capacity");
+    confirmObjectType(vm,cap,OBJECT_INT);
+    int capacity=(cap->num>0)?pow2(cap->num):1;
+    this->type=OBJECT_MAP;
+    this->map.capacity=capacity;
+    this->map.slot=(HashSlot*)memManage(NULL,capacity*sizeof(HashSlot));
+    for(int i=0;i<capacity;i++){
+        this->map.slot[i]=HASH_NULL;
     }
-    iconv_t cd=iconv_open(toCode,fromCode);
-    if(cd==(iconv_t)-1){
-        vmError(vm,L"changeCharset:%s.",strerror(errno));
+    reduceRef(vm,unit,cap);
+    reduceRef(vm,unit,this);
+FUNC_END()
+FUNC_DEF(map_subscript)
+    Object*argv=loadVar(vm,unit,"argv");
+    Object*argc=loadMember(vm,argv,"count",true);
+    if(argc->num!=2){
+        PUSH(newErrorObject(vm,ERR_ARGUMENT,L"expected only one argument in Map subscript."));
+        reduceRef(vm,unit,argc);
+        reduceRef(vm,unit,argv);
+        return;
     }
-    size_t flen=strlen(fstr),dlen=flen*2;
-    char*dstr=(char*)memManage(NULL,(dlen+1)*sizeof(char));
-    char*dptr=dstr,*fptr=fstr;
-    if(iconv(cd,&fptr,&flen,&dptr,&dlen)==(size_t)-1){
-        vmError(vm,L"changeCharset:%s.",strerror(errno));
+    Object*this=loadVar(vm,unit,"this");
+    Object*key=loadVar(vm,unit,"key");
+    Object*rt=hashSearch(&this->map,key);
+    if(rt==NULL){
+        PUSH(newErrorObject(vm,ERR_INDEX,L"Map key no found."));
+    }else{
+        rt->refCount++;
+        PUSH(rt);
     }
-    iconv_close(cd);
-    wchar_t*wstr=strtowstr(dstr);
-    Object*rt=newStringObject(vm,wstr);
-    free(toCode);
-    free(fromCode);
-    free(fstr);
-    free(dstr);
-    reduceRef(vm,unit,foc);
-    reduceRef(vm,unit,toc);
-    reduceRef(vm,unit,st);
-    PUSH(rt);
+    reduceRef(vm,unit,key);
+    reduceRef(vm,unit,this);
+    reduceRef(vm,unit,argc);
+    reduceRef(vm,unit,argv);
     return;
-FUNC_END()*/
+FUNC_END()
+FUNC_DEF(map_destroy)
+    Object*this=loadVar(vm,unit,"this");
+    HashSlot hs;
+    for(int i=0;i<this->map.capacity;i++){
+        hs=this->map.slot[i];
+        if(hs.isUsed){
+            reduceRef(vm,unit,hs.objKey);
+            reduceRef(vm,unit,hs.obj);
+        }
+    }
+    free(this->map.slot);
+    reduceRef(vm,unit,this);
+FUNC_END()
+FUNC_DEF(map_add)
+    Object*this=loadVar(vm,unit,"this");
+    Object*key=loadVar(vm,unit,"key");
+    Object*value=loadVar(vm,unit,"value");
+    if(hashAdd(&this->map,key,value)<0){
+        PUSH(newErrorObject(vm,ERR_INDEX,L"can not add the new element to the map."));
+        reduceRef(vm,unit,this);
+        return;
+    }
+    reduceRef(vm,unit,this);
+FUNC_END()
 FUNC_DEF(mrandom)
     srand((unsigned)time(NULL));
     Object*argv=loadVar(vm,unit,"argv");
@@ -1337,6 +1365,15 @@ PdSTD makeSTD(){
     addClassFunc(&class,METHOD_NAME_INIT,error_create,2,"err_id","err_message");
     pstd.stdClass[OBJECT_ERROR]=class;
     hashGet(&pstd.hl,"Error",NULL,true);
+
+    class=newClass("Map");
+    class.initFunc.exe=std_init;
+    addClassFunc(&class,METHOD_NAME_INIT,map_create,1,"capacity");
+    addClassFunc(&class,METHOD_NAME_SUBSCRIPT,map_subscript,1,"key");
+    addClassFunc(&class,METHOD_NAME_DESTROY,map_destroy,0);
+    addClassFunc(&class,"add",map_add,2,"key","value");
+    pstd.stdClass[OBJECT_MAP]=class;
+    hashGet(&pstd.hl,"Map",NULL,true);
 
     Func func;
     func=makeFunc("print",mprint,0);

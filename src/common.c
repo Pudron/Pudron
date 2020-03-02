@@ -239,6 +239,7 @@ Unit getFuncUnit(Func func){
     unit.nlist=func.nlist;
     return unit;
 }
+#ifdef DEBUG
 void printBlanks(int count){
     while(count--){
         wprintf(L"    ");
@@ -351,18 +352,14 @@ void printCmds(Unit unit,int blankCount){
         wprintf(L"\n");
     }
 }
+#endif
 void expandHashList(HashList*hl,int size){
-    HashSlot hs;
-    hs.name=NULL;
-    hs.isUsed=false;
-    hs.nextSlot=-1;
-    hs.obj=NULL;
     size=pow2(size);
     HashList newhl;
     newhl.slot=(HashSlot*)memManage(NULL,size*sizeof(HashSlot));
     newhl.capacity=0;
     while(newhl.capacity<size){
-        newhl.slot[newhl.capacity++]=hs;
+        newhl.slot[newhl.capacity++]=HASH_NULL;
     }
     /*重新插入*/
     for(int i=0;i<hl->capacity;i++){
@@ -377,7 +374,7 @@ HashList newHashList(){
     HashList hl;
     hl.capacity=1;
     hl.slot=(HashSlot*)memManage(NULL,sizeof(HashSlot));
-    hl.slot[0]=(HashSlot){NULL,-1,false,NULL};
+    hl.slot[0]=HASH_NULL;
     return hl;
 }
 int hashGet(HashList*hl,char*name,Object*obj,bool isAdd){
@@ -439,11 +436,16 @@ HashList hashMerge(HashList hl1,HashList hl2){
     }
     return hl;
 }
-void hashPrint(HashList hl){
+#ifdef DEBUG
+void hashPrint(HashList hl,bool isObj){
     wprintf(L"HashList(capacity:%d):\n",hl.capacity);
     for(int i=0;i<hl.capacity;i++){
         if(hl.slot[i].isUsed){
-            wprintf(L"%d.name:%s,nextSlot:%d,",i,hl.slot[i].name,hl.slot[i].nextSlot);
+            if(isObj){
+                 wprintf(L"%d.Object(class:%s,refCount:%d),nextSlot:%d,",i,hl.slot[i].objKey->classNameList.vals[0],hl.slot[i].objKey->refCount,hl.slot[i].nextSlot);
+            }else{
+                wprintf(L"%d.name:%s,nextSlot:%d,",i,hl.slot[i].name,hl.slot[i].nextSlot);
+            }
         }else{
             wprintf(L"%d.",i);
         }
@@ -454,6 +456,125 @@ void hashPrint(HashList hl){
         }
     }
     wprintf(L"HashList End\n");
+}
+#endif
+/*fnv-1a*/
+unsigned int hashWstr(wchar_t*wstr){
+    unsigned long long hashCode=2166136261;
+    while(*wstr){
+        hashCode^=*wstr++;
+        hashCode*=16777619;
+    }
+    return hashCode;
+}
+/*以Object为关键字的添加,不能与内嵌HashList混用*/
+void hashExpand(HashList*hl,int size){
+    HashList newhl;
+    size=pow2(size);
+    newhl.slot=(HashSlot*)memManage(NULL,size*sizeof(HashSlot));
+    newhl.capacity=0;
+    while(newhl.capacity<size){
+        newhl.slot[newhl.capacity++]=HASH_NULL;
+    }
+    HashSlot hs;
+    for(int i=0;i<hl->capacity;i++){
+        hs=hl->slot[i];
+        if(hs.isUsed){
+            hashAdd(&newhl,hs.objKey,hs.obj);
+        }
+    }
+    free(hl->slot);
+    *hl=newhl;
+}
+int hashObject(HashList*hl,Object*objKey){
+    int index;
+    switch(objKey->type){
+        case OBJECT_INT:
+            index=ABS(objKey->num)%hl->capacity;
+            break;
+        case OBJECT_DOUBLE:
+            index=ABS(((int)objKey->numd))%hl->capacity;
+            break;
+        case OBJECT_STRING:
+            index=hashWstr(objKey->str)%hl->capacity;
+            break;
+        default:
+            return -1;
+    }
+    return index;
+}
+/*相等返回0,不相等返回1,无效返回-1*/
+int hashCompare(Object*obj1,Object*obj2){
+    if(obj1->type==obj2->type){
+        switch(obj1->type){
+            case OBJECT_INT:
+                if(obj1->num==obj2->num){
+                    return 0;
+                }
+                break;
+            case OBJECT_DOUBLE:
+                if(obj1->numd==obj2->numd){
+                    return 0;
+                }
+                break;
+            case OBJECT_STRING:
+                if(wcscmp(obj1->str,obj2->str)==0){
+                    return 0;
+                }
+                break;
+            default:
+                return -1;
+        }
+    }
+    return 1;
+}
+int hashAdd(HashList*hl,Object*objKey,Object*objVal){
+    int index=hashObject(hl,objKey);
+    HashSlot slot=hl->slot[index];
+    if(slot.isUsed){
+        if(hashCompare(objKey,slot.objKey)!=1){
+            return -1;
+        }
+        while(slot.nextSlot>=0){
+            if(hashCompare(objKey,slot.objKey)!=1){
+                return -1;
+            }
+            index=slot.nextSlot;
+            slot=hl->slot[index];
+        }
+        for(int i=0;i<hl->capacity;i++){
+            if(!hl->slot[i].isUsed){
+                hl->slot[i].objKey=objKey;
+                hl->slot[i].isUsed=true;
+                hl->slot[i].obj=objVal;
+                hl->slot[index].nextSlot=i;
+                return i;
+            }
+        }
+        hashExpand(hl,hl->capacity+1);
+        return hashAdd(hl,objKey,objVal);
+    }else{
+        hl->slot[index].isUsed=true;
+        hl->slot[index].objKey=objKey;
+        hl->slot[index].obj=objVal;
+    }
+    return index;
+}
+Object*hashSearch(HashList*hl,Object*objKey){
+    int index=hashObject(hl,objKey);
+    HashSlot hs=hl->slot[index];
+    if(hs.isUsed){
+        if(hashCompare(hs.objKey,objKey)==0){
+            return hs.obj;
+        }
+        while(hs.nextSlot>=0){
+            hs=hl->slot[hs.nextSlot];
+            if(hashCompare(hs.objKey,objKey)==0){
+                return hs.obj;
+            }
+        }
+    }
+    return NULL;
 }
 int addName(NameList*nlist,char*name){
     for(int i=0;i<nlist->count;i++){

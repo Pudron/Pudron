@@ -28,6 +28,7 @@
 					<li><a href="#class">Class</a></li>
 					<li><a href="#string">Text(string)</a></li>
 					<li><a href="#list">Array(List)</a></li>
+					<li><a href="#map">Hash Table (Map)</a></li>
 					<li><a href="#print">The function print()</a></li>
 					<li><a href="#input">The function input()</a></li>
 					<li><a href="#range">The function range()</a></li>
@@ -245,6 +246,26 @@ str2=string("the number is",1,1.23);
 				</ol>
 				<p>A list can contain different types of variables. You can assign values ​​to the (n-1)th list variable through subscripts such as <code>list[n]</code>.</p>
 				<p>List's method 'add(element)' can add the element to the list.</p>
+				<hr/>
+				<h2><a id="map">Hash Table (Map)</a></h2>
+				<h3>Description</h3>
+				<p>A hash table is different from an ordinary list. It uses keywords (int,double or string) as indexes and accesses members of the table through keywords.</p>
+				<h3>Methods</h3>
+				<ul>
+					<li>Map(capacity): Constructor function.Create a hash <table></table> with capacity. When capacity is less than or equal to 0 or no capacity is specified, a hash table with capacity 1 is created by default.</li>
+					<li>add (key,value): add an element with 'key' as key and 'value' as value to the hash table. When the hash table capacity is insufficient, it will automatically expand</li>
+					<li>opSubcript(key):Returns the corresponding value in the hash table by key</li>
+				</ul>
+				<h3>Example</h3>
+				<pre><div class="code">
+map=Map(8);
+map.add(123,"element 123");
+map.add(1.23,6.66);
+map.add("key",123);
+println("key 123:",map[123]);
+println("key 1.23:",map[1.23]);
+println("key \"key\":",map["key"]);
+				</div></pre>
 				<hr/>
 				<h2><a id="print">Function print()</a></h2>
 				<h3>Description</h3>

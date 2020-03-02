@@ -28,6 +28,7 @@
 					<li><a href="#class">类</a></li>
 					<li><a href="#string">字符串(string)</a></li>
 					<li><a href="#list">列表(List)</a></li>
+					<li><a href="#map">散列表(Map)</a></li>
 					<li><a href="#print">函数print()</a></li>
 					<li><a href="#input">函数input()</a></li>
 					<li><a href="#range">函数range()</a></li>
@@ -245,6 +246,26 @@ str2=string("the number is",1,1.23);
 				</ol>
 				<p>一个列表中可以含有不同类型的变量,通过下标如<code>list[n]</code>来访问第n-1个列表变量,可以为其赋值。</p>
 				<p>List中的add(element)方法能为列表添加列表变量。</p>
+				<hr/>
+				<h2><a id="map">散列表(Map)</a></h2>
+				<h3>说明</h3>
+				<p>散列表不同于普通列表,它以关键字作为索引,通过关键字(int、double 或 string)来访问表内各个成员。</p>
+				<h3>方法</h3>
+				<ul>
+					<li>Map(capacity):构造函数,创建一个容量为capacity的散列表,当capacity小于等于0或不指定capacity时,则默认创建一个容量为1的散列表</li>
+					<li>add(key,value):向散列表加入一个关键字为key,值为value的元素。当散列表容量不够时，它会自动扩容</li>
+					<li>opSubcript(key):通过关键字key返回散列表中对应的值</li>
+				</ul>
+				<h3>示例</h3>
+				<pre><div class="code">
+map=Map(8);
+map.add(123,"element 123");
+map.add(1.23,6.66);
+map.add("key",123);
+println("key 123:",map[123]);
+println("key 1.23:",map[1.23]);
+println("key \"key\":",map["key"]);
+				</div></pre>
 				<hr/>
 				<h2><a id="print">函数print()</a></h2>
 				<h3>功能</h3>

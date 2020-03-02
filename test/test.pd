@@ -1,2 +1,13 @@
->>charset 'UTF-8';
-println("啊是哒是哒");
+#this is only a demo to test#
+class Person{
+    name;
+    func opInit(argName){
+        name=argName;
+    }
+    func love(person){
+        println("I like you,",person.name,"!");
+    }
+}
+I=Person("I");
+you=Person("Blue");
+I.love(you);
