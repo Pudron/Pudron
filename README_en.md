@@ -21,7 +21,7 @@ When I was learning computer programming,I found many programming languages have
 And their format is a little hard to understand.When developing a simple function, a lot of tedious code is needed.So I developed this programming language to minimize the entry threshold
 and make programming easier.
 ## Document
-I write a concise document for you.See [here]().
+I write a concise document for you.See [here](https://pudron.github.io/Pudron/).
 ## About Author
 My stroy is also in the document.Welcome to read it.
 ## License
