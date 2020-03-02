@@ -1,5 +1,6 @@
 ![label PNG](docs/img/label.png)
 # Pudron
+[中文版本](README.md)
 ## An easy-to-use, lightweight, extensible and high potential interpretative programming language
 It tries the best to simplify the computer programming,make people easy to code and focus on the realization.
 ## Main Features
@@ -24,5 +25,5 @@ I write a concise document for you.See [here]().
 ## About Author
 My stroy is also in the document.Welcome to read it.
 ## License
-Copyright (c) Pudron. All rights reserved.
+Copyright (c) Pudron. All rights reserved.  
 Licensed under the [GPLv3](LICENSE) license.
