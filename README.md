@@ -1,6 +1,6 @@
 ![label PNG](docs/img/label.png)
 # Pudron
-[English version](README_EN.md)
+[English version](README_en.md)
 ## 一门易用、轻巧、扩展性强、潜力巨大的解释型编程语言
 其极力简化编程，让人打起代码来更省力，把更多的精力集中在实现上。
 ## 主要特点
