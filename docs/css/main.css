@@ -77,3 +77,8 @@ ul.left_nav li a:hover{
 	background-color: red;
 	color: white;
 }
+div.secret{
+	font-size: xx-small;
+	line-height: 10px;
+	text-align: center;
+}
