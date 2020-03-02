@@ -8,7 +8,7 @@
 * 可拓展性强，使用动态链接库来拓展Pudron库
 * 潜力巨大
 ## 下载
-在[Release](https://gitee.com/pudron/Pudron/releases/v1.0-beta.1)中选取相应的包下载。
+在[Release](https://gitee.com/pudron/Pudron/releases/)中选取相应的包下载。
 ## 用法
 `pd [参数] [Pudron代码文件]`
 ### 参数
@@ -23,3 +23,6 @@
 我为你们写好了一个简明文档,详细见[这里]()。
 ## 关于作者
 我的故事也写在文档里,欢迎大家阅读。
+## 许可
+Copyright (c) Pudron 版权所有。
+Pudron遵循[GPLv3](LICENSE)协议。

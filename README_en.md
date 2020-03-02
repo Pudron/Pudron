@@ -8,7 +8,7 @@ It tries the best to simplify the computer programming,make people easy to code 
 * Extensible,using dynamic link library to expand the Pudron library
 * High potential
 ## Download
-Choose the package you want in [Release].
+Choose the package you want in [Release]().
 ## Usage
 `pd [arguments] [Pudron code file]`
 ### Arguments
@@ -23,3 +23,6 @@ and make programming easier.
 I write a concise document for you.See [here]().
 ## About Author
 My stroy is also in the document.Welcome to read it.
+## License
+Copyright (c) Pudron. All rights reserved.
+Licensed under the [GPLv3](LICENSE) license.
