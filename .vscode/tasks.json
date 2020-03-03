@@ -7,7 +7,7 @@
             "label": "make",
             "type": "shell",
             "command": ["make"],
-            "args": ["BUILD=DEBUG"]
+            "args": ["-j","BUILD=DEBUG"]
         }
     ]
 }

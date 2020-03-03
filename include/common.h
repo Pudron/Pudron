@@ -163,7 +163,8 @@ typedef enum{
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_TRY,
-    TOKEN_CATCH
+    TOKEN_CATCH,
+    TOKEN_REPLACE
 }Tokentype;
 typedef enum{
     OPCODE_NOP,

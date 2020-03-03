@@ -306,6 +306,15 @@ void assign(VM*vm,Unit*unit,int astype,int asc){
                 *val=copyObject(vm,unit,obj,refCount);
             }
             reduceRef(vm,unit,val);
+        }else if(astype==-2){
+            val=POP();
+            int r1=val->refCount,r2=obj->refCount;
+            Object tmp=*obj;
+            *obj=*val;
+            *val=tmp;
+            val->refCount=r1;
+            obj->refCount=r2;
+            reduceRef(vm,unit,val);
         }else{
             obj->refCount++;
             val=vm->stack[vm->stackCount-1];

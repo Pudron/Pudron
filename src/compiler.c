@@ -371,6 +371,9 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
         case TOKEN_PERCENT_EQUAL:
             opt=OPCODE_REM;
             break;
+        case TOKEN_REPLACE:
+            opt=-2;
+            break;
         default:
             compileMsg(MSG_ERROR,cp,L"expected assignment operator or \";\".",msgStart);
             break;
