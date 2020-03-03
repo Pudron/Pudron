@@ -27,3 +27,6 @@
 ## 许可
 Copyright (c) Pudron 版权所有。  
 Pudron遵循[GPLv3](LICENSE)协议。
+## 交流
+QQ群:  
+![QQ群二维码](docs/img/qq.png)
