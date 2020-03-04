@@ -218,6 +218,9 @@ typedef enum{
     OPCODE_END_TRY,
     OPCODE_SET_CATCH,
 
+    OPCODE_ADD_ARG,
+    OPCODE_SET_MOD,/*用于函数调用*/
+
     OPCODE_COUNT/*opcode总数量*/
 }Opcode;
 LIST_DECLARE(int)

@@ -63,7 +63,9 @@ const OpcodeMsg opcodeList[]={
     {OPCODE_LOAD_MODULE,"LOAD_MODULE",1},
     {OPCODE_BEGIN_TRY,"BEGIN_TRY",1},
     {OPCODE_END_TRY,"END_TRY",1},
-    {OPCODE_SET_CATCH,"SET_CATCH",1}
+    {OPCODE_SET_CATCH,"SET_CATCH",1},
+    {OPCODE_ADD_ARG,"ADD_ARG",1},
+    {OPCODE_SET_MOD,"SET_MOD",0},
 };
 void*memManage(void*ptr,size_t size){
     void*p=realloc(ptr,size);
@@ -343,6 +345,7 @@ void printCmds(Unit unit,int blankCount){
                 case OPCODE_LOAD_MEMBER:
                 case OPCODE_LOAD_METHOD:
                 case OPCODE_CLASS_EXTEND:
+                case OPCODE_ADD_ARG:
                 case OPCODE_GET_FOR_INDEX:
                     wprintf(L"(%s)",unit.nlist.vals[c]);
                     break;

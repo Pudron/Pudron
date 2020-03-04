@@ -45,6 +45,7 @@ VM newVM(char*fileName,char*path,PdSTD pstd){
     LIST_INIT(vm.dlist)
     vm.path=path;
     LIST_INIT(vm.jplist)
+    LIST_INIT(vm.nlist)
     return vm;
 }
 void popStack(VM*vm,Unit*unit,int num){
@@ -232,7 +233,18 @@ void exeOpt(VM*vm,Unit*unit,int opcode){
                     break;
                 }
             }
-            EXE_OPT(/,METHOD_NAME_DIV)
+            if(a->type==OBJECT_INT && b->type==OBJECT_INT){
+                if(a->num%b->num==0){
+                    /*除得尽*/
+                    PUSH(newIntObject(a->num/b->num));
+                }else{
+                    PUSH(newDoubleObject(((double)a->num)/((double)b->num)));
+                }
+                reduceRef(vm,unit,a);
+                reduceRef(vm,unit,b);
+            }else{
+                EXE_OPT(/,METHOD_NAME_DIV)
+            }
             break;
         case OPCODE_AND:
             EXE_OPT_BIT(&,METHOD_NAME_AND)
@@ -370,7 +382,7 @@ void execute(VM*vm,Unit*unit){
     int c=0;
     ArgList argList;
     Object*obj=NULL,*this=NULL;
-    int asc=1;
+    int asc=1,fmod=0;
     char*name=NULL;
     Unit*oldUnit=vm->unit;
     vm->unit=unit;
@@ -476,6 +488,12 @@ void execute(VM*vm,Unit*unit){
                 }
                 reduceRef(vm,unit,obj);
                 break;
+            case OPCODE_ADD_ARG:
+                LIST_ADD(vm->nlist,Name,unit->nlist.vals[unit->clist.vals[++i]]);
+                break;
+            case OPCODE_SET_MOD:
+                fmod=1;
+                break;
             case OPCODE_CALL_METHOD:
             case OPCODE_CALL_FUNCTION:{
                 Object*oldThis;
@@ -497,7 +515,11 @@ void execute(VM*vm,Unit*unit){
                     this=POP();/*pop this*/
                 }
                 if(obj->type==OBJECT_FUNCTION){
-                    callFunction(vm,unit,obj->func,-1,argList);
+                    if(fmod==1){
+                        callFunction(vm,unit,obj->func,-3,argList);
+                    }else{
+                        callFunction(vm,unit,obj->func,-1,argList);
+                    }
                     checkError(vm,unit,&i);
                 }else if(obj->type==OBJECT_CLASS){
                     PUSH(createObject(vm,unit,obj->class,&argList,c,&i));
@@ -507,6 +529,7 @@ void execute(VM*vm,Unit*unit){
                 if(c==OPCODE_CALL_METHOD){
                     vm->this=oldThis;
                 }
+                fmod=0;
                 LIST_DELETE(argList)
                 LIST_SUB(vm->plist,Part)
                 reduceRef(vm,unit,obj);

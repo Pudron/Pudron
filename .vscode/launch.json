@@ -28,7 +28,7 @@
             "name": "Windows gdb 调试",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/pudron/pd.exe",
+            "program": "${workspaceFolder}\\build\\pudron\\pd.exe",
             "args": ["test/test.pd"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

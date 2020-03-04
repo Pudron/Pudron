@@ -58,6 +58,7 @@ struct VMDef{
     char*path;
     intList jplist;
     Object*errObj;
+    NameList nlist;
 };
 typedef enum{
     ERR_INDEX,

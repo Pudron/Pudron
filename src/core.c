@@ -102,7 +102,8 @@ void freeHashList(VM*vm,Unit*unit,HashList*hl){
 }
 /*
 *...为参数,若为method,则第一个参数为this,当argc=-1时,则后面接ArgList,
-*若argc=-2,则只传入this,执行opDestroy()方法,不创建argv,防止无限释放argv
+*若argc=-2,则只传入this,执行opDestroy()方法,不创建argv,防止无限释放argv,
+*若argc=-3,则后面接ArgList,且vm->nlist生效
 */
 void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
     Object*obj;
@@ -113,17 +114,24 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
     va_start(valist,argc);
     Object*argv;
     int count;
-    if(argc==-1){
+    bool isMod=false;
+    if(argc==-1 || argc==-3){
         ArgList argList=va_arg(valist,ArgList);
+        if(argc==-3){
+            isMod=true;
+        }
         argc=argList.count;
         argv=newListObject(vm,argc);
         for(int i=0;i<argc;i++){
             argv->subObj[i]=argList.vals[i];
             argv->subObj[i]->isInit=false;/*防止赋值时被释放*/
         }
-        //LIST_DELETE(argList)
         setHash(vm,&funit.lvlist,"argv",argv);
-        count=(argc>func.argCount)?func.argCount:argc;
+        if(isMod){
+            count=argc;
+        }else{
+            count=(argc>func.argCount)?func.argCount:argc;
+        }
     }else if(argc==-2){
         obj=va_arg(valist,Object*);/*this*/
         setHash(vm,&funit.lvlist,"this",obj);
@@ -141,7 +149,14 @@ void callFunction(VM*vm,Unit*unit,Func func,int argc,...){
     for(int i=0;i<count;i++){
         obj=argv->subObj[i];
         obj->refCount++;
-        setHash(vm,&funit.lvlist,funit.nlist.vals[i],obj);
+        if(isMod){
+            setHash(vm,&funit.lvlist,vm->nlist.vals[vm->nlist.count-count+i],obj);
+        }else{
+            setHash(vm,&funit.lvlist,funit.nlist.vals[i],obj);
+        }
+    }
+    if(isMod){
+        LIST_REDUCE(vm->nlist,Name,count)
     }
     int stackCount=vm->stackCount;
     if(func.exe!=NULL){

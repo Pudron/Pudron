@@ -163,14 +163,26 @@ func name(arg1,arg2,arg3,...){
 	code block
 }
 				</div></pre>
+				<h3>Call Syntax</h3>
+				<p><code>function(arg1,arg2,arg3,...)</code><br/>
+				or<code>function{argument=expression,...}</code>specifying parameters to be passed in.</p>
 				<h3>Description</h3>
 				<ul>
 					<li>A value will be returned by <code>return expression;</code></li>
 					<li>Each function (including class methods) will carry the argv variable, which is a list containing all the parameters passed in this call </li>
 					<li>The number of parameters passed in when calling the function can be different from the definition.The number of parameters passed in to the function is obtained by accessing the count of the members of argv,which is <code>argv.count</code></li>
+					<li>The default value of the parameter that is not passed in is the integer 0.You can use this to determine whether the parameter is passed in, but also note that the parameter passed in is the integer 0</li>
 					<li>All functions and methods return an integer of 0 by default</li>
 					<li>A function is also an object that can be used for assignment</li>
 				</ul>
+				<h3>Example</h3>
+				<pre><div class="code">
+func average(a,b,c){
+	return (a+b+c)/3;
+}
+println(average(0,1,2));
+println(average{b=1,c=2});
+				</div></pre>
 				<hr/>
 				<h2><a id="class">Class</a></h2>
 				<h3>Syntax</h3>
