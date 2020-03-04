@@ -163,7 +163,8 @@ typedef enum{
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_TRY,
-    TOKEN_CATCH
+    TOKEN_CATCH,
+    TOKEN_REPLACE
 }Tokentype;
 typedef enum{
     OPCODE_NOP,
@@ -216,6 +217,9 @@ typedef enum{
     OPCODE_BEGIN_TRY,
     OPCODE_END_TRY,
     OPCODE_SET_CATCH,
+
+    OPCODE_ADD_ARG,
+    OPCODE_SET_MOD,/*用于函数调用*/
 
     OPCODE_COUNT/*opcode总数量*/
 }Opcode;

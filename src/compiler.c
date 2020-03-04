@@ -226,6 +226,28 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
                 }
             }
             addCmd1(unit,OPCODE_CALL_FUNCTION,count);
+        }else if(token.type==TOKEN_BRACE1){
+            token=nextToken(&cp->parser);
+            int count=0;
+            bool needArg=false;
+            while(token.type!=TOKEN_BRACE2 || needArg){
+                if(token.type!=TOKEN_WORD){
+                    compileMsg(MSG_ERROR,cp,L"expected an argument.",msgStart);
+                }
+                count++;
+                addCmd1(unit,OPCODE_ADD_ARG,addName(&unit->nlist,token.word));
+                matchToken(&cp->parser,TOKEN_EQUAL,"\"=\" in an argument",msgStart);
+                compileExpression(cp,unit,0,false,msgStart,env);
+                token=nextToken(&cp->parser);
+                if(token.type==TOKEN_COMMA){
+                    needArg=true;
+                    token=nextToken(&cp->parser);
+                }else{
+                    needArg=false;
+                }
+            }
+            addCmd(unit,OPCODE_SET_MOD);
+            addCmd1(unit,OPCODE_CALL_FUNCTION,count);
         }else{
             lastToken(&cp->parser);
         }
@@ -257,6 +279,31 @@ void gete(Compiler*cp,Unit*unit,bool isAssign,int msgStart,Env env){
                         compileMsg(MSG_ERROR,cp,L"expected \")\" or \",\" in the reference of method.",msgStart);
                     }
                 }
+                addCmd1(unit,OPCODE_CALL_METHOD,count);
+            }else if(token.type==TOKEN_BRACE1){
+                /*method,too*/
+                addCmd1(unit,OPCODE_LOAD_METHOD,addName(&unit->nlist,name));
+                addCmd1(unit,OPCODE_ADD_ARG,addName(&unit->nlist,"this"));
+                token=nextToken(&cp->parser);
+                int count=0;
+                bool needArg=false;
+                while(token.type!=TOKEN_BRACE2 || needArg){
+                    if(token.type!=TOKEN_WORD){
+                        compileMsg(MSG_ERROR,cp,L"expected an argument.",msgStart);
+                    }
+                    count++;
+                    addCmd1(unit,OPCODE_ADD_ARG,addName(&unit->nlist,token.word));
+                    matchToken(&cp->parser,TOKEN_EQUAL,"\"=\" in an argument",msgStart);
+                    compileExpression(cp,unit,0,false,msgStart,env);
+                    token=nextToken(&cp->parser);
+                    if(token.type==TOKEN_COMMA){
+                        needArg=true;
+                        token=nextToken(&cp->parser);
+                    }else{
+                        needArg=false;
+                    }
+                }
+                addCmd(unit,OPCODE_SET_MOD);
                 addCmd1(unit,OPCODE_CALL_METHOD,count);
             }else{
                 /*member*/
@@ -370,6 +417,9 @@ void compileAssignment(Compiler*cp,Unit*unit,Env env){
             break;
         case TOKEN_PERCENT_EQUAL:
             opt=OPCODE_REM;
+            break;
+        case TOKEN_REPLACE:
+            opt=-2;
             break;
         default:
             compileMsg(MSG_ERROR,cp,L"expected assignment operator or \";\".",msgStart);
